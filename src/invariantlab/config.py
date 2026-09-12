@@ -1,15 +1,10 @@
 """Configuration loading and management for InvariantLab."""
 
-from __future__ import annotations
-
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field
-
-if TYPE_CHECKING:
-    pass
 
 
 class ExperimentConfig(BaseModel):
