@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use InvariantLab in your research, please cite it as below."
+title: "InvariantLab: Physics-Grounded Evaluation for AI-Generated Scientific Software"
+authors:
+  - family-names: Kurkar
+    given-names: Alex
+    affiliation: University of Nottingham
+    orcid: ""
+repository-code: "https://github.com/akurkar07/InvariantLab"
+license: MIT
+date-released: 2026-09-12
+url: "https://github.com/akurkar07/InvariantLab"
+preferred-citation: ""
+keywords:
+  - AI evaluation
+  - scientific software
+  - numerical verification
+  - benchmark
+  - coding agents
+abstract: >
+  InvariantLab measures whether an AI coding agent has implemented the
+  declared mathematics — not merely produced code that compiles or passes
+  a narrow set of examples. The benchmark uses compact problems from
+  classical mechanics and numerical partial differential equations, with
+  independent analytical, numerical, invariant, convergence, and metamorphic
+  checks.
