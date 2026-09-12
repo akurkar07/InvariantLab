@@ -5,8 +5,6 @@ independent of any numerical solver.  These are the ground-truth reference
 implementations that the verifier compares against.
 """
 
-from __future__ import annotations
-
 import math
 
 import numpy as np
@@ -180,7 +178,8 @@ def heat_trajectory(
     alpha: float,
 ) -> np.ndarray:
     """Compute the manufactured solution at a fixed time over a spatial grid."""
-    return np.sin(np.pi * x) * np.exp(-alpha * math.pi * math.pi * t)
+    decay_float = math.exp(-alpha * math.pi * math.pi * t)
+    return np.sin(np.pi * x) * decay_float
 
 
 def heat_decay_rate(alpha: float) -> float:
@@ -227,7 +226,8 @@ def wave_standing_trajectory(
 ) -> np.ndarray:
     """Standing-wave displacement at a fixed time over a spatial grid."""
     k = n_mode * math.pi / length
-    return np.sin(k * x) * np.cos(k * c * t)
+    cos_kc = math.cos(k * c * t)
+    return np.sin(k * x) * cos_kc
 
 
 def wave_travelling_solution(
