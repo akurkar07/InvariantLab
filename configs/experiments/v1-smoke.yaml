@@ -1,0 +1,9 @@
+# Example experiment configuration for InvariantLab
+
+name: v1-smoke
+description: "Smoke run with reference implementations on all V1 families."
+task_suite: configs/task-suites/v1-smoke.yaml
+model: configs/models/default.yaml
+n_attempts: 1
+seed: 1729
+container_image: python:3.12-slim@sha256:placeholder

@@ -1,0 +1,9 @@
+# V1 smoke task suite — one reference impl per family
+
+name: v1-smoke
+description: "Reference implementations for all four V1 problem families."
+tasks:
+  - tasks/oscillator
+  - tasks/kepler
+  - tasks/heat1d
+  - tasks/wave1d
