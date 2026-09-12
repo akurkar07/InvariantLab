@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    pass
 
 
 class ExperimentConfig(BaseModel):
