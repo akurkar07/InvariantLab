@@ -118,3 +118,19 @@ class RunManifest(BaseModel):
     seed: int
     container_image: str
     task_results: list[VerificationResult] = Field(default_factory=list)
+
+
+# ── Loading ──────────────────────────────────────────────────────────────────
+
+
+def load_task_contract(task_dir: str | Path) -> TaskContract:
+    """Load a task contract from a directory containing contract.yaml."""
+    import yaml
+
+    task_path = Path(task_dir) if isinstance(task_dir, str) else task_dir
+    contract_file = task_path / "contract.yaml"
+    if not contract_file.exists():
+        raise FileNotFoundError(f"No contract.yaml in {task_path}")
+    with contract_file.open("r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return TaskContract(**data)
