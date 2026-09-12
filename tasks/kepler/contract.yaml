@@ -1,0 +1,18 @@
+id: kepler_verlet
+family: kepler_two_body
+language: python
+entrypoint: src/solver.py
+public_tests: tests/public
+scientific_tests: tests/scientific
+budgets:
+  wall_seconds: 600
+  model_tokens: 20000
+numerics:
+  dtype: float64
+  seed: 1729
+  tolerances:
+    state_relative_l2: 1.0e-5
+    energy_relative_drift: 1.0e-6
+description: |
+  Implement a numerical solver for the two-body Kepler problem
+  d²r/dt² = -μ r/|r|³ using the velocity Verlet method.

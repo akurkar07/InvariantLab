@@ -1,0 +1,18 @@
+id: heat_ftcs
+family: heat_1d
+language: python
+entrypoint: src/solver.py
+public_tests: tests/public
+scientific_tests: tests/scientific
+budgets:
+  wall_seconds: 300
+  model_tokens: 16000
+numerics:
+  dtype: float64
+  seed: 42
+  tolerances:
+    state_relative_l2: 1.0e-5
+    energy_relative_drift: 1.0e-6
+description: |
+  Implement a numerical solver for the 1-D heat equation u_t = α u_xx
+  using the forward-time centred-space (FTCS) method with Dirichlet BCs.
