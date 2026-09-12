@@ -34,6 +34,7 @@ class MutationFamily(str, Enum):
     """Controlled defect categories."""
 
     SIGN_ERROR = "sign_error"
+    UPDATE_ORDER_ERROR = "update_order_error"
     BOUNDARY_ERROR = "boundary_error"
     DISCRETISATION_ERROR = "discretisation_error"
     STABILITY_ERROR = "stability_error"
