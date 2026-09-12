@@ -6,8 +6,6 @@ TODO: implement reference solvers in M2.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from invariantlab.schema import TaskContract, load_task_contract
 
-__all__ = ["load_task_contract", "TaskContract"]
+__all__ = ["TaskContract", "load_task_contract"]

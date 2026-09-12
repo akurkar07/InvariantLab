@@ -12,5 +12,5 @@ def test_task_contract_requires_id():
     """TaskContract requires an id field."""
     import pytest
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         TaskContract(family=TaskFamily.OSCILLATOR)  # type: ignore[call-arg]
