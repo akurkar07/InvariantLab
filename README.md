@@ -171,6 +171,15 @@ language: python
 entrypoint: src/solver.py
 public_tests: tests/public
 scientific_tests: tests/scientific
+output:
+  path: result.npz
+  arrays:
+    - name: time
+      shape: [null]
+      dtype: float64
+    - name: state
+      shape: [null, 4]
+      dtype: float64
 mutation:
   family: sign_error
   location: acceleration
@@ -198,6 +207,11 @@ A task package contains:
 - declared numerical tolerances and their justification.
 
 Tolerance values are attached to individual tasks. They are not shared indiscriminately across different equations, discretisations or floating-point precisions.
+
+All Python tasks use the same subprocess and archive protocol: the evaluator runs
+`python src/solver.py --input input.json --output result.npz` from the task root.
+The complete layout, input envelope, output rules and trust boundary are specified in
+[`docs/task-authoring.md`](docs/task-authoring.md).
 
 ---
 
@@ -467,10 +481,7 @@ InvariantLab/
 │   ├── config.py
 │   ├── schema.py
 │   ├── tasks/
-│   │   ├── oscillator/
-│   │   ├── kepler/
-│   │   ├── heat1d/
-│   │   └── wave1d/
+│   │   └── __init__.py       # trusted contract discovery only
 │   ├── mutations/
 │   │   ├── registry.py
 │   │   ├── operators.py
@@ -499,10 +510,13 @@ InvariantLab/
 │       ├── export.py
 │       └── plots.py
 ├── tasks/
-│   ├── oscillator/
-│   ├── kepler/
-│   ├── heat1d/
-│   └── wave1d/
+│   └── <family>/
+│       ├── contract.yaml
+│       ├── specification.md
+│       ├── src/solver.py     # agent-facing
+│       └── tests/
+│           ├── public/       # agent-visible
+│           └── scientific/   # evaluator-only
 ├── tests/
 │   ├── unit/
 │   ├── property/
@@ -611,6 +625,18 @@ A result cannot appear only as a chart. Every plotted point resolves to its run 
 - replay produces the same evaluator result;
 - report tables reproduce sample-level counts;
 - hidden verifier files are absent from the agent mount.
+
+### Milestone acceptance boundaries
+
+**M2 — Task framework and reference implementations** is complete when all four
+contracts describe executable self-contained task packages, their public tests run,
+and the trusted references pass direct oracle and empirical-refinement checks. M2
+does not claim that the reusable verification stack already exists.
+
+**M3 — Verification stack** generalises that evidence into execution/schema,
+oracle, invariant, convergence, metamorphic and robustness gates for arbitrary
+submissions. Passing every reusable scientific gate remains a V1 acceptance
+criterion after M3, rather than a prerequisite for closing M2.
 
 ### V1 acceptance criteria
 
