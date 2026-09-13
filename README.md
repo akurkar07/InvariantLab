@@ -2,13 +2,13 @@
 
 > Physics-grounded evaluation for AI-generated scientific software.
 
-InvariantLab measures whether an AI coding agent has implemented the declared mathematics—not merely produced code that compiles or passes a narrow set of examples.
+InvariantLab measures whether an AI coding agent has implemented the declared mathematics, not merely produced code that compiles or passes a narrow set of examples.
 
 The benchmark uses compact problems from classical mechanics and numerical partial differential equations. Every task pairs an agent-facing implementation with independent analytical, numerical, invariant, convergence, and metamorphic checks. Controlled defect injection makes the source of each failure known, while containerised execution and immutable run manifests make results reproducible.
 
 The central research question is:
 
-> **How often do coding agents produce numerical programs that pass ordinary unit tests but violate physical invariants, convergence requirements, or analytical solutions—and which verification methods close that gap?**
+> **How often do coding agents produce numerical programs that pass ordinary unit tests but violate physical invariants, convergence requirements, or analytical solutions, and which verification methods close that gap?**
 
 InvariantLab contains no biological, medical, genomic, chemical, or wet-laboratory data, models, or workflows. Its scientific scope is classical mechanics, numerical analysis, and deterministic software evaluation.
 
@@ -42,7 +42,7 @@ A numerical program can run successfully and still solve the wrong problem. It m
 
 Ordinary unit tests are often too narrow to reveal these errors. InvariantLab treats scientific verification as a layered evidence problem:
 
-\[
+$$
 \text{specification}
 \rightarrow
 \text{implementation}
@@ -54,12 +54,12 @@ Ordinary unit tests are often too narrow to reveal these errors. InvariantLab tr
 \text{quantitative result}
 \rightarrow
 \text{reproducible artefact}.
-\]
+$$
 
 The benchmark therefore separates two notions of success:
 
-1. **Visible success** — the implementation passes the tests available to the coding agent.
-2. **Scientific success** — the implementation also satisfies independent analytical, invariant, convergence, metamorphic, and robustness checks.
+1. **Visible success:** the implementation passes the tests available to the coding agent.
+2. **Scientific success:** the implementation also satisfies independent analytical, invariant, convergence, metamorphic, and robustness checks.
 
 The difference between these outcomes is the **verification gap**.
 
@@ -82,15 +82,15 @@ These tasks are small enough to execute repeatedly while still exposing scientif
 
 The reference solution is
 
-\[
+$$
 x(t)=x_0\cos(\omega t)+\frac{v_0}{\omega}\sin(\omega t),
-\]
+$$
 
 with total energy
 
-\[
+$$
 E=\frac{1}{2}v^2+\frac{1}{2}\omega^2x^2.
-\]
+$$
 
 The task supports tests for phase error, long-horizon energy drift, timestep convergence and time reversal.
 
@@ -98,11 +98,11 @@ The task supports tests for phase error, long-horizon energy drift, timestep con
 
 The specific orbital energy and angular momentum are
 
-\[
+$$
 \varepsilon=\frac{\lVert\mathbf v\rVert^2}{2}-\frac{\mu}{\lVert\mathbf r\rVert},
 \qquad
 \mathbf h=\mathbf r\times\mathbf v.
-\]
+$$
 
 The verifier checks orbital-state accuracy, bounded conservation drift and covariance under rigid rotations. Circular cases provide an analytical reference; non-circular cases are compared with a separately implemented high-accuracy oracle.
 
@@ -110,9 +110,9 @@ The verifier checks orbital-state accuracy, bounded conservation drift and covar
 
 For homogeneous Dirichlet boundaries, a manufactured solution is
 
-\[
+$$
 u(x,t)=\sin(\pi x)e^{-\alpha\pi^2t}.
-\]
+$$
 
 The verifier checks boundary enforcement, decay rate, stability restrictions and empirical spatial/temporal convergence.
 
@@ -154,7 +154,7 @@ flowchart LR
 - **Independent verification:** production and oracle paths do not share numerical update code.
 - **One controlled defect at a time:** each mutated task has a known causal label.
 - **Deterministic replay:** task, model, prompt, seed, tool budget and container digest are recorded.
-- **No LLM ground truth:** language-model judgments may be compared experimentally, but never define scientific correctness.
+- **No LLM ground truth:** language-model judgements may be compared experimentally, but never define scientific correctness.
 - **Fail closed:** missing, malformed or non-finite output cannot receive a scientific pass.
 - **No aggregate-only reporting:** every headline result can be reconstructed from committed sample-level records.
 
@@ -203,7 +203,7 @@ Tolerance values are attached to individual tasks. They are not shared indiscrim
 
 ## Verification stack
 
-### Layer 0 — execution and schema
+### Layer 0: execution and schema
 
 The implementation must:
 
@@ -213,17 +213,17 @@ The implementation must:
 - preserve expected array dimensions and dtypes;
 - write only within the task workspace.
 
-### Layer 1 — visible unit tests
+### Layer 1: visible unit tests
 
 Public tests cover interface behaviour and a small number of ordinary examples. They provide useful development feedback but intentionally do not constitute scientific certification.
 
-### Layer 2 — analytical and high-accuracy oracles
+### Layer 2: analytical and high-accuracy oracles
 
 Closed-form solutions are used wherever possible. Cases without a convenient closed form use an independently implemented high-accuracy solver with substantially tighter tolerances than the agent-facing method.
 
 Oracle independence is audited at the source level: the agent implementation, task mutation and verifier cannot import one another’s numerical update functions.
 
-### Layer 3 — invariant checks
+### Layer 3: invariant checks
 
 Invariant checks measure properties that should remain constant or evolve monotonically under the declared model:
 
@@ -236,17 +236,17 @@ Invariant checks measure properties that should remain constant or evolve monoto
 
 Checks report the measured deviation as well as pass/fail status.
 
-### Layer 4 — convergence studies
+### Layer 4: convergence studies
 
 Given errors $E_h$ and $E_{h/2}$ at successive resolutions, the observed order is
 
-\[
+$$
 p=\frac{\log(E_h/E_{h/2})}{\log 2}.
-\]
+$$
 
 The verifier records the complete refinement table. A decreasing residual alone is not accepted as evidence that the numerical solution converges to the correct continuum solution.
 
-### Layer 5 — metamorphic tests
+### Layer 5: metamorphic tests
 
 Metamorphic relations generate new cases whose transformed outputs are known even when a single exact output is inconvenient to store.
 
@@ -259,7 +259,7 @@ Examples include:
 - halving the timestep while holding the physical horizon fixed;
 - scaling a linear PDE solution by a constant.
 
-### Layer 6 — held-out robustness cases
+### Layer 6: held-out robustness cases
 
 Held-out cases vary:
 
@@ -346,21 +346,21 @@ Every adapter emits the same event format so model comparisons do not depend on 
 
 ### Public pass rate
 
-\[
+$$
 P_{\mathrm{public}}=\frac{N_{\mathrm{public\ pass}}}{N_{\mathrm{attempted}}}.
-\]
+$$
 
 ### Scientific pass rate
 
-\[
+$$
 P_{\mathrm{science}}=\frac{N_{\mathrm{all\ scientific\ gates\ pass}}}{N_{\mathrm{attempted}}}.
-\]
+$$
 
 ### Verification gap
 
-\[
+$$
 G=P_{\mathrm{public}}-P_{\mathrm{science}}.
-\]
+$$
 
 A large $G$ indicates that ordinary software tests overstate scientific correctness.
 
