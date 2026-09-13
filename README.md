@@ -332,13 +332,24 @@ This paired design tests whether scientifically structured feedback improves gen
 
 Adapters expose a common request, tool-call and usage schema for:
 
-- Anthropic API models;
-- Hugging Face `transformers` models;
-- OpenAI-compatible inference servers;
-- `vLLM` endpoints;
-- replayed, previously captured trajectories.
+- **Anthropic API** (Claude Sonnet 4, Claude Opus 4)
+- **OpenAI API** (GPT-4o, o1, o3)
+- **Hugging Face `transformers`** (Qwen 3 Coder, Llama 4, DeepSeek V3)
+- **`vLLM` endpoints** (local or self-hosted open-weight models)
+- **Replay adapter** (pre-recorded trajectories for CI without API access)
 
 Every adapter emits the same event format so model comparisons do not depend on provider-specific logs.
+
+### V1 evaluation models
+
+V1 evaluations run against:
+
+- **Claude Sonnet 4** (Anthropic) — primary closed-source test model
+- **GPT-4o** (OpenAI) — secondary closed-source comparison
+- **Qwen 3 Coder 32B** (via vLLM) — primary open-weight test model, runs locally without API cost
+- **Replay adapter** — deterministic CI smoke runs using pre-recorded trajectories
+
+This selection covers the strongest coding agents (Claude, GPT), a capable open-weight alternative (Qwen), and a free deterministic option for CI.
 
 ---
 
