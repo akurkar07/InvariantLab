@@ -8,6 +8,7 @@ should pass all verification layers by construction.
 from __future__ import annotations
 
 import math
+import sys
 
 import numpy as np
 
@@ -279,24 +280,78 @@ def solve_wave_leapfrog(
         c: Wave speed.
         length: Domain length.
         t_final: Final time.
-        Courant number. If None, uses 0.5 for stability.
+        courant: Optional consistency check for the Courant number derived from
+            ``c``, ``length``, ``nx``, ``t_final``, and ``nt``.
     Returns:
         (x_grid, u) -- spatial grid and final displacement.
+    Raises:
+        ValueError: If grid counts are invalid or exceed the platform index
+            range, physical parameters are invalid, the derived Courant number
+            is unstable, or ``courant`` disagrees with the derived value.
     """
-    if courant is None:
-        courant = 0.5
+    if (
+        not isinstance(nx, int)
+        or isinstance(nx, bool)
+        or not isinstance(nt, int)
+        or isinstance(nt, bool)
+    ):
+        raise ValueError(f"nx and nt must be integers; got nx={nx}, nt={nt}")
+    for count_name, count in (("nx", nx), ("nt", nt)):
+        if count > sys.maxsize:
+            raise ValueError(f"{count_name} must fit within platform index range")
+    if nx < 3:
+        raise ValueError(f"nx must be at least 3; got {nx}")
+    if nt < 1:
+        raise ValueError(f"nt must be at least 1; got {nt}")
 
-    x = np.linspace(0, length, nx)
-    u = np.sin(np.pi * x)  # standing wave initial condition
-    u_prev = u.copy()  # u at t=0, v=0 implies u_prev = u
+    def as_float(name: str, value: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"{name} must be representable as a float") from exc
+
+    c = as_float("c", c)
+    length = as_float("length", length)
+    t_final = as_float("t_final", t_final)
+    if courant is not None:
+        courant = as_float("courant", courant)
+
+    for name, value in (("c", c), ("length", length), ("t_final", t_final)):
+        if not math.isfinite(value) or value <= 0.0:
+            raise ValueError(f"{name} must be positive and finite; got {value}")
+
+    dx = length / (nx - 1)
+    dt = t_final / nt
+    for name, value in (("dx", dx), ("dt", dt)):
+        if not math.isfinite(value) or value <= 0.0:
+            raise ValueError(f"{name} must be positive and finite; got {value}")
+
+    derived_courant = c * dt / dx
+    if not math.isfinite(derived_courant) or derived_courant <= 0.0:
+        raise ValueError(
+            f"derived Courant number must be positive and finite; got {derived_courant}"
+        )
+    if abs(derived_courant) > 1.0:
+        raise ValueError(f"Courant number must satisfy |c*dt/dx| <= 1; got {derived_courant}")
+    if courant is not None and not math.isclose(
+        courant, derived_courant, rel_tol=1e-12, abs_tol=0.0
+    ):
+        raise ValueError(
+            f"courant must match the derived Courant number {derived_courant}; got {courant}"
+        )
+    courant = derived_courant
+
+    x = np.linspace(0, length, nx, dtype=np.float64)
+    u = np.sin(np.pi * (x / length))  # fundamental standing-wave mode
+    u[[0, -1]] = 0.0
+    u_prev = u.copy()
+    # Zero initial velocity gives u(-dt) = u(0) + 0.5 dt^2 u_tt(0).
+    u_prev[1:-1] += 0.5 * courant**2 * (u[2:] - 2.0 * u[1:-1] + u[:-2])
 
     for _ in range(nt):
         u_new = np.zeros(nx)
         for i in range(1, nx - 1):
-            u_new[i] = (
-                2 * u[i] - u_prev[i]
-                + courant ** 2 * (u[i + 1] - 2 * u[i] + u[i - 1])
-            )
+            u_new[i] = 2 * u[i] - u_prev[i] + courant**2 * (u[i + 1] - 2 * u[i] + u[i - 1])
         u_new[0] = 0.0
         u_new[-1] = 0.0
         u_prev = u.copy()

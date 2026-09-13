@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import sys
+from typing import cast
 
 import numpy as np
 import pytest
@@ -239,3 +241,238 @@ def test_leapfrog_matches_standing():
     u_exact = wave_standing_trajectory(x, t_final, c, length=wave_length)
     max_error = np.max(np.abs(u_num - u_exact))
     assert max_error < 5e-3, f"Max error {max_error} too large"
+
+
+def test_leapfrog_uses_requested_final_time():
+    _, short_run = solve_wave_leapfrog(101, 400, 1.0, t_final=0.2)
+    _, long_run = solve_wave_leapfrog(101, 400, 1.0, t_final=0.3)
+
+    assert np.max(np.abs(short_run - long_run)) > 0.1
+
+
+def test_leapfrog_uses_requested_wave_speed():
+    _, slow_wave = solve_wave_leapfrog(101, 400, 0.5, t_final=0.3)
+    _, fast_wave = solve_wave_leapfrog(101, 400, 1.0, t_final=0.3)
+
+    assert np.max(np.abs(slow_wave - fast_wave)) > 0.1
+
+
+def test_leapfrog_first_step_includes_half_acceleration():
+    nx, c, length, t_final = 9, 0.8, 1.0, 0.1
+    x, actual = solve_wave_leapfrog(nx, 1, c, length=length, t_final=t_final)
+    initial = np.sin(np.pi * x / length)
+    courant = c * t_final / (length / (nx - 1))
+    expected = initial.copy()
+    expected[1:-1] += 0.5 * courant**2 * (initial[2:] - 2.0 * initial[1:-1] + initial[:-2])
+    expected[[0, -1]] = 0.0
+
+    np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-15)
+
+
+def test_leapfrog_matches_non_unit_domain_at_nonaliased_time():
+    c, length, t_final = 0.8, 1.3, 0.27
+    x, actual = solve_wave_leapfrog(161, 300, c, length=length, t_final=t_final)
+    expected = wave_standing_trajectory(x, t_final, c, length=length)
+
+    assert np.max(np.abs(actual - expected)) < 1e-4
+
+
+def test_leapfrog_rejects_unstable_derived_courant_number():
+    with pytest.raises(ValueError, match="Courant"):
+        solve_wave_leapfrog(11, 1, 2.0, length=1.0, t_final=1.0)
+
+
+@pytest.mark.parametrize(("nx", "nt"), [(2, 10), (10, 0)])
+def test_leapfrog_rejects_invalid_discretization(nx: int, nt: int):
+    with pytest.raises(ValueError, match=r"nx|nt"):
+        solve_wave_leapfrog(nx, nt, 1.0)
+
+
+@pytest.mark.parametrize("parameter", ["nx", "nt"])
+def test_leapfrog_rejects_counts_outside_platform_index_range(parameter: str):
+    huge_count = 10**10000
+    nx = huge_count if parameter == "nx" else 3
+    nt = huge_count if parameter == "nt" else 1
+
+    with pytest.raises(ValueError, match=rf"{parameter} must fit within platform index range"):
+        solve_wave_leapfrog(nx, nt, 1.0)
+
+
+@pytest.mark.parametrize(("nx", "nt"), [(3.5, 10), (10, 2.5), (10, True)])
+def test_leapfrog_rejects_noninteger_discretization(nx: object, nt: object):
+    with pytest.raises(ValueError, match="integers"):
+        solve_wave_leapfrog(cast("int", nx), cast("int", nt), 1.0)
+
+
+@pytest.mark.parametrize(
+    ("c", "length", "t_final"),
+    [
+        (0.0, 1.0, 0.1),
+        (math.inf, 1.0, 0.1),
+        (1.0, 0.0, 0.1),
+        (1.0, math.nan, 0.1),
+        (1.0, 1.0, 0.0),
+        (1.0, 1.0, math.inf),
+    ],
+)
+def test_leapfrog_rejects_invalid_physical_parameters(c: float, length: float, t_final: float):
+    with pytest.raises(ValueError, match="must be positive and finite"):
+        solve_wave_leapfrog(101, 400, c, length=length, t_final=t_final)
+
+
+@pytest.mark.parametrize(
+    ("c", "length", "t_final", "courant", "parameter"),
+    [
+        pytest.param(10**10000, 1.0, 0.1, None, "c", id="wave-speed"),
+        pytest.param(1.0, 10**10000, 0.1, None, "length", id="length"),
+        pytest.param(1.0, 1.0, 10**10000, None, "t_final", id="final-time"),
+        pytest.param(1.0, 1.0, 0.1, 10**10000, "courant", id="courant"),
+    ],
+)
+def test_leapfrog_rejects_scalars_unrepresentable_as_float(
+    c: object,
+    length: object,
+    t_final: object,
+    courant: object,
+    parameter: str,
+):
+    with pytest.raises(ValueError, match=rf"{parameter} must be representable as a float"):
+        solve_wave_leapfrog(
+            3,
+            1,
+            cast("float", c),
+            length=cast("float", length),
+            t_final=cast("float", t_final),
+            courant=cast("float | None", courant),
+        )
+
+
+def test_leapfrog_rejects_courant_that_disagrees_with_inputs():
+    with pytest.raises(ValueError, match="derived Courant"):
+        solve_wave_leapfrog(11, 10, 1.0, t_final=0.5, courant=0.2)
+
+
+@pytest.mark.parametrize("courant", [0.0, -2e-16])
+def test_leapfrog_rejects_nonpositive_courant_when_derived_value_is_tiny(courant: float):
+    with pytest.raises(ValueError, match="derived Courant"):
+        solve_wave_leapfrog(3, 1, 1e-16, courant=courant)
+
+
+def test_leapfrog_accepts_matching_explicit_courant_number():
+    nx, nt, c, length, t_final = 41, 80, 0.7, 1.2, 0.25
+    derived_courant = c * (t_final / nt) / (length / (nx - 1))
+    x_implicit, u_implicit = solve_wave_leapfrog(nx, nt, c, length=length, t_final=t_final)
+    x_explicit, u_explicit = solve_wave_leapfrog(
+        nx,
+        nt,
+        c,
+        length=length,
+        t_final=t_final,
+        courant=derived_courant,
+    )
+
+    np.testing.assert_array_equal(x_explicit, x_implicit)
+    np.testing.assert_array_equal(u_explicit, u_implicit)
+
+
+def test_leapfrog_returns_finite_float64_output_with_exact_boundaries():
+    x, displacement = solve_wave_leapfrog(65, 80, 0.7, length=1.3, t_final=0.31)
+
+    assert x.dtype == np.dtype(np.float64)
+    assert displacement.dtype == np.dtype(np.float64)
+    assert np.isfinite(x).all()
+    assert np.isfinite(displacement).all()
+    np.testing.assert_array_equal(displacement[[0, -1]], np.zeros(2))
+
+
+@pytest.mark.parametrize("length", [np.float16(1.25), np.float32(1.25)])
+def test_leapfrog_returns_float64_arrays_for_numpy_scalar_length(
+    length: np.float16 | np.float32,
+):
+    x, displacement = solve_wave_leapfrog(17, 32, 0.5, length=length, t_final=0.1)
+
+    assert x.dtype == np.dtype(np.float64)
+    assert displacement.dtype == np.dtype(np.float64)
+
+
+@pytest.mark.parametrize(
+    ("c", "length", "t_final"),
+    [
+        pytest.param(np.float16(0.7), 1.3, 0.17, id="wave-speed"),
+        pytest.param(0.7, np.float16(1.3), 0.17, id="length"),
+        pytest.param(0.7, 1.3, np.float16(0.17), id="final-time"),
+    ],
+)
+def test_leapfrog_canonicalizes_numpy_scalars_before_computation(
+    c: float,
+    length: float,
+    t_final: float,
+):
+    canonical_c = float(c)
+    canonical_length = float(length)
+    canonical_t_final = float(t_final)
+    expected_x = np.linspace(0.0, canonical_length, 17, dtype=np.float64)
+    oracle_x, oracle_displacement = solve_wave_leapfrog(
+        17,
+        64,
+        canonical_c,
+        length=canonical_length,
+        t_final=canonical_t_final,
+    )
+
+    x, displacement = solve_wave_leapfrog(
+        17,
+        64,
+        c,
+        length=length,
+        t_final=t_final,
+    )
+
+    np.testing.assert_array_equal(oracle_x, expected_x)
+    np.testing.assert_array_equal(x, expected_x)
+    np.testing.assert_array_equal(displacement, oracle_displacement)
+
+
+def test_leapfrog_avoids_phase_overflow_for_maximum_finite_length():
+    x, displacement = solve_wave_leapfrog(3, 1, 1.0, length=sys.float_info.max, t_final=1.0)
+
+    assert np.isfinite(x).all()
+    assert np.isfinite(displacement).all()
+    assert displacement[1] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    ("nx", "nt", "c", "length", "t_final", "invalid_quantity"),
+    [
+        pytest.param(3, 1, 1.0, math.ulp(0.0), 1.0, "dx", id="zero-dx"),
+        pytest.param(3, 2, 1.0, 1.0, math.ulp(0.0), "dt", id="zero-dt"),
+        pytest.param(
+            3,
+            1,
+            math.ulp(0.0),
+            1.0,
+            math.ulp(0.0),
+            "derived Courant number",
+            id="zero-derived-courant",
+        ),
+        pytest.param(
+            3,
+            1,
+            np.float64(math.ulp(0.0)),
+            np.float64(math.ulp(0.0)),
+            np.float64(math.ulp(0.0)),
+            "dx",
+            id="numpy-nan-courant",
+        ),
+    ],
+)
+def test_leapfrog_rejects_unrepresentable_derived_quantities(
+    nx: int,
+    nt: int,
+    c: float,
+    length: float,
+    t_final: float,
+    invalid_quantity: str,
+):
+    with pytest.raises(ValueError, match=rf"{invalid_quantity} must be positive and finite"):
+        solve_wave_leapfrog(nx, nt, c, length=length, t_final=t_final)
