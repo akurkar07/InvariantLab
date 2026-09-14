@@ -19,7 +19,7 @@ TASK_ID = "fixture_task"
 PATH_FIELDS = ("entrypoint", "public_tests", "scientific_tests")
 
 
-def _contract_data(**overrides: str) -> dict[str, object]:
+def _contract_data(**overrides: object) -> dict[str, object]:
     data: dict[str, object] = {
         "id": TASK_ID,
         "family": "oscillator",
@@ -27,12 +27,16 @@ def _contract_data(**overrides: str) -> dict[str, object]:
         "entrypoint": "src/solver.py",
         "public_tests": "tests/public",
         "scientific_tests": "tests/scientific",
+        "output": {
+            "path": "result.npz",
+            "arrays": [{"name": "state", "shape": [None], "dtype": "float64"}],
+        },
     }
     data.update(overrides)
     return data
 
 
-def _make_task(task_root: Path, **overrides: str) -> TaskContract:
+def _make_task(task_root: Path, **overrides: object) -> TaskContract:
     (task_root / "src").mkdir(parents=True)
     (task_root / "tests" / "public").mkdir(parents=True)
     (task_root / "tests" / "scientific").mkdir(parents=True)
@@ -46,7 +50,7 @@ def _make_task(task_root: Path, **overrides: str) -> TaskContract:
     return TaskContract(**data)
 
 
-def _validate(task_root: Path, **overrides: str) -> list[str]:
+def _validate(task_root: Path, **overrides: object) -> list[str]:
     contract = _make_task(task_root, **overrides)
     return validate_task_artifacts(task_root, contract)
 
@@ -76,6 +80,61 @@ def test_rejects_absolute_and_traversing_paths_across_platform_syntax(
     errors = _validate(tmp_path / "task", **{field: declared_path})
 
     assert errors == [f"task '{TASK_ID}': field '{field}' must be a safe relative path"]
+
+
+@pytest.mark.parametrize(
+    "declared_path",
+    [
+        "/tmp/result.npz",
+        "../result.npz",
+        ".." + chr(92) + "result.npz",
+        "C:" + chr(92) + "temp" + chr(92) + "result.npz",
+        chr(92) * 2 + "server" + chr(92) + "share" + chr(92) + "result.npz",
+    ],
+)
+def test_rejects_unsafe_output_paths(tmp_path: Path, declared_path: str) -> None:
+    errors = _validate(
+        tmp_path / "task",
+        output={
+            "path": declared_path,
+            "arrays": [{"name": "state", "shape": [None], "dtype": "float64"}],
+        },
+    )
+
+    assert errors == [f"task '{TASK_ID}': field 'output.path' must be a safe relative path"]
+
+
+def test_rejects_output_path_escape_through_link(tmp_path: Path) -> None:
+    task_root = tmp_path / "task"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    task_root.mkdir()
+    try:
+        (task_root / "escape").symlink_to(outside, target_is_directory=True)
+    except OSError as error:
+        pytest.skip(f"symlink creation unavailable: {error}")
+
+    contract = _make_task(
+        task_root,
+        output={
+            "path": "escape/result.npz",
+            "arrays": [{"name": "state", "shape": [None], "dtype": "float64"}],
+        },
+    )
+
+    assert validate_task_artifacts(task_root, contract) == [
+        f"task '{TASK_ID}': field 'output.path' must be a safe relative path"
+    ]
+
+
+def test_rejects_output_path_that_is_an_existing_directory(tmp_path: Path) -> None:
+    task_root = tmp_path / "task"
+    contract = _make_task(task_root)
+    (task_root / contract.output.path).mkdir()
+
+    assert validate_task_artifacts(task_root, contract) == [
+        f"task '{TASK_ID}': field 'output.path' must not be a directory"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -217,12 +276,12 @@ def test_reports_multiple_invalid_artifacts_with_task_id_and_field(tmp_path: Pat
 
 def test_cli_distinguishes_schema_and_artifact_errors(tmp_path: Path) -> None:
     schema_root = tmp_path / "schema"
-    schema_task = schema_root / "bad-schema"
+    schema_task = schema_root / "oscillator"
     schema_task.mkdir(parents=True)
     (schema_task / "contract.yaml").write_text("id: bad\nfamily: invalid\n", encoding="utf-8")
 
     artifact_root = tmp_path / "artifact"
-    artifact_task = artifact_root / "bad-artifact"
+    artifact_task = artifact_root / "oscillator"
     _make_task(artifact_task, entrypoint="src/missing.py")
 
     schema = subprocess.run(
@@ -245,26 +304,31 @@ def test_cli_distinguishes_schema_and_artifact_errors(tmp_path: Path) -> None:
     assert f"task '{TASK_ID}': field 'entrypoint' does not exist" in artifact.stderr
 
 
-def test_cli_returns_zero_for_valid_package_and_nonzero_for_artifact_error(tmp_path: Path) -> None:
-    valid_root = tmp_path / "valid"
-    _make_task(valid_root / "task")
-    invalid_root = tmp_path / "invalid"
-    _make_task(invalid_root / "task", public_tests="tests/missing-public")
-
-    valid = subprocess.run(
-        [sys.executable, "scripts/validate_task.py", "--task-dir", str(valid_root)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    invalid = subprocess.run(
-        [sys.executable, "scripts/validate_task.py", "--task-dir", str(invalid_root)],
+def _run_validation_cli(tasks_root: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "scripts/validate_task.py", "--task-dir", str(tasks_root)],
         capture_output=True,
         text=True,
         check=False,
     )
 
-    assert valid.returncode == 0
-    assert "All task contracts and artifacts are valid." in valid.stdout
-    assert invalid.returncode != 0
-    assert "field 'public_tests' does not exist" in invalid.stderr
+
+def test_root_validation_requires_every_fixed_v1_package(tmp_path: Path) -> None:
+    result = _run_validation_cli(tmp_path / "tasks")
+
+    assert result.returncode != 0
+    for task_name in ("oscillator", "kepler", "heat1d", "wave1d"):
+        assert f"required V1 task package '{task_name}' does not exist" in result.stderr
+
+
+def test_root_validation_requires_contract_and_specification_for_fixed_packages(tmp_path: Path) -> None:
+    tasks_root = tmp_path / "tasks"
+    for task_name in ("oscillator", "kepler", "heat1d", "wave1d"):
+        (tasks_root / task_name).mkdir(parents=True)
+
+    result = _run_validation_cli(tasks_root)
+
+    assert result.returncode != 0
+    for task_name in ("oscillator", "kepler", "heat1d", "wave1d"):
+        assert f"task '{task_name}': field 'contract.yaml' does not exist" in result.stderr
+        assert f"task '{task_name}': field 'specification.md' does not exist" in result.stderr

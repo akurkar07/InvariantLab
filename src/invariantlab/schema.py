@@ -8,9 +8,17 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 # ── Task Contract ────────────────────────────────────────────────────────────
 
@@ -45,7 +53,13 @@ class MutationFamily(str, Enum):
     TERMINATION_DEFECT = "termination_defect"
 
 
-class MutationSpec(BaseModel):
+class ContractModel(BaseModel):
+    """Base model for fail-closed task-contract declarations."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MutationSpec(ContractModel):
     """A single controlled defect applied to a task."""
 
     family: MutationFamily
@@ -53,7 +67,7 @@ class MutationSpec(BaseModel):
     expected_effect: str = Field(..., description="Expected scientific failure mode.")
 
 
-class NumericsSpec(BaseModel):
+class NumericsSpec(ContractModel):
     """Numerical requirements for a task."""
 
     dtype: Literal["float32", "float64"] = "float64"
@@ -61,14 +75,55 @@ class NumericsSpec(BaseModel):
     tolerances: dict[str, float] = Field(default_factory=dict)
 
 
-class BudgetSpec(BaseModel):
+class BudgetSpec(ContractModel):
     """Resource limits for agent execution."""
 
     wall_seconds: int = 900
     model_tokens: int = 32_000
 
 
-class TaskContract(BaseModel):
+class OutputArray(ContractModel):
+    """One array declared in a task's NPZ output archive."""
+
+    name: Annotated[str, StringConstraints(min_length=1)]
+    shape: list[Annotated[StrictInt, Field(gt=0)] | None] = Field(min_length=1)
+    dtype: Literal["float64"]
+
+    @field_validator("name")
+    @classmethod
+    def name_has_no_surrounding_whitespace(cls, value: str) -> str:
+        """Reject ambiguous NPZ keys instead of normalizing them."""
+        if value != value.strip():
+            raise ValueError("output array name must not have surrounding whitespace")
+        return value
+
+
+class OutputSpec(ContractModel):
+    """The exact NPZ archive produced by a task entrypoint."""
+
+    path: Annotated[str, StringConstraints(min_length=1)]
+    arrays: list[OutputArray] = Field(min_length=1)
+
+    @field_validator("path")
+    @classmethod
+    def path_is_exact_npz_filename(cls, value: str) -> str:
+        """Require an unnormalized NPZ archive declaration."""
+        if value != value.strip():
+            raise ValueError("output path must not have surrounding whitespace")
+        if not value.endswith(".npz"):
+            raise ValueError("output path must name an .npz archive")
+        return value
+
+    @model_validator(mode="after")
+    def array_names_are_unique(self) -> OutputSpec:
+        """Keep NPZ key declarations unambiguous."""
+        names = [array.name for array in self.arrays]
+        if len(names) != len(set(names)):
+            raise ValueError("output array names must be unique")
+        return self
+
+
+class TaskContract(ContractModel):
     """Complete task specification (the agent-facing contract)."""
 
     id: str
@@ -77,6 +132,7 @@ class TaskContract(BaseModel):
     entrypoint: str = "src/solver.py"
     public_tests: str = "tests/public"
     scientific_tests: str = "tests/scientific"
+    output: OutputSpec
     mutation: MutationSpec | None = None
     budgets: BudgetSpec = Field(default_factory=BudgetSpec)
     numerics: NumericsSpec = Field(default_factory=NumericsSpec)

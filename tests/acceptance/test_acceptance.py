@@ -42,3 +42,19 @@ def test_validate_task_accepts_all_committed_task_packages():
     )
     assert result.returncode == 0
     assert "all task contracts and artifacts are valid" in result.stdout.lower()
+
+
+def test_fixed_v1_specifications_document_the_required_sections() -> None:
+    """Every mandatory V1 package supplies a concise technical specification."""
+    for task_name in EXPECTED_TASKS:
+        specification = (Path("tasks") / task_name / "specification.md").read_text(encoding="utf-8")
+        for heading in ("## Input parameters", "## Numerical method", "## Output archive"):
+            assert heading in specification
+
+
+def test_wave_contract_does_not_advertise_unsupported_energy_drift() -> None:
+    """A final displacement archive cannot evidence a temporal energy-drift metric."""
+    contract = load_task_contract(Path("tasks/wave1d"))
+
+    assert [array.name for array in contract.output.arrays] == ["x", "state"]
+    assert "energy_relative_drift" not in contract.numerics.tolerances
