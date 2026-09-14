@@ -10,7 +10,7 @@ import math
 from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp  # type: ignore[import-untyped]
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
