@@ -4,6 +4,15 @@ language: python
 entrypoint: src/solver.py
 public_tests: tests/public
 scientific_tests: tests/scientific
+output:
+  path: result.npz
+  arrays:
+    - name: x
+      shape: [null]
+      dtype: float64
+    - name: state
+      shape: [null]
+      dtype: float64
 budgets:
   wall_seconds: 300
   model_tokens: 16000
