@@ -1,0 +1,15 @@
+name: update-order-feedback-replication
+description: "Study 2: replicate the update-order feedback effect with prompt controls."
+task_suite: configs/task-suites/v1-smoke.yaml
+model: configs/models/cohere-north-mini-code-free.yaml
+runner: feedback_replication
+mutation: update-order
+conditions:
+  - weak
+  - placebo
+  - metrics
+  - interpreted
+n_attempts: 30
+seed: 1729
+randomize_order: true
+container_image: python:3.12-slim
