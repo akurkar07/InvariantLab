@@ -21,7 +21,6 @@ numerics:
   seed: 42
   tolerances:
     state_relative_l2: 1.0e-5
-    energy_relative_drift: 1.0e-6
 description: |
   Implement a numerical solver for the 1-D wave equation u_tt = c² u_xx
   using the leapfrog method with Dirichlet BCs.

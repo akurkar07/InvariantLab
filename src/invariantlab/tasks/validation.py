@@ -117,4 +117,11 @@ def validate_task_artifacts(task_dir: str | Path, contract: TaskContract) -> lis
             errors.append(_error(contract.id, field, layout_error))
         elif not has_tests:
             errors.append(_error(contract.id, field, "does not contain discoverable tests"))
+
+    output_path = contract.output.path
+    output_candidate = _resolve_under_task_root(task_root, output_path)
+    if output_candidate is None:
+        errors.append(_error(contract.id, "output.path", "must be a safe relative path"))
+    elif output_candidate.exists() and output_candidate.is_dir():
+        errors.append(_error(contract.id, "output.path", "must not be a directory"))
     return errors

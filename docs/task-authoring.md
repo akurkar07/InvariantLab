@@ -28,6 +28,9 @@ tasks/<family>/
   are excluded from the agent mount and added only by the evaluator.
 - Every declared path is relative to the task root. Absolute paths, `..` traversal,
   and links escaping the task root are invalid.
+- The fixed V1 set is exactly `oscillator`, `kepler`, `heat1d`, and `wave1d`.
+  Root validation requires each package, its `contract.yaml`, and its
+  `specification.md`.
 
 ## Invocation protocol
 
