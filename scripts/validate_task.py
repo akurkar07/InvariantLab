@@ -1,7 +1,4 @@
-"""Validate task contracts.
-
-Reads each task directory's contract.yaml and checks it against the TaskContract schema.
-"""
+"""Validate task contracts and their declared on-disk artifacts."""
 
 from __future__ import annotations
 
@@ -9,35 +6,31 @@ import argparse
 import sys
 from pathlib import Path
 
-from invariantlab.schema import TaskContract
+from invariantlab.schema import load_task_contract
+from invariantlab.tasks.validation import validate_task_artifacts
 
 
 def validate_task_dir(task_dir: Path) -> list[str]:
-    """Validate a single task directory. Returns list of error messages."""
-    errors: list[str] = []
+    """Validate one contract's schema separately from its filesystem layout."""
     contract_file = task_dir / "contract.yaml"
     if not contract_file.exists():
-        return errors  # No contract yet — not an error, just not implemented
+        return []  # No contract yet — not an error, just not implemented.
     try:
-        import yaml
-
-        with contract_file.open("r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        TaskContract(**data)
-    except Exception as e:
-        errors.append(f"{task_dir}: {e}")
-    return errors
+        contract = load_task_contract(task_dir)
+    except Exception as error:
+        return [f"schema error in {contract_file}: {error}"]
+    return validate_task_artifacts(task_dir, contract)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate task contracts.")
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--task-dir", required=True, help="Root tasks directory.")
     args = parser.parse_args()
 
     tasks_root = Path(args.task_dir)
     if not tasks_root.exists():
         print(f"Note: task directory not found: {tasks_root}", file=sys.stderr)
-        print("All task contracts valid.")
+        print("All task contracts and artifacts are valid.")
         return
 
     all_errors: list[str] = []
@@ -46,12 +39,11 @@ def main() -> None:
             all_errors.extend(validate_task_dir(task_path))
 
     if all_errors:
-        for err in all_errors:
-            print(f"  ✗ {err}", file=sys.stderr)
+        for error in all_errors:
+            print(f"  ✗ {error}", file=sys.stderr)
         print(f"\n{len(all_errors)} validation error(s)", file=sys.stderr)
         sys.exit(1)
-    else:
-        print("All task contracts valid.")
+    print("All task contracts and artifacts are valid.")
 
 
 if __name__ == "__main__":
