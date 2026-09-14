@@ -1,16 +1,14 @@
-"""Scientific (hidden) tests for the Kepler task package.
-
-The circular case uses the closed-form trajectory. The eccentric case is
-compared to the independent DOP853 oracle rather than another Verlet update.
-"""
+"""Scientific hidden tests exercised only through the documented NPZ boundary."""
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from typing import TYPE_CHECKING
 
 import numpy as np
-import solver
-from conftest import make_input, write_input
+import yaml
+from conftest import ENTRYPOINT, TASK_ROOT, make_input, write_input
 
 from invariantlab.verification.analytical import kepler_circular_orbit, kepler_elliptic_orbit
 from invariantlab.verification.kepler_oracle import solve_kepler_high_accuracy
@@ -18,34 +16,15 @@ from invariantlab.verification.kepler_oracle import solve_kepler_high_accuracy
 if TYPE_CHECKING:
     from pathlib import Path
 
-# The selected h=0.004 trajectories have O(h^2) global state error. The
-# circular trajectory measures about 4.1e-6 relative L2 and the eccentric one
-# about 7.6e-7, so the contract's 1e-5 state bound leaves a small method-order
-# margin without admitting a first-order update.
 STATE_RELATIVE_L2 = 1.0e-5
-
-# Velocity Verlet is symplectic, so its Kepler energy error is bounded and
-# oscillatory. The eccentric case's pericentre is the demanding case: its
-# measured finite-horizon drift is about 3.6e-7, making 1e-6 a ~3x margin.
 ENERGY_RELATIVE_DRIFT = 1.0e-6
-
-# Central-force velocity Verlet preserves angular momentum to round-off here
-# (about 1e-14 relative drift). A 1e-12 threshold allows floating-point
-# accumulation but catches a non-central or incorrectly ordered update.
 ANGULAR_MOMENTUM_RELATIVE_DRIFT = 1.0e-12
-
-CIRCULAR_MU = 2.5
-CIRCULAR_RADIUS = 1.7
-CIRCULAR_PHASE = 0.37
-CIRCULAR_DT = 0.004
-CIRCULAR_N_STEPS = 1_080  # Horizon 4.32; not the period (about 8.81).
-
-ECCENTRIC_MU = 1.9
-ECCENTRIC_SEMI_MAJOR_AXIS = 2.3
-ECCENTRICITY = 0.41
-ECCENTRIC_PHASE = 0.63  # Non-special mean anomaly.
-ECCENTRIC_DT = 0.004
-ECCENTRIC_N_STEPS = 2_178  # Horizon 8.712; neither apsis nor orbital period.
+CIRCULAR_MU, CIRCULAR_RADIUS, CIRCULAR_PHASE = 2.5, 1.7, 0.37
+CIRCULAR_DT, CIRCULAR_N_STEPS = 0.004, 1_080
+ECCENTRIC_MU, ECCENTRIC_SEMI_MAJOR_AXIS, ECCENTRICITY, ECCENTRIC_PHASE = 1.9, 2.3, 0.41, 0.63
+ECCENTRIC_DT, ECCENTRIC_N_STEPS = 0.004, 2_178
+CONTRACT = yaml.safe_load((TASK_ROOT / "contract.yaml").read_text(encoding="utf-8"))
+EXPECTED_ARCHIVE_NAMES = {array["name"] for array in CONTRACT["output"]["arrays"]}
 
 
 def _state_from_orbit(
@@ -59,9 +38,32 @@ def _candidate_trajectory(
 ) -> tuple[np.ndarray, np.ndarray]:
     input_path = write_input(tmp_path / "input.json", make_input(*initial, mu, dt, n_steps))
     output_path = tmp_path / "result.npz"
-    solver.run(input_path, output_path)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ENTRYPOINT.relative_to(TASK_ROOT)),
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+        ],
+        cwd=TASK_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert output_path.is_file()
     with np.load(output_path) as archive:
-        return archive["time"], archive["state"]
+        assert set(archive.files) == EXPECTED_ARCHIVE_NAMES
+        time, state = archive["time"].copy(), archive["state"].copy()
+    assert time.shape == (n_steps + 1,)
+    assert state.shape == (n_steps + 1, 4)
+    assert time.dtype == np.dtype(np.float64)
+    assert state.dtype == np.dtype(np.float64)
+    assert np.isfinite(time).all()
+    assert np.isfinite(state).all()
+    return time, state
 
 
 def _invariant_drifts(state: np.ndarray, mu: float) -> tuple[float, float]:
@@ -93,10 +95,8 @@ def test_circular_trajectory_matches_analytical_state_and_conserves_invariants(
         ],
         dtype=np.float64,
     )
-
     state_relative_l2 = np.linalg.norm(state - expected) / np.linalg.norm(expected)
     energy_drift, angular_momentum_drift = _invariant_drifts(state, CIRCULAR_MU)
-
     assert state_relative_l2 < STATE_RELATIVE_L2, f"state_relative_l2={state_relative_l2:.3e}"
     assert energy_drift < ENERGY_RELATIVE_DRIFT, f"energy_relative_drift={energy_drift:.3e}"
     assert angular_momentum_drift < ANGULAR_MOMENTUM_RELATIVE_DRIFT, (
@@ -116,10 +116,8 @@ def test_eccentric_non_special_phase_matches_dop853_and_conserves_invariants(
         tmp_path, initial, ECCENTRIC_MU, ECCENTRIC_DT, ECCENTRIC_N_STEPS
     )
     oracle = solve_kepler_high_accuracy(*initial, ECCENTRIC_MU, time)
-
     state_relative_l2 = np.linalg.norm(state - oracle) / np.linalg.norm(oracle)
     energy_drift, angular_momentum_drift = _invariant_drifts(state, ECCENTRIC_MU)
-
     assert state_relative_l2 < STATE_RELATIVE_L2, f"state_relative_l2={state_relative_l2:.3e}"
     assert energy_drift < ENERGY_RELATIVE_DRIFT, f"energy_relative_drift={energy_drift:.3e}"
     assert angular_momentum_drift < ANGULAR_MOMENTUM_RELATIVE_DRIFT, (

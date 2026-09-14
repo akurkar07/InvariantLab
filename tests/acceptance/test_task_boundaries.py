@@ -123,3 +123,57 @@ def test_task_namespace_has_no_stale_m2_placeholders() -> None:
         if "TODO: implement" in path.read_text(encoding="utf-8")
     ]
     assert not stale_files, f"stale task placeholders: {stale_files}"
+
+
+SCIENTIFIC_TEST_RELATIVE_PATH = Path("tests/scientific")
+
+
+def _scientific_candidate_solver_imports(task_name: str, source: str) -> list[tuple[int, str]]:
+    """Return imports from a hidden test into a candidate task's solver module."""
+    violations: list[tuple[int, str]] = []
+    task_module_prefix = f"tasks.{task_name}.src"
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "solver" or alias.name == f"{task_module_prefix}.solver":
+                    violations.append((node.lineno, alias.name))
+        elif isinstance(node, ast.ImportFrom) and node.module is not None:
+            if node.module == "solver" or node.module == f"{task_module_prefix}.solver":
+                violations.append((node.lineno, node.module))
+            elif node.module == task_module_prefix:
+                violations.extend(
+                    (node.lineno, f"{node.module}.{alias.name}")
+                    for alias in node.names
+                    if alias.name == "solver"
+                )
+    return violations
+
+
+@pytest.mark.parametrize(
+    ("task_name", "source", "expected"),
+    [
+        ("oscillator", "import solver", [(1, "solver")]),
+        ("kepler", "from solver import solve", [(1, "solver")]),
+        ("heat1d", "from tasks.heat1d.src import solver", [(1, "tasks.heat1d.src.solver")]),
+        ("wave1d", "import tasks.wave1d.src.solver", [(1, "tasks.wave1d.src.solver")]),
+    ],
+)
+def test_scientific_boundary_checker_detects_candidate_solver_imports(
+    task_name: str, source: str, expected: list[tuple[int, str]]
+) -> None:
+    assert _scientific_candidate_solver_imports(task_name, source) == expected
+
+
+def test_scientific_tests_do_not_import_candidate_solver_modules() -> None:
+    violations: list[str] = []
+    for task_name in EXPECTED_TASK_NAMES:
+        scientific_root = TASK_SOURCE_ROOT / task_name / SCIENTIFIC_TEST_RELATIVE_PATH
+        for source_file in sorted(scientific_root.glob("test_*.py")):
+            for line, module in _scientific_candidate_solver_imports(
+                task_name, source_file.read_text(encoding="utf-8")
+            ):
+                relative_path = source_file.relative_to(REPOSITORY_ROOT)
+                violations.append(
+                    f"{task_name}: {relative_path}:{line}: forbidden candidate import {module}"
+                )
+    assert not violations, "\n".join(violations)
