@@ -56,9 +56,18 @@ def run(
             console.print(f"[green]✓[/green] Experiment [bold]{config.name}[/bold] is valid.")
             return
 
-        from invariantlab.experiments import run_first_model_experiment
+        if config.runner == "feedback_replication":
+            from invariantlab.experiments import run_feedback_replication
 
-        result_dir = run_first_model_experiment(
+            runner = run_feedback_replication
+        elif config.runner == "first_model":
+            from invariantlab.experiments import run_first_model_experiment
+
+            runner = run_first_model_experiment
+        else:
+            raise ValueError(f"Unsupported experiment runner: {config.runner}")
+
+        result_dir = runner(
             config_path,
             Path(output) if output is not None else None,
         )
