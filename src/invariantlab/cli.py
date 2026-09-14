@@ -1,5 +1,7 @@
 """CLI entrypoint for InvariantLab."""
 
+from pathlib import Path
+
 import typer
 from rich.console import Console
 
@@ -16,6 +18,7 @@ def version() -> None:
     """Print the current InvariantLab version."""
     try:
         from importlib.metadata import version as meta_version
+
         console.print(f"InvariantLab [bold cyan]{meta_version('invariantlab')}[/bold cyan]")
     except Exception:
         console.print("InvariantLab [bold cyan]development[/bold cyan]")
@@ -38,13 +41,31 @@ def validate_task(
 
 @app.command()
 def run(
-    experiment: str = typer.Option(..., "--experiment", help="Experiment config name."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without executing."),
+    experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
+    output: str | None = typer.Option(None, "--output", help="Optional run output directory."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate configuration only."),
 ) -> None:
     """Run an evaluation experiment."""
-    console.print(f"Running experiment: [bold]{experiment}[/bold]")
-    # TODO: implement in M5
-    console.print("[yellow]run command not yet implemented — coming in M5.[/yellow]")
+    from invariantlab.config import load_experiment_config, load_model_config
+
+    config_path = Path(experiment)
+    try:
+        config = load_experiment_config(config_path)
+        load_model_config(Path(config.model))
+        if dry_run:
+            console.print(f"[green]✓[/green] Experiment [bold]{config.name}[/bold] is valid.")
+            return
+
+        from invariantlab.experiments import run_first_model_experiment
+
+        result_dir = run_first_model_experiment(
+            config_path,
+            Path(output) if output is not None else None,
+        )
+        console.print(f"[green]✓[/green] Run complete: [bold]{result_dir}[/bold]")
+    except Exception as e:
+        console.print(f"[red]✗[/red] Run failed: {e}")
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -53,7 +74,6 @@ def report(
 ) -> None:
     """Generate a report for a completed run."""
     console.print(f"Generating report for run: [bold]{run_id}[/bold]")
-    # TODO: implement in M6
     console.print("[yellow]report command not yet implemented — coming in M6.[/yellow]")
 
 
