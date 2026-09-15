@@ -2,6 +2,9 @@
 
 from invariantlab.models.adapter import (
     ModelAdapter,
+    ModelConnectionError,
+    ModelRateLimitError,
+    ModelRequestError,
     OpenAICompatibleAdapter,
     ReplayAdapter,
     build_adapter,
@@ -9,6 +12,9 @@ from invariantlab.models.adapter import (
 
 __all__ = [
     "ModelAdapter",
+    "ModelConnectionError",
+    "ModelRateLimitError",
+    "ModelRequestError",
     "OpenAICompatibleAdapter",
     "ReplayAdapter",
     "build_adapter",
