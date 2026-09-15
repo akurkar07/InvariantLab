@@ -76,6 +76,35 @@ Pass-rate summaries include Wilson 95% confidence intervals and pass-rate differ
 relative to the weak condition. No claim of a condition effect should be made solely from a
 single failed candidate.
 
+## Artifact integrity
+
+The configured Study 2 schedule is a strict set of 120 unique `(condition, trial)` cells.
+Randomisation changes only execution order; it never creates additional cells.
+
+On resume and before summary generation, InvariantLab validates `events.jsonl` for:
+
+- duplicate scheduled cells;
+- condition/trial pairs outside the configured schedule;
+- mixed experiment, model, mutation or seed metadata;
+- malformed records.
+
+An invalid raw artifact is never silently counted. The runner writes
+`artifact-integrity.json`, marks the run `invalid_artifact`, and stops.
+
+Existing run directories can be audited without modifying the raw evidence:
+
+```bash
+uv run invariantlab audit-run \
+  --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
+  --run-dir runs/update-order-feedback-replication-ollama-qwen25-7b \
+  --write-canonical
+```
+
+This writes a separate `events.canonical.jsonl` containing at most one valid record for
+each scheduled cell, in schedule order. The original `events.jsonl` is preserved exactly
+as collected. Duplicate, out-of-schedule, malformed and metadata-mismatched records remain
+listed in `artifact-integrity.json` for provenance.
+
 ## Evidence and resumability
 
 Every completed attempt is appended immediately to `events.jsonl`, including:
