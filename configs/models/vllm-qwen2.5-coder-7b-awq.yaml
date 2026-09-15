@@ -1,6 +1,6 @@
 adapter: openai_compatible
 model_id: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
-temperature: 0.0
+temperature: 0.2
 max_tokens: 4096
 extra:
   base_url: http://localhost:8000/v1
