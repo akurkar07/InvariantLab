@@ -6,7 +6,7 @@ import json
 import os
 import urllib.request
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol\n\nfrom invariantlab.config import ModelConfig
 
 
 class ModelAdapter(Protocol):
