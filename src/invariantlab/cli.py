@@ -128,7 +128,10 @@ def run(
                 f"[yellow]•[/yellow] Run stopped safely at "
                 f"[bold]{completed}/{target}[/bold] cells ({state}){suffix}"
             )
-            console.print(f"Resume by running the same command. Evidence: [bold]{result_dir}[/bold]")
+            console.print(
+                "Resume by running the same command. "
+                f"Evidence: [bold]{result_dir}[/bold]"
+            )
     except Exception as e:
         console.print(f"[red]✗[/red] Run failed: {e}")
         raise typer.Exit(code=1) from e
