@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
@@ -111,10 +112,8 @@ class OpenAICompatibleAdapter:
         )
         retry_after = error.headers.get("Retry-After") if error.headers else None
         if retry_after is not None:
-            try:
+            with contextlib.suppress(ValueError):
                 delay = max(delay, float(retry_after))
-            except ValueError:
-                pass
         return min(delay, self.backoff_max_seconds)
 
     def _request(self, prompt: str) -> str:
