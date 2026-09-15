@@ -13,7 +13,12 @@ from typing import Any
 
 from invariantlab.config import ExperimentConfig, load_experiment_config, load_model_config
 from invariantlab.experiments.first_model import _evaluate_in_docker, _extract_python
-from invariantlab.models import build_adapter
+from invariantlab.models import (
+    ModelConnectionError,
+    ModelRateLimitError,
+    ModelRequestError,
+    build_adapter,
+)
 
 CONDITIONS = ("weak", "placebo", "metrics", "interpreted")
 
@@ -165,6 +170,36 @@ def _read_existing_events(path: Path) -> list[dict[str, Any]]:
     return records
 
 
+def _write_run_status(
+    output: Path,
+    *,
+    status: str,
+    completed: int,
+    target: int,
+    reason: str = "",
+) -> None:
+    payload = {
+        "status": status,
+        "completed_cells": completed,
+        "target_cells": target,
+        "reason": reason,
+    }
+    (output / "run-status.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _failed_repair_result(error: Exception) -> dict[str, Any]:
+    return {
+        "public": {},
+        "scientific": {},
+        "public_passed": False,
+        "scientific_passed": False,
+        "metrics": {"error": f"{type(error).__name__}: {error}"},
+    }
+
+
 def _summary(
     experiment: ExperimentConfig,
     model_id: str,
@@ -202,7 +237,9 @@ def _summary(
     if weak_rate is not None:
         for stats in by_condition.values():
             rate = stats["scientific_pass_rate"]
-            stats["pass_rate_difference_vs_weak"] = None if rate is None else rate - weak_rate
+            stats["pass_rate_difference_vs_weak"] = (
+                None if rate is None else rate - weak_rate
+            )
 
     target_total = len(experiment.conditions) * experiment.n_attempts
     return {
@@ -215,8 +252,8 @@ def _summary(
                 "update-order defects."
             ),
             "H2": (
-                "Diagnostic feedback increases repairs that remove the local defect but introduce "
-                "a scientifically worse state-evolution failure."
+                "Diagnostic feedback increases repairs that remove the local defect but "
+                "introduce a scientifically worse state-evolution failure."
             ),
         },
         "primary_endpoint": "scientific_pass_rate",
@@ -243,7 +280,9 @@ def _write_summary(
 ) -> None:
     path.write_text(
         json.dumps(
-            _summary(experiment, model_id, baseline, records), indent=2, sort_keys=True
+            _summary(experiment, model_id, baseline, records),
+            indent=2,
+            sort_keys=True,
         )
         + "\n",
         encoding="utf-8",
@@ -264,8 +303,15 @@ def _validate_experiment(experiment: ExperimentConfig) -> None:
         raise ValueError("Feedback conditions must not contain duplicates")
 
 
-def run_feedback_replication(config_path: Path, output_dir: Path | None = None) -> Path:
+def run_feedback_replication(
+    config_path: Path,
+    output_dir: Path | None = None,
+    max_new_attempts: int | None = None,
+) -> Path:
     """Run the update-order feedback replication study with resumable evidence logging."""
+
+    if max_new_attempts is not None and max_new_attempts < 1:
+        raise ValueError("max_new_attempts must be at least 1")
 
     experiment = load_experiment_config(config_path)
     _validate_experiment(experiment)
@@ -294,11 +340,29 @@ def run_feedback_replication(config_path: Path, output_dir: Path | None = None) 
         experiment.seed,
         experiment.randomize_order,
     )
+    target_total = len(schedule)
+    new_attempts = 0
     _write_summary(summary_path, experiment, adapter.model_id, baseline, records)
+    _write_run_status(
+        output,
+        status="running",
+        completed=len(records),
+        target=target_total,
+    )
 
     for schedule_index, (condition, trial) in enumerate(schedule, start=1):
         if (condition, trial) in completed:
             continue
+
+        if max_new_attempts is not None and new_attempts >= max_new_attempts:
+            _write_run_status(
+                output,
+                status="batch_complete",
+                completed=len(records),
+                target=target_total,
+                reason=f"Reached max_new_attempts={max_new_attempts}",
+            )
+            return output
 
         condition_context = _condition_context(condition, baseline)
         prompt = PROMPT_TEMPLATE.format(
@@ -306,10 +370,46 @@ def run_feedback_replication(config_path: Path, output_dir: Path | None = None) 
             source=UPDATE_ORDER_SOLVER,
         )
         started = time.perf_counter()
-        response = adapter.generate(prompt)
+        try:
+            response = adapter.generate(prompt)
+        except ModelRateLimitError as exc:
+            _write_run_status(
+                output,
+                status="paused_rate_limit",
+                completed=len(records),
+                target=target_total,
+                reason=str(exc),
+            )
+            return output
+        except ModelConnectionError as exc:
+            _write_run_status(
+                output,
+                status="paused_connection",
+                completed=len(records),
+                target=target_total,
+                reason=str(exc),
+            )
+            return output
+        except ModelRequestError as exc:
+            _write_run_status(
+                output,
+                status="paused_provider_error",
+                completed=len(records),
+                target=target_total,
+                reason=str(exc),
+            )
+            return output
+
         latency = time.perf_counter() - started
-        repaired_source = _extract_python(response)
-        repaired = _evaluate_in_docker(repaired_source, image)
+        candidate_error = ""
+        try:
+            repaired_source = _extract_python(response)
+            repaired = _evaluate_in_docker(repaired_source, image)
+        except (RuntimeError, ValueError) as exc:
+            repaired_source = ""
+            repaired = _failed_repair_result(exc)
+            candidate_error = str(exc)
+
         severity = _severity_ratios(baseline, repaired)
         worst_ratio = severity["worst_scientific_ratio"]
         scientific_regression = bool(
@@ -337,6 +437,7 @@ def run_feedback_replication(config_path: Path, output_dir: Path | None = None) 
             "latency_seconds": latency,
             "response": response,
             "candidate_source": repaired_source,
+            "candidate_error": candidate_error,
         }
         with events_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
@@ -344,6 +445,19 @@ def run_feedback_replication(config_path: Path, output_dir: Path | None = None) 
 
         records.append(record)
         completed.add((condition, trial))
+        new_attempts += 1
         _write_summary(summary_path, experiment, adapter.model_id, baseline, records)
+        _write_run_status(
+            output,
+            status="running",
+            completed=len(records),
+            target=target_total,
+        )
 
+    _write_run_status(
+        output,
+        status="complete",
+        completed=len(records),
+        target=target_total,
+    )
     return output
