@@ -16,7 +16,9 @@ InvariantLab contains no biological, medical, genomic, chemical, or wet-laborato
 
 ## Contents
 
-- [Empirical results](#empirical-results)\n- [Scientific motivation](#scientific-motivation)
+- [Empirical results](#empirical-results)
+- [Local model execution](#local-model-execution)
+- [Scientific motivation](#scientific-motivation)
 - [V1 scope](#v1-scope)
 - [System architecture](#system-architecture)
 - [Task contract](#task-contract)
@@ -72,6 +74,29 @@ interpreted-metric feedback.
 
 **Full visualised results:** [First Multi-Condition Study Results](docs/first-multi-condition-study-results.md)  
 **Replication protocol:** [Study 2: Update-order feedback replication](docs/update-order-feedback-replication.md)
+
+---
+
+## Local model execution
+
+Study runs can use hosted APIs or local OpenAI-compatible servers. Presets are included for
+Ollama and vLLM, with safe batching and automatic resume support:
+
+```bash
+# Verify the local Ollama endpoint
+uv run invariantlab model-check \
+  --model configs/models/ollama-qwen2.5-coder-7b.yaml
+
+# Run 20 new Study 2 cells, then stop cleanly
+uv run invariantlab run \
+  --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
+  --max-new-attempts 20
+```
+
+Running the same command again continues from the existing `events.jsonl`. Persistent rate
+limits and connection failures pause the run instead of discarding completed work.
+
+See [Local model execution](docs/local-models.md) for Ollama, vLLM and custom endpoint setup.
 
 ---
 

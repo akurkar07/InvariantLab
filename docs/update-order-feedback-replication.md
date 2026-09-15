@@ -76,6 +76,35 @@ Pass-rate summaries include Wilson 95% confidence intervals and pass-rate differ
 relative to the weak condition. No claim of a condition effect should be made solely from a
 single failed candidate.
 
+## Artifact integrity
+
+The configured Study 2 schedule is a strict set of 120 unique `(condition, trial)` cells.
+Randomisation changes only execution order; it never creates additional cells.
+
+On resume and before summary generation, InvariantLab validates `events.jsonl` for:
+
+- duplicate scheduled cells;
+- condition/trial pairs outside the configured schedule;
+- mixed experiment, model, mutation or seed metadata;
+- malformed records.
+
+An invalid raw artifact is never silently counted. The runner writes
+`artifact-integrity.json`, marks the run `invalid_artifact`, and stops.
+
+Existing run directories can be audited without modifying the raw evidence:
+
+```bash
+uv run invariantlab audit-run \
+  --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
+  --run-dir runs/update-order-feedback-replication-ollama-qwen25-7b \
+  --write-canonical
+```
+
+This writes a separate `events.canonical.jsonl` containing at most one valid record for
+each scheduled cell, in schedule order. The original `events.jsonl` is preserved exactly
+as collected. Duplicate, out-of-schedule, malformed and metadata-mismatched records remain
+listed in `artifact-integrity.json` for provenance.
+
 ## Evidence and resumability
 
 Every completed attempt is appended immediately to `events.jsonl`, including:
@@ -95,17 +124,54 @@ the same output directory skips already completed condition/trial cells.
 
 ## Run
 
-```bash
-git switch exp/update-order-feedback-replication
-uv sync --locked --extra dev
+Install the development environment:
 
-export OPENROUTER_API_KEY="sk-or-v1-..."
-uv run invariantlab run \
-  --experiment configs/experiments/update-order-feedback-replication.yaml
+```bash
+uv sync --locked --extra dev
 ```
 
-The expected output directory is
-`runs/update-order-feedback-replication/`.
+### OpenRouter
+
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-..."
+uv run invariantlab run \
+  --experiment configs/experiments/update-order-feedback-replication.yaml \
+  --max-new-attempts 20
+```
+
+The runner retries transient provider failures with bounded exponential backoff. If a rate
+limit or connection failure persists, it writes `run-status.json` and exits cleanly.
+Re-running the same command resumes from `events.jsonl`.
+
+### Local Ollama
+
+```bash
+ollama pull qwen2.5-coder:7b-instruct
+
+uv run invariantlab model-check \
+  --model configs/models/ollama-qwen2.5-coder-7b.yaml
+
+uv run invariantlab run \
+  --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
+  --max-new-attempts 20
+```
+
+### Local vLLM
+
+```bash
+vllm serve Qwen/Qwen2.5-Coder-7B-Instruct-AWQ \
+  --generation-config vllm \
+  --max-model-len 8192
+
+uv run invariantlab model-check \
+  --model configs/models/vllm-qwen2.5-coder-7b-awq.yaml
+
+uv run invariantlab run \
+  --experiment configs/experiments/update-order-feedback-replication-vllm.yaml \
+  --max-new-attempts 20
+```
+
+Local-model setup is documented in [`local-models.md`](./local-models.md).
 
 A configuration-only check can be run without making model calls:
 

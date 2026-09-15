@@ -5,3 +5,8 @@ max_tokens: 4096
 extra:
   base_url: https://openrouter.ai/api/v1
   api_key_env: OPENROUTER_API_KEY
+  request_timeout_seconds: 180
+  max_retries: 6
+  backoff_initial_seconds: 2
+  backoff_max_seconds: 60
+  min_request_interval_seconds: 2

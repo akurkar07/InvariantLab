@@ -1,0 +1,12 @@
+adapter: openai_compatible
+model_id: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
+temperature: 0.2
+max_tokens: 4096
+extra:
+  base_url: http://localhost:8000/v1
+  api_key_env: ""
+  request_timeout_seconds: 300
+  max_retries: 2
+  backoff_initial_seconds: 2
+  backoff_max_seconds: 10
+  min_request_interval_seconds: 0

@@ -1,5 +1,6 @@
 """CLI entrypoint for InvariantLab."""
 
+import json
 from pathlib import Path
 
 import typer
@@ -39,11 +40,97 @@ def validate_task(
         raise typer.Exit(code=1) from e
 
 
+@app.command("model-check")
+def model_check(
+    model: str = typer.Option(..., "--model", help="Path to model config."),
+) -> None:
+    """Send one small request to verify a configured model endpoint."""
+    from invariantlab.config import load_model_config
+    from invariantlab.models import build_adapter
+
+    try:
+        config = load_model_config(Path(model))
+        adapter = build_adapter(config)
+        response = adapter.generate(
+            "Connectivity check. Return a tiny Python file containing "
+            "def ping(): return 'ok'."
+        )
+        preview = response.replace("\n", " ")[:160]
+        console.print(
+            f"[green]✓[/green] Model [bold]{adapter.model_id}[/bold] responded: {preview}"
+        )
+    except Exception as e:
+        console.print(f"[red]✗[/red] Model check failed: {e}")
+        raise typer.Exit(code=1) from e
+
+
+@app.command("audit-run")
+def audit_run(
+    experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
+    run_dir: str = typer.Option(..., "--run-dir", help="Existing run directory."),
+    write_canonical: bool = typer.Option(
+        False,
+        "--write-canonical",
+        help="Write a non-destructive events.canonical.jsonl projection.",
+    ),
+) -> None:
+    """Audit raw experiment records against the configured cell schedule."""
+    from invariantlab.experiments.feedback_replication import (
+        audit_feedback_replication,
+    )
+
+    try:
+        audit = audit_feedback_replication(
+            Path(experiment),
+            Path(run_dir),
+            write_canonical=write_canonical,
+        )
+        expected = int(audit["expected_cells"])
+        raw = int(audit["raw_records"])
+        canonical = int(audit["canonical_cells"])
+        console.print(
+            f"Raw records: [bold]{raw}[/bold] | "
+            f"Canonical scheduled cells: [bold]{canonical}/{expected}[/bold]"
+        )
+
+        if audit["integrity_ok"]:
+            console.print("[green]✓[/green] Raw artifact integrity is valid.")
+        else:
+            console.print("[red]✗[/red] Raw artifact integrity is invalid.")
+            console.print(
+                "Duplicates: "
+                f"{audit['duplicate_records']} | "
+                "out-of-schedule: "
+                f"{len(audit['unexpected_records'])} | "
+                "metadata mismatches: "
+                f"{len(audit['metadata_mismatches'])} | "
+                "malformed: "
+                f"{len(audit['malformed_records'])}"
+            )
+
+        if write_canonical:
+            console.print(
+                "Canonical projection: "
+                f"[bold]{audit['canonical_events_path']}[/bold]"
+            )
+        console.print(
+            f"Integrity report: [bold]{Path(run_dir) / 'artifact-integrity.json'}[/bold]"
+        )
+    except Exception as e:
+        console.print(f"[red]✗[/red] Audit failed: {e}")
+        raise typer.Exit(code=1) from e
+
+
 @app.command()
 def run(
     experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
     output: str | None = typer.Option(None, "--output", help="Optional run output directory."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Validate configuration only."),
+    max_new_attempts: int | None = typer.Option(
+        None,
+        "--max-new-attempts",
+        help="Stop cleanly after this many new cells; rerun to resume.",
+    ),
 ) -> None:
     """Run an evaluation experiment."""
     from invariantlab.config import load_experiment_config, load_model_config
@@ -52,26 +139,56 @@ def run(
     try:
         config = load_experiment_config(config_path)
         load_model_config(Path(config.model))
+        if max_new_attempts is not None and max_new_attempts < 1:
+            raise ValueError("--max-new-attempts must be at least 1")
         if dry_run:
             console.print(f"[green]✓[/green] Experiment [bold]{config.name}[/bold] is valid.")
             return
 
+        output_path = Path(output) if output is not None else None
         if config.runner == "feedback_replication":
             from invariantlab.experiments import run_feedback_replication
 
-            runner = run_feedback_replication
+            result_dir = run_feedback_replication(
+                config_path,
+                output_path,
+                max_new_attempts=max_new_attempts,
+            )
         elif config.runner == "first_model":
+            if max_new_attempts is not None:
+                raise ValueError(
+                    "--max-new-attempts is only supported by resumable experiment runners"
+                )
             from invariantlab.experiments import run_first_model_experiment
 
-            runner = run_first_model_experiment
+            result_dir = run_first_model_experiment(config_path, output_path)
         else:
             raise ValueError(f"Unsupported experiment runner: {config.runner}")
 
-        result_dir = runner(
-            config_path,
-            Path(output) if output is not None else None,
-        )
-        console.print(f"[green]✓[/green] Run complete: [bold]{result_dir}[/bold]")
+        status_path = result_dir / "run-status.json"
+        if not status_path.exists():
+            console.print(f"[green]✓[/green] Run complete: [bold]{result_dir}[/bold]")
+            return
+
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        state = str(status.get("status", "unknown"))
+        completed = int(status.get("completed_cells", 0))
+        target = int(status.get("target_cells", 0))
+        reason = str(status.get("reason", ""))
+        if state == "complete":
+            console.print(
+                f"[green]✓[/green] Run complete: [bold]{completed}/{target}[/bold] cells"
+            )
+        else:
+            suffix = f" — {reason}" if reason else ""
+            console.print(
+                f"[yellow]•[/yellow] Run stopped safely at "
+                f"[bold]{completed}/{target}[/bold] cells ({state}){suffix}"
+            )
+            console.print(
+                "Resume by running the same command. "
+                f"Evidence: [bold]{result_dir}[/bold]"
+            )
     except Exception as e:
         console.print(f"[red]✗[/red] Run failed: {e}")
         raise typer.Exit(code=1) from e
