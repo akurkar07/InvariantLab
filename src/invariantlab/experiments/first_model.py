@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from invariantlab.config import load_experiment_config, load_model_config
 from invariantlab.models import build_adapter
@@ -76,10 +76,20 @@ scientific = {}
 
 try:
     short = solve(1.0, 0.0, 1.0, 0.05, 2)
-    public['shape'] = isinstance(short, list) and len(short) == 3 and all(len(row) == 3 for row in short)
-    public['initial_state'] = public['shape'] and all(abs(a-b) < 1e-12 for a, b in zip(short[0], (0.0, 1.0, 0.0)))
-    public['finite'] = public['shape'] and all(math.isfinite(float(v)) for row in short for v in row)
-    public['one_step_sanity'] = public['shape'] and abs(float(short[1][1]) - math.cos(0.05)) < 0.01
+    public['shape'] = (
+        isinstance(short, list)
+        and len(short) == 3
+        and all(len(row) == 3 for row in short)
+    )
+    public['initial_state'] = public['shape'] and all(
+        abs(a - b) < 1e-12 for a, b in zip(short[0], (0.0, 1.0, 0.0))
+    )
+    public['finite'] = public['shape'] and all(
+        math.isfinite(float(v)) for row in short for v in row
+    )
+    public['one_step_sanity'] = (
+        public['shape'] and abs(float(short[1][1]) - math.cos(0.05)) < 0.01
+    )
 
     cases = [
         (1.0, 0.0, 1.0, 0.01, 800),
@@ -155,7 +165,7 @@ def _evaluate_in_docker(source: str, image: str) -> dict[str, Any]:
         if completed.returncode != 0:
             detail = completed.stderr.strip() or completed.stdout.strip()
             raise RuntimeError(f"Candidate evaluation failed: {detail}")
-        return json.loads(completed.stdout.strip().splitlines()[-1])
+        return cast(dict[str, Any], json.loads(completed.stdout.strip().splitlines()[-1]))
 
 
 def run_first_model_experiment(config_path: Path, output_dir: Path | None = None) -> Path:
@@ -192,7 +202,7 @@ def run_first_model_experiment(config_path: Path, output_dir: Path | None = None
         "candidate_source": repaired_source,
     }
 
-    (output / "events.jsonl").write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
+    (output / "events.jsonl").write_text(\n        json.dumps(record, sort_keys=True) + "\n", encoding="utf-8"\n    )
     (output / "baseline_solver.py").write_text(BROKEN_SOLVER, encoding="utf-8")
     (output / "candidate_solver.py").write_text(repaired_source, encoding="utf-8")
     (output / "summary.json").write_text(
@@ -204,7 +214,7 @@ def run_first_model_experiment(config_path: Path, output_dir: Path | None = None
                 "baseline_scientific_passed": baseline["scientific_passed"],
                 "repair_public_passed": repaired["public_passed"],
                 "repair_scientific_passed": repaired["scientific_passed"],
-                "verification_gap_before": int(baseline["public_passed"]) - int(baseline["scientific_passed"]),
+                "verification_gap_before": (\n                    int(baseline["public_passed"])\n                    - int(baseline["scientific_passed"])\n                ),
                 "successful_repair": repaired["scientific_passed"],
                 "metrics": repaired["metrics"],
             },
