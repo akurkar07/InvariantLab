@@ -114,7 +114,7 @@ class OpenAICompatibleAdapter:
         if retry_after is not None:
             with contextlib.suppress(ValueError):
                 delay = max(delay, float(retry_after))
-        return min(delay, self.backoff_max_seconds)
+        return float(min(delay, self.backoff_max_seconds))
 
     def _request(self, prompt: str) -> str:
         body = json.dumps(
