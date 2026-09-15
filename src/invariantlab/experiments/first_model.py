@@ -165,7 +165,7 @@ def _evaluate_in_docker(source: str, image: str) -> dict[str, Any]:
         if completed.returncode != 0:
             detail = completed.stderr.strip() or completed.stdout.strip()
             raise RuntimeError(f"Candidate evaluation failed: {detail}")
-        return cast(dict[str, Any], json.loads(completed.stdout.strip().splitlines()[-1]))
+        return cast("dict[str, Any]", json.loads(completed.stdout.strip().splitlines()[-1]))
 
 
 def run_first_model_experiment(config_path: Path, output_dir: Path | None = None) -> Path:
