@@ -8,7 +8,6 @@ import urllib.request
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-
 if TYPE_CHECKING:
     from invariantlab.config import ModelConfig
 
