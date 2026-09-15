@@ -6,9 +6,11 @@ import json
 import os
 import urllib.request
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from invariantlab.config import ModelConfig
+
+if TYPE_CHECKING:
+    from invariantlab.config import ModelConfig
 
 
 class ModelAdapter(Protocol):
