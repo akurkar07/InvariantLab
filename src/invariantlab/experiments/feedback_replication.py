@@ -383,6 +383,17 @@ def _summary(
     baseline: dict[str, Any],
     records: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    schedule = _build_schedule(
+        list(experiment.conditions),
+        experiment.n_attempts,
+        experiment.seed,
+        experiment.randomize_order,
+    )
+    canonical, audit = _audit_records(records, schedule, experiment, model_id)
+    if not audit["integrity_ok"]:
+        raise ArtifactIntegrityError(_integrity_error_message(audit))
+    records = canonical
+
     by_condition: dict[str, Any] = {}
     weak_rate: float | None = None
 
