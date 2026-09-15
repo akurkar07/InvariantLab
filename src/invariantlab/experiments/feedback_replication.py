@@ -200,7 +200,7 @@ def _summary(
             weak_rate = rate
 
     if weak_rate is not None:
-        for condition, stats in by_condition.items():
+        for stats in by_condition.values():
             rate = stats["scientific_pass_rate"]
             stats["pass_rate_difference_vs_weak"] = None if rate is None else rate - weak_rate
 
