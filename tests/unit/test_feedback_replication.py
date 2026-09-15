@@ -2,13 +2,17 @@
 
 import json
 
+import pytest
+
 from invariantlab.config import ExperimentConfig
 from invariantlab.experiments.feedback_replication import (
     CONDITIONS,
+    ArtifactIntegrityError,
     _audit_records,
     _build_schedule,
     _condition_context,
     _severity_ratios,
+    _summary,
     _write_run_status,
 )
 
@@ -216,3 +220,19 @@ def test_audit_rejects_mixed_model_record():
         "expected": "test/model",
         "actual": "other/model",
     }
+
+
+def test_summary_refuses_duplicate_raw_records():
+    experiment = _integrity_experiment()
+    records = [
+        _record("weak", 1),
+        _record("weak", 1),
+    ]
+
+    with pytest.raises(ArtifactIntegrityError):
+        _summary(
+            experiment,
+            "test/model",
+            BASELINE,
+            records,
+        )
