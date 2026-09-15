@@ -7,7 +7,6 @@ from invariantlab.experiments.feedback_replication import (
     _severity_ratios,
 )
 
-
 BASELINE = {
     "metrics": {
         "max_state_relative_error": 0.021,
