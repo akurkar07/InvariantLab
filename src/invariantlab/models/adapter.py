@@ -145,7 +145,14 @@ class OpenAICompatibleAdapter:
             request,
             timeout=self.request_timeout_seconds,
         ) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+            raw_payload = response.read().decode("utf-8")
+
+        try:
+            payload = json.loads(raw_payload)
+        except json.JSONDecodeError as exc:
+            raise ModelRequestError(
+                f"Provider returned invalid JSON: {raw_payload[:200]!r}"
+            ) from exc
 
         try:
             return str(payload["choices"][0]["message"]["content"])
