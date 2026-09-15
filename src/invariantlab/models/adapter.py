@@ -6,7 +6,9 @@ import json
 import os
 import urllib.request
 from dataclasses import dataclass
-from typing import Protocol\n\nfrom invariantlab.config import ModelConfig
+from typing import Protocol
+
+from invariantlab.config import ModelConfig
 
 
 class ModelAdapter(Protocol):
@@ -101,20 +103,18 @@ class OpenAICompatibleAdapter:
             raise RuntimeError(f"Unexpected provider response: {payload}") from exc
 
 
-def build_adapter(config: object) -> ModelAdapter:
+def build_adapter(config: ModelConfig) -> ModelAdapter:
     """Construct an adapter from a validated ModelConfig."""
 
-    adapter = getattr(config, "adapter")
-    if adapter == "replay":
-        model_id = getattr(config, "model_id")
-        return ReplayAdapter(model_id=model_id or "replay/oscillator-reference")
-    if adapter == "openai_compatible":
-        extra = getattr(config, "extra")
+    if config.adapter == "replay":
+        return ReplayAdapter(model_id=config.model_id or "replay/oscillator-reference")
+    if config.adapter == "openai_compatible":
+        extra = config.extra
         return OpenAICompatibleAdapter(
-            model_id=getattr(config, "model_id"),
+            model_id=config.model_id,
             base_url=str(extra.get("base_url", "https://openrouter.ai/api/v1")),
             api_key_env=str(extra.get("api_key_env", "OPENROUTER_API_KEY")),
-            temperature=float(getattr(config, "temperature")),
-            max_tokens=int(getattr(config, "max_tokens")),
+            temperature=float(config.temperature),
+            max_tokens=int(config.max_tokens),
         )
-    raise ValueError(f"Unsupported model adapter: {adapter}")
+    raise ValueError(f"Unsupported model adapter: {config.adapter}")
