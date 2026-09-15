@@ -14,6 +14,10 @@ class ExperimentConfig(BaseModel):
     description: str = ""
     task_suite: str = Field(..., description="Path to task suite config.")
     model: str = Field(..., description="Model adapter identifier.")
+    runner: str = "first_model"
+    mutation: str | None = None
+    conditions: list[str] = Field(default_factory=list)
+    randomize_order: bool = False
     n_attempts: int = Field(default=1, ge=1)
     seed: int = Field(default=42, ge=0)
     container_image: str = Field(

@@ -1,0 +1,7 @@
+name: first-model-oscillator-live
+description: "First live model repair of a weak-test-passing oscillator defect."
+task_suite: configs/task-suites/v1-smoke.yaml
+model: configs/models/openrouter-example.yaml
+n_attempts: 1
+seed: 1729
+container_image: python:3.12-slim

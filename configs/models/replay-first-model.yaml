@@ -1,0 +1,4 @@
+adapter: replay
+model_id: replay/oscillator-reference
+temperature: 0.0
+max_tokens: 4096

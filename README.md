@@ -16,7 +16,7 @@ InvariantLab contains no biological, medical, genomic, chemical, or wet-laborato
 
 ## Contents
 
-- [Scientific motivation](#scientific-motivation)
+- [Empirical results](#empirical-results)\n- [Scientific motivation](#scientific-motivation)
 - [V1 scope](#v1-scope)
 - [System architecture](#system-architecture)
 - [Task contract](#task-contract)
@@ -31,6 +31,47 @@ InvariantLab contains no biological, medical, genomic, chemical, or wet-laborato
 - [Testing and acceptance criteria](#testing-and-acceptance-criteria)
 - [Scientific limitations](#scientific-limitations)
 - [References](#references)
+
+---
+
+## Empirical results
+
+The first completed multi-condition model study ran **18 harmonic-oscillator repair attempts**
+across three controlled mutation families, two verifier-feedback conditions, and three trials
+per cell using Cohere North Mini Code.
+
+| Result | Weak | Hardened | Overall |
+|---|---:|---:|---:|
+| Scientific passes | **9/9** | **8/9** | **17/18** |
+| Scientific pass rate | **100%** | **88.9%** | **94.4%** |
+| Worse-than-baseline repairs | 0 | **1** | **1** |
+
+The only failure occurred for the subtle **update-order** mutation under hardened feedback.
+The model repaired the original local second-half-step expression but introduced a new stale
+cached-acceleration bug. Relative to the original defect, the failed repair produced:
+
+- **93.8× worse** maximum state error, from 0.021 to 1.97
+- **173.9× worse** maximum energy drift, from 0.046 to 8.0
+
+```text
+Scientific repair rate
+Weak      9/9  100.0%  ████████████████████
+Hardened  8/9   88.9%  ██████████████████░░
+
+Mutation × condition
+                    Weak        Hardened
+Sign error          3/3 ✅      3/3 ✅
+Update order        3/3 ✅      2/3 ❌
+Non-conservative    3/3 ✅      3/3 ✅
+```
+
+This is an observed failure mode, **not yet evidence that hardened scientific feedback
+generally reduces repair quality**. The sample is too small to establish a condition effect.
+A preregistered 120-run replication now separates weak, placebo, raw-metric and
+interpreted-metric feedback.
+
+**Full visualised results:** [First Multi-Condition Study Results](docs/first-multi-condition-study-results.md)  
+**Replication protocol:** [Study 2: Update-order feedback replication](docs/update-order-feedback-replication.md)
 
 ---
 

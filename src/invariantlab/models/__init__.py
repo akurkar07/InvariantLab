@@ -1,7 +1,15 @@
-"""Model adapters and evaluation protocol.
+"""Model adapters used by InvariantLab experiments."""
 
-Adapters: Anthropic, HF transformers, OpenAI-compatible, vLLM, replay.
-TODO: implement in M5.
-"""
+from invariantlab.models.adapter import (
+    ModelAdapter,
+    OpenAICompatibleAdapter,
+    ReplayAdapter,
+    build_adapter,
+)
 
-__all__ = []
+__all__ = [
+    "ModelAdapter",
+    "OpenAICompatibleAdapter",
+    "ReplayAdapter",
+    "build_adapter",
+]
