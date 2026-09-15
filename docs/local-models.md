@@ -9,6 +9,12 @@ InvariantLab can use any local server that exposes an OpenAI-compatible
 The scientific evaluator still runs generated code inside Docker, so Docker must also be
 available locally.
 
+The local presets use `temperature: 0.2` rather than zero. Repeating an identical prompt
+against a deterministic temperature-zero local server can produce the same completion on
+every trial, which would overstate the effective sample size. Treat local-model results as
+a separate model/decoding condition rather than pooling them directly with the existing
+Cohere temperature-zero Study 2 cells.
+
 ## Ollama
 
 Pull the model:
