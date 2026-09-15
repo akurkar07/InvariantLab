@@ -202,7 +202,10 @@ def run_first_model_experiment(config_path: Path, output_dir: Path | None = None
         "candidate_source": repaired_source,
     }
 
-    (output / "events.jsonl").write_text(\n        json.dumps(record, sort_keys=True) + "\n", encoding="utf-8"\n    )
+    (output / "events.jsonl").write_text(
+        json.dumps(record, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     (output / "baseline_solver.py").write_text(BROKEN_SOLVER, encoding="utf-8")
     (output / "candidate_solver.py").write_text(repaired_source, encoding="utf-8")
     (output / "summary.json").write_text(
@@ -214,7 +217,10 @@ def run_first_model_experiment(config_path: Path, output_dir: Path | None = None
                 "baseline_scientific_passed": baseline["scientific_passed"],
                 "repair_public_passed": repaired["public_passed"],
                 "repair_scientific_passed": repaired["scientific_passed"],
-                "verification_gap_before": (\n                    int(baseline["public_passed"])\n                    - int(baseline["scientific_passed"])\n                ),
+                "verification_gap_before": (
+                    int(baseline["public_passed"])
+                    - int(baseline["scientific_passed"])
+                ),
                 "successful_repair": repaired["scientific_passed"],
                 "metrics": repaired["metrics"],
             },
