@@ -16,7 +16,9 @@ InvariantLab contains no biological, medical, genomic, chemical, or wet-laborato
 
 ## Contents
 
-- [Empirical results](#empirical-results)\n- [Local model execution](#local-model-execution)\n- [Scientific motivation](#scientific-motivation)
+- [Empirical results](#empirical-results)
+- [Local model execution](#local-model-execution)
+- [Scientific motivation](#scientific-motivation)
 - [V1 scope](#v1-scope)
 - [System architecture](#system-architecture)
 - [Task contract](#task-contract)
