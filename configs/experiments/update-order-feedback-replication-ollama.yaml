@@ -2,8 +2,9 @@ name: update-order-feedback-replication-ollama-qwen25-7b
 description: "Study 2 on local Ollama Qwen2.5-Coder 7B."
 task_suite: configs/task-suites/v1-smoke.yaml
 model: configs/models/ollama-qwen2.5-coder-7b.yaml
-runner: feedback_replication
-mutation: update-order
+runner: repair
+task: tasks/oscillator
+mutation: tasks/oscillator/mutations/update-order
 conditions:
   - weak
   - placebo
