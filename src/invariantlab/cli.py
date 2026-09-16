@@ -75,12 +75,10 @@ def audit_run(
     ),
 ) -> None:
     """Audit raw experiment records against the configured cell schedule."""
-    from invariantlab.experiments.feedback_replication import (
-        audit_feedback_replication,
-    )
+    from invariantlab.experiments import audit_repair_experiment
 
     try:
-        audit = audit_feedback_replication(
+        audit = audit_repair_experiment(
             Path(experiment),
             Path(run_dir),
             write_canonical=write_canonical,
@@ -144,12 +142,32 @@ def run(
         load_model_config(Path(config.model))
         if max_new_attempts is not None and max_new_attempts < 1:
             raise ValueError("--max-new-attempts must be at least 1")
+        if config.runner == "repair":
+            if config.task is None or config.mutation is None:
+                raise ValueError("Repair experiments require task and mutation paths")
+            from invariantlab.schema import (
+                load_mutation_definition,
+                load_task_definition,
+            )
+
+            task = load_task_definition(Path(config.task))
+            mutation = load_mutation_definition(Path(config.mutation))
+            if mutation.task_id != task.id:
+                raise ValueError("Configured mutation does not target the configured task")
         if dry_run:
             console.print(f"[green]✓[/green] Experiment [bold]{config.name}[/bold] is valid.")
             return
 
         output_path = Path(output) if output is not None else None
-        if config.runner == "feedback_replication":
+        if config.runner == "repair":
+            from invariantlab.experiments import run_repair_experiment
+
+            result_dir = run_repair_experiment(
+                config_path,
+                output_path,
+                max_new_attempts=max_new_attempts,
+            )
+        elif config.runner == "feedback_replication":
             from invariantlab.experiments import run_feedback_replication
 
             result_dir = run_feedback_replication(
