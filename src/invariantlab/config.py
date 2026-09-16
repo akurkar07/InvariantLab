@@ -15,6 +15,10 @@ class ExperimentConfig(BaseModel):
     task_suite: str = Field(..., description="Path to task suite config.")
     model: str = Field(..., description="Model adapter identifier.")
     runner: str = "first_model"
+    task: str | None = Field(
+        default=None,
+        description="Task directory used by config-driven repair runners.",
+    )
     mutation: str | None = None
     conditions: list[str] = Field(default_factory=list)
     randomize_order: bool = False
