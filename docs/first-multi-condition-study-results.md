@@ -6,7 +6,7 @@
 **Design:** 3 mutation families × 2 verifier conditions × 3 trials  
 **Total attempts:** 18
 
-> This report visualises the first completed multi-condition InvariantLab study. Study 2 is a separate preregistered replication and has not yet produced results.
+> This report visualises the first completed multi-condition InvariantLab study. Study 2 subsequently replicated the update-order experiment across Qwen2.5-Coder-7B-Instruct and DeepSeek-Coder-6.7B-Instruct, with 240/240 scientifically correct repairs and no observable condition effect.
 
 ---
 
@@ -233,22 +233,24 @@ The result is consistent with several mechanisms that should be separated experi
 - **subtle-defect interaction:** obvious catastrophic defects may be easy enough that extra feedback has little effect, while subtle temporal defects leave more room for restructuring errors
 - **model stochasticity/provider variance:** one failure may simply be a rare sample from the model's ordinary repair distribution
 
-The follow-up replication is designed to distinguish these possibilities using four conditions: weak, placebo, raw metrics, and interpreted metrics.
+The follow-up replication tested these possibilities using four conditions: weak, placebo, raw metrics, and interpreted metrics. It produced 240/240 scientifically correct repairs across two 7B coding models, so the update-order defect saturated and did not discriminate between feedback conditions.
 
 ---
 
-## 10. Next experiment
+## 10. Follow-up result
 
-Study 2 is preregistered in:
+Study 2 was preregistered in:
 
 [`docs/update-order-feedback-replication.md`](./update-order-feedback-replication.md)
 
-It holds the update-order mutation fixed and runs:
+and the completed two-model result is reported in:
 
-```text
-4 feedback conditions × 30 trials = 120 repair attempts
-```
+[`docs/study-two-model-comparison.md`](./study-two-model-comparison.md)
 
-The primary endpoint is scientific pass rate. Secondary endpoints include scientific regression rate and post-repair error severity relative to the original defect.
+Both Qwen2.5-Coder-7B-Instruct and DeepSeek-Coder-6.7B-Instruct achieved 120/120
+scientifically correct repairs across the four feedback conditions. The update-order
+mutation therefore reached a 100% ceiling for both models and is not a useful discriminator
+for future feedback-effect experiments.
 
-Until those runs are complete, the first study should be described as a **proof of an observable failure mode**, not evidence of a general causal effect.
+The first study remains evidence of an observable failure mode, not evidence of a general
+causal effect of verifier feedback.
