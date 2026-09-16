@@ -1,0 +1,6 @@
+id: oscillator-update-order
+ task: oscillator-verlet
+family: update_order_error
+source: tasks/oscillator/mutations/update_order_solver.py
+location: velocity Verlet second half-step
+expected_effect: stale acceleration increases long-horizon state error and energy drift
