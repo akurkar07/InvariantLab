@@ -90,7 +90,12 @@ class RepairTaskSpec(BaseModel):
     verifier: str = Field(..., description="Path to an executable scientific verifier.")
     entrypoint: str = "solver.py"
     function_name: str
+    prompt_template: str | None = Field(
+        default=None, description="Optional path to a task-specific prompt template."
+    )
     metric_keys: list[str] = Field(default_factory=list)
+    metric_labels: dict[str, str] = Field(default_factory=dict)
+    metric_interpretation: str = ""
     scientific_threshold: float = 1e-3
 
 
