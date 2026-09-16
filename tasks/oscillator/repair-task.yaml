@@ -1,0 +1,12 @@
+id: oscillator-verlet
+family: oscillator
+description: >-
+  Repair a one-dimensional harmonic-oscillator velocity-Verlet solver for
+  d2x/dt2 = -omega^2 x while preserving long-horizon state accuracy and energy.
+verifier: tasks/oscillator/scientific_verifier.py
+entrypoint: solver.py
+function_name: solve_oscillator_verlet
+metric_keys:
+  - max_state_relative_error
+  - max_energy_relative_drift
+scientific_threshold: 1.0e-3
