@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -167,7 +167,7 @@ class RunManifest(BaseModel):
 # ── Loading ──────────────────────────────────────────────────────────────────
 
 
-def _load_yaml_mapping(path: Path) -> dict[str, object]:
+def _load_yaml_mapping(path: Path) -> dict[str, Any]:
     import yaml
 
     with path.open("r", encoding="utf-8") as handle:
