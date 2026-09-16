@@ -1,9 +1,9 @@
 name: update-order-feedback-replication-vllm-qwen25-7b-awq
-description: "Study 2 on local vLLM Qwen2.5-Coder 7B AWQ."
-task_suite: configs/task-suites/v1-smoke.yaml
+description: "Study 2 on local vLLM Qwen2.5-Coder 7B AWQ via the generic repair runner."
+task: tasks/oscillator/repair-task.yaml
+mutation_config: tasks/oscillator/mutations/update-order.yaml
 model: configs/models/vllm-qwen2.5-coder-7b-awq.yaml
-runner: feedback_replication
-mutation: update-order
+runner: generic_repair
 conditions:
   - weak
   - placebo
