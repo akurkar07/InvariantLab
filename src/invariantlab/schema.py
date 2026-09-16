@@ -1,7 +1,7 @@
 """Core data schemas for InvariantLab.
 
-Defines the task contract, verification results, and run manifest structures.
-All schemas are Pydantic v2 models for validation and serialization.
+Defines task contracts, generic repair experiment types, verification results, and run
+manifest structures. All schemas are Pydantic v2 models for validation and serialisation.
 """
 
 from __future__ import annotations
@@ -11,8 +11,6 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
-# ── Task Contract ────────────────────────────────────────────────────────────
 
 
 class TaskFamily(str, Enum):
@@ -46,7 +44,7 @@ class MutationFamily(str, Enum):
 
 
 class MutationSpec(BaseModel):
-    """A single controlled defect applied to a task."""
+    """A single controlled defect applied to a task contract."""
 
     family: MutationFamily
     location: str = Field(..., description="Where the defect is introduced.")
@@ -69,7 +67,7 @@ class BudgetSpec(BaseModel):
 
 
 class TaskContract(BaseModel):
-    """Complete task specification (the agent-facing contract)."""
+    """Complete task specification used by the benchmark task package."""
 
     id: str
     family: TaskFamily
@@ -83,7 +81,40 @@ class TaskContract(BaseModel):
     description: str = ""
 
 
-# ── Verification Results ─────────────────────────────────────────────────────
+class RepairTaskSpec(BaseModel):
+    """Config-driven task definition for model repair experiments."""
+
+    id: str
+    family: TaskFamily
+    description: str
+    verifier: str = Field(..., description="Path to an executable scientific verifier.")
+    entrypoint: str = "solver.py"
+    function_name: str
+    metric_keys: list[str] = Field(default_factory=list)
+    scientific_threshold: float = 1e-3
+
+
+class RepairMutationSpec(BaseModel):
+    """A concrete source mutation used by a repair experiment."""
+
+    id: str
+    task: str
+    family: MutationFamily
+    source: str = Field(..., description="Path to the mutated implementation shown to the model.")
+    location: str
+    expected_effect: str
+
+
+class RepairExperimentSpec(BaseModel):
+    """Resolved task/mutation/model/condition inputs for one generic repair study."""
+
+    task: RepairTaskSpec
+    mutation: RepairMutationSpec
+    model: str
+    conditions: list[str] = Field(default_factory=list)
+    n_attempts: int = Field(default=1, ge=1)
+    seed: int = Field(default=1729, ge=0)
+    randomize_order: bool = True
 
 
 class GateResult(BaseModel):
@@ -107,9 +138,6 @@ class VerificationResult(BaseModel):
     layers: dict[str, list[GateResult]] = Field(default_factory=dict)
 
 
-# ── Run Manifest ─────────────────────────────────────────────────────────────
-
-
 class RunManifest(BaseModel):
     """Immutable record of one evaluation run."""
 
@@ -119,9 +147,6 @@ class RunManifest(BaseModel):
     seed: int
     container_image: str
     task_results: list[VerificationResult] = Field(default_factory=list)
-
-
-# ── Loading ──────────────────────────────────────────────────────────────────
 
 
 def load_task_contract(task_dir: str | Path) -> TaskContract:
