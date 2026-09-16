@@ -77,14 +77,22 @@ Candidate progression:
 - Level 4: Defect visible primarily through long-horizon behavior
 - Level 5: Multiple locally plausible repairs, only one preserves the invariant
 
-## Artifacts
+## Artifacts and provenance
 
-All raw evidence is preserved in the repository:
+The completed runs produced these local run directories:
+
 - `runs/update-order-feedback-replication-ollama-qwen25-7b/`
 - `runs/update-order-feedback-replication-ollama-deepseek/`
 
-Each directory contains:
+Each run directory contained:
+
 - `events.jsonl` — immutable raw evidence
-- `events.canonical.jsonl` — deduplicated canonical cells
+- `events.canonical.jsonl` — canonical scheduled cells
 - `artifact-integrity.json` — integrity audit report
 - `study-summary.json` — structured results table
+
+These run directories are **not currently committed to the repository**. The tables in this
+report were generated from the locally audited artifacts described above, but the paths
+should not be interpreted as repository-hosted evidence. A future public release or dataset
+should attach the canonical event records and integrity reports if independent reconstruction
+of the Study 2 aggregates is required.
