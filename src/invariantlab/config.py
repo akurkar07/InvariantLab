@@ -6,13 +6,19 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
+from invariantlab.schema import RepairMutationSpec, RepairTaskSpec
+
 
 class ExperimentConfig(BaseModel):
     """Top-level experiment configuration."""
 
     name: str
     description: str = ""
-    task_suite: str = Field(..., description="Path to task suite config.")
+    task_suite: str | None = Field(default=None, description="Path to task suite config.")
+    task: str | None = Field(default=None, description="Path to generic repair task config.")
+    mutation_config: str | None = Field(
+        default=None, description="Path to generic repair mutation config."
+    )
     model: str = Field(..., description="Model adapter identifier.")
     runner: str = "first_model"
     mutation: str | None = None
@@ -56,17 +62,24 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 def load_experiment_config(path: Path) -> ExperimentConfig:
     """Load and validate an experiment configuration."""
-    data = load_yaml(path)
-    return ExperimentConfig(**data)
+    return ExperimentConfig(**load_yaml(path))
 
 
 def load_task_suite_config(path: Path) -> TaskSuiteConfig:
     """Load and validate a task suite configuration."""
-    data = load_yaml(path)
-    return TaskSuiteConfig(**data)
+    return TaskSuiteConfig(**load_yaml(path))
 
 
 def load_model_config(path: Path) -> ModelConfig:
     """Load and validate a model configuration."""
-    data = load_yaml(path)
-    return ModelConfig(**data)
+    return ModelConfig(**load_yaml(path))
+
+
+def load_repair_task_config(path: Path) -> RepairTaskSpec:
+    """Load a generic repair task definition."""
+    return RepairTaskSpec(**load_yaml(path))
+
+
+def load_repair_mutation_config(path: Path) -> RepairMutationSpec:
+    """Load a generic repair mutation definition."""
+    return RepairMutationSpec(**load_yaml(path))
