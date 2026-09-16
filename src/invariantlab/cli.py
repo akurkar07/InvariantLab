@@ -133,6 +133,9 @@ def run(
     ),
 ) -> None:
     """Run an evaluation experiment."""
+    from dotenv import load_dotenv
+
+    load_dotenv()
     from invariantlab.config import load_experiment_config, load_model_config
 
     config_path = Path(experiment)
