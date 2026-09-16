@@ -75,15 +75,11 @@ def audit_run(
     ),
 ) -> None:
     """Audit raw experiment records against the configured cell schedule."""
-    from invariantlab.experiments.feedback_replication import (
-        audit_feedback_replication,
-    )
+    from invariantlab.experiments.feedback_replication import audit_feedback_replication
 
     try:
         audit = audit_feedback_replication(
-            Path(experiment),
-            Path(run_dir),
-            write_canonical=write_canonical,
+            Path(experiment), Path(run_dir), write_canonical=write_canonical
         )
         expected = int(audit["expected_cells"])
         raw = int(audit["raw_records"])
@@ -92,27 +88,12 @@ def audit_run(
             f"Raw records: [bold]{raw}[/bold] | "
             f"Canonical scheduled cells: [bold]{canonical}/{expected}[/bold]"
         )
-
         if audit["integrity_ok"]:
             console.print("[green]✓[/green] Raw artifact integrity is valid.")
         else:
             console.print("[red]✗[/red] Raw artifact integrity is invalid.")
-            console.print(
-                "Duplicates: "
-                f"{audit['duplicate_records']} | "
-                "out-of-schedule: "
-                f"{len(audit['unexpected_records'])} | "
-                "metadata mismatches: "
-                f"{len(audit['metadata_mismatches'])} | "
-                "malformed: "
-                f"{len(audit['malformed_records'])}"
-            )
-
         if write_canonical:
-            console.print(
-                "Canonical projection: "
-                f"[bold]{audit['canonical_events_path']}[/bold]"
-            )
+            console.print(f"Canonical projection: [bold]{audit['canonical_events_path']}[/bold]")
         console.print(
             f"Integrity report: [bold]{Path(run_dir) / 'artifact-integrity.json'}[/bold]"
         )
@@ -136,12 +117,22 @@ def run(
     from dotenv import load_dotenv
 
     load_dotenv()
-    from invariantlab.config import load_experiment_config, load_model_config
+    from invariantlab.config import (
+        load_experiment_config,
+        load_model_config,
+        load_repair_mutation_config,
+        load_repair_task_config,
+    )
 
     config_path = Path(experiment)
     try:
         config = load_experiment_config(config_path)
         load_model_config(Path(config.model))
+        if config.runner == "generic_repair":
+            if config.task is None or config.mutation_config is None:
+                raise ValueError("generic_repair requires task and mutation_config")
+            load_repair_task_config(Path(config.task))
+            load_repair_mutation_config(Path(config.mutation_config))
         if max_new_attempts is not None and max_new_attempts < 1:
             raise ValueError("--max-new-attempts must be at least 1")
         if dry_run:
@@ -149,7 +140,15 @@ def run(
             return
 
         output_path = Path(output) if output is not None else None
-        if config.runner == "feedback_replication":
+        if config.runner == "generic_repair":
+            from invariantlab.experiments import run_generic_repair
+
+            result_dir = run_generic_repair(
+                config_path,
+                output_path,
+                max_new_attempts=max_new_attempts,
+            )
+        elif config.runner == "feedback_replication":
             from invariantlab.experiments import run_feedback_replication
 
             result_dir = run_feedback_replication(
