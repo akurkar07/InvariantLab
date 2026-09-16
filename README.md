@@ -67,13 +67,30 @@ Update order        3/3 ✅      2/3 ❌
 Non-conservative    3/3 ✅      3/3 ✅
 ```
 
-This is an observed failure mode, **not yet evidence that hardened scientific feedback
+This is an observed failure mode, **not evidence that hardened scientific feedback
 generally reduces repair quality**. The sample is too small to establish a condition effect.
-A preregistered 120-run replication now separates weak, placebo, raw-metric and
-interpreted-metric feedback.
 
-**Full visualised results:** [First Multi-Condition Study Results](docs/first-multi-condition-study-results.md)  
-**Replication protocol:** [Study 2: Update-order feedback replication](docs/update-order-feedback-replication.md)
+A preregistered follow-up, **Study 2**, tested the update-order defect under weak, placebo,
+raw-metric and interpreted-metric feedback using two local 7B coding models. Across
+**240 scheduled repair attempts** — 120 with Qwen2.5-Coder-7B-Instruct and 120 with
+DeepSeek-Coder-6.7B-Instruct — **all 240 repairs passed scientific verification and none
+regressed**.
+
+| Study 2 model | Scientific passes | Regressions |
+|---|---:|---:|
+| Qwen2.5-Coder-7B-Instruct | **120/120** | **0** |
+| DeepSeek-Coder-6.7B-Instruct | **120/120** | **0** |
+| **Combined** | **240/240** | **0** |
+
+No verifier-feedback condition effect was observable in this model-defect configuration.
+The update-order mutation is now **saturated at 100% for both Qwen and DeepSeek**, making
+it a poor discriminator for future feedback-effect studies. This null result does not show
+that scientific feedback has no effect in general; it shows that this particular repair task
+is too easy for these models to separate the conditions.
+
+**Study 1 results:** [First Multi-Condition Study Results](docs/first-multi-condition-study-results.md)  
+**Study 2 protocol:** [Update-order feedback replication](docs/update-order-feedback-replication.md)  
+**Study 2 results:** [Two-Model Comparison](docs/study-two-model-comparison.md)
 
 ---
 
