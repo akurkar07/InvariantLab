@@ -1,5 +1,5 @@
 id: oscillator-update-order
- task: oscillator-verlet
+task: oscillator-verlet
 family: update_order_error
 source: tasks/oscillator/mutations/update_order_solver.py
 location: velocity Verlet second half-step
