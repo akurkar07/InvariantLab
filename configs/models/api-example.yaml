@@ -1,0 +1,14 @@
+# Optional hosted API example
+# Set both the endpoint and API-key environment variable explicitly
+adapter: openai_compatible
+model_id: provider/model
+temperature: 0.0
+max_tokens: 4096
+extra:
+  base_url: https://api.example.com/v1
+  api_key_env: INVARIANTLAB_API_KEY
+  request_timeout_seconds: 180
+  max_retries: 5
+  backoff_initial_seconds: 2
+  backoff_max_seconds: 60
+  min_request_interval_seconds: 0

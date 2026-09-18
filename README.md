@@ -1,8 +1,10 @@
 # InvariantLab
 
-> Physics-grounded evaluation for AI-generated scientific software.
+> Local-first, physics-grounded evaluation for AI-generated scientific software.
 
 InvariantLab measures whether an AI coding agent has implemented the declared mathematics, not merely produced code that compiles or passes a narrow set of examples.
+
+InvariantLab is **local-first by default**. The normal evaluation path runs pinned models on your own hardware through Ollama or vLLM, keeping model availability, decoding settings and experiment execution under your control. Hosted APIs remain supported through the generic OpenAI-compatible adapter when they are useful, but no external model provider is required.
 
 The benchmark uses compact problems from classical mechanics and numerical partial differential equations. Every task pairs an agent-facing implementation with independent analytical, numerical, invariant, convergence, and metamorphic checks. Controlled defect injection makes the source of each failure known, while containerised execution and immutable run manifests make results reproducible.
 
@@ -17,7 +19,7 @@ InvariantLab contains no biological, medical, genomic, chemical, or wet-laborato
 ## Contents
 
 - [Empirical results](#empirical-results)
-- [Local model execution](#local-model-execution)
+- [Local-first model execution](#local-first-model-execution)
 - [Scientific motivation](#scientific-motivation)
 - [V1 scope](#v1-scope)
 - [System architecture](#system-architecture)
@@ -94,26 +96,40 @@ is too easy for these models to separate the conditions.
 
 ---
 
-## Local model execution
+## Local-first model execution
 
-Study runs can use hosted APIs or local OpenAI-compatible servers. Presets are included for
-Ollama and vLLM, with safe batching and automatic resume support:
+InvariantLab is designed to run against local models first. The bundled
+`configs/models/default.yaml` targets Qwen2.5-Coder-7B-Instruct through Ollama, and a vLLM
+preset is included for an OpenAI-compatible local server.
 
 ```bash
-# Verify the local Ollama endpoint
-uv run invariantlab model-check \
-  --model configs/models/ollama-qwen2.5-coder-7b.yaml
+# One-time model setup
+ollama pull qwen2.5-coder:7b-instruct
 
-# Run 20 new Study 2 cells, then stop cleanly
+# Verify the default local model
+uv run invariantlab model-check \
+  --model configs/models/default.yaml
+
+# Run the first live repair experiment locally
+uv run invariantlab run \
+  --experiment configs/experiments/first-model-oscillator-live.yaml
+```
+
+Longer studies support safe batching and resume from committed run evidence. For example:
+
+```bash
 uv run invariantlab run \
   --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
   --max-new-attempts 20
 ```
 
-Running the same command again continues from the existing `events.jsonl`. Persistent rate
-limits and connection failures pause the run instead of discarding completed work.
+Running the same command again continues from the existing `events.jsonl`.
 
-See [Local model execution](docs/local-models.md) for Ollama, vLLM and custom endpoint setup.
+Hosted APIs are optional rather than the default. To use one, configure the generic
+`openai_compatible` adapter with an explicit `base_url` and API-key environment variable;
+see `configs/models/api-example.yaml`.
+
+See [model execution](docs/local-models.md) for Ollama, vLLM and optional API endpoint setup.
 
 ---
 
