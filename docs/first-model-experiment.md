@@ -15,14 +15,16 @@ The replay adapter performs the known repair and proves that the complete experi
 
 ## First live model run
 
-Set `OPENROUTER_API_KEY` in your shell, then run:
+The live example is local-first and uses the default Ollama model configuration.
 
 ```bash
-export OPENROUTER_API_KEY="..."
+ollama pull qwen2.5-coder:7b-instruct
+uv run invariantlab model-check --model configs/models/default.yaml
 uv run invariantlab run --experiment configs/experiments/first-model-oscillator-live.yaml
 ```
 
-Do not commit API keys.
+No API key is required. Hosted APIs remain available through an explicit
+`openai_compatible` model configuration when needed.
 
 ## Evidence
 
