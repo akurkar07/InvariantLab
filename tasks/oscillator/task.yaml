@@ -1,0 +1,18 @@
+id: oscillator_verlet
+family: oscillator
+contract: contract.yaml
+verifier: verifier.py
+prompt_template: repair_prompt.txt
+feedback_metrics:
+  max_state_relative_error:
+    label: max state relative error
+    threshold: 1.0e-3
+    interpretation: long-horizon disagreement with the analytical solution
+  max_energy_relative_drift:
+    label: max energy relative drift
+    threshold: 1.0e-3
+    interpretation: failure to conserve total energy
+interpreted_feedback: >-
+  Both metrics exceed the hidden scientific acceptance threshold of 1e-3. The state metric
+  measures long-horizon disagreement with the analytical solution, while the energy metric
+  measures failure to conserve total energy.

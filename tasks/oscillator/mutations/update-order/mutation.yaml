@@ -1,0 +1,5 @@
+id: update-order
+task_id: oscillator_verlet
+family: update_order_error
+source: solver.py
+expected_effect: stale acceleration in the second velocity half-step

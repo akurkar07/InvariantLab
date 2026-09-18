@@ -118,5 +118,5 @@ def test_openai_compatible_config_requires_explicit_base_url():
         extra={},
     )
 
-    with pytest.raises(ValueError, match="extra.base_url"):
+    with pytest.raises(ValueError, match=r"extra\.base_url"):
         build_adapter(config)
