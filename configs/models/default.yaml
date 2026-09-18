@@ -1,19 +1,8 @@
-# InvariantLab default model configs
-
-anthropic:
-  adapter: anthropic
-  model_id: claude-sonnet-4-20250514
-  temperature: 0.0
-  max_tokens: 32000
-
-huggingface:
-  adapter: transformers
-  model_id: meta-llama/Llama-3.1-8B-Instruct
-  temperature: 0.0
-  max_tokens: 32000
-
-openai:
-  adapter: openai
-  model_id: gpt-4o
-  temperature: 0.0
-  max_tokens: 32000
+# Default InvariantLab model: local-first via Ollama
+adapter: ollama
+model_id: qwen2.5-coder:7b-instruct
+temperature: 0.2
+max_tokens: 4096
+extra:
+  base_url: http://localhost:11434
+  request_timeout_seconds: 300

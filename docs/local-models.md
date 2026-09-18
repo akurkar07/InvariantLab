@@ -1,10 +1,15 @@
-# Running InvariantLab with local models
+# Model execution: local first, APIs optional
 
-InvariantLab can use any local server that exposes an OpenAI-compatible
-`/v1/chat/completions` endpoint. Two ready-to-use presets are included:
+InvariantLab is local-first. The default configuration runs
+`qwen2.5-coder:7b-instruct` through Ollama on your own machine, with vLLM available as an
+alternative local backend. Hosted APIs use the same experiment machinery but are an optional
+integration rather than the normal execution path.
 
-- Ollama + `qwen2.5-coder:7b-instruct`
-- vLLM + `Qwen/Qwen2.5-Coder-7B-Instruct-AWQ`
+Ready-to-use local presets are included:
+
+- `configs/models/default.yaml` — Ollama + `qwen2.5-coder:7b-instruct`
+- `configs/models/ollama-qwen2.5-coder-7b.yaml` — explicit Ollama preset
+- `configs/models/vllm-qwen2.5-coder-7b-awq.yaml` — vLLM + `Qwen/Qwen2.5-Coder-7B-Instruct-AWQ`
 
 The scientific evaluator still runs generated code inside Docker, so Docker must also be
 available locally.
@@ -29,12 +34,16 @@ Make sure the Ollama service is running. On installations where it is not alread
 ollama serve
 ```
 
-Verify that InvariantLab can reach it:
+Verify that InvariantLab can reach the default local model:
 
 ```bash
 uv run invariantlab model-check \
-  --model configs/models/ollama-qwen2.5-coder-7b.yaml
+  --model configs/models/default.yaml
 ```
+
+The explicit Ollama preset remains available at
+`configs/models/ollama-qwen2.5-coder-7b.yaml` when you want the backend named in the
+experiment configuration.
 
 Run Study 2 in 20-cell batches:
 
@@ -81,7 +90,7 @@ uv run invariantlab run \
 If you serve a different model, copy the YAML preset and change only `model_id` and, if
 needed, `base_url`.
 
-## Resumability and provider failures
+## Resumability and endpoint failures
 
 Every successful model response is appended immediately to `events.jsonl`. The runner also
 maintains `run-status.json` with one of these states:
@@ -116,8 +125,27 @@ extra:
   min_request_interval_seconds: 0
 ```
 
-Set `api_key_env` to an empty string for unauthenticated local endpoints. For hosted
-providers, set it to the environment-variable name containing the API key.
+Set `api_key_env` to an empty string for unauthenticated local endpoints.
+
+## Optional hosted API support
+
+Hosted providers are supported through the generic `openai_compatible` adapter. They are
+not required for InvariantLab and no hosted provider is treated as the default. Start from
+`configs/models/api-example.yaml` and set the endpoint, model ID and API-key environment
+variable explicitly:
+
+```yaml
+adapter: openai_compatible
+model_id: provider/model
+temperature: 0.0
+max_tokens: 4096
+extra:
+  base_url: https://api.example.com/v1
+  api_key_env: INVARIANTLAB_API_KEY
+```
+
+This keeps provider choice in experiment configuration rather than baking one routing
+service into the benchmark.
 
 ## References
 

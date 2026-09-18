@@ -106,3 +106,17 @@ def test_rate_limit_becomes_typed_error_after_retries(monkeypatch):
 
     with pytest.raises(ModelRateLimitError):
         adapter.generate("hello")
+
+
+def test_openai_compatible_config_requires_explicit_base_url():
+    from invariantlab.config import ModelConfig
+    from invariantlab.models import build_adapter
+
+    config = ModelConfig(
+        adapter="openai_compatible",
+        model_id="provider/test",
+        extra={},
+    )
+
+    with pytest.raises(ValueError, match="extra.base_url"):
+        build_adapter(config)

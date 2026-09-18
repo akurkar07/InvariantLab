@@ -289,10 +289,15 @@ def build_adapter(config: ModelConfig) -> ModelAdapter:
         )
 
     if config.adapter == "openai_compatible":
+        base_url = str(extra.get("base_url", "")).strip()
+        if not base_url:
+            raise ValueError(
+                "openai_compatible model configs must declare extra.base_url explicitly"
+            )
         return OpenAICompatibleAdapter(
             model_id=config.model_id,
-            base_url=str(extra.get("base_url", "https://openrouter.ai/api/v1")),
-            api_key_env=str(extra.get("api_key_env", "OPENROUTER_API_KEY")),
+            base_url=base_url,
+            api_key_env=str(extra.get("api_key_env", "")),
             temperature=float(config.temperature),
             max_tokens=int(config.max_tokens),
             request_timeout_seconds=float(
