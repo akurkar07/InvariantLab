@@ -318,6 +318,19 @@ python src/solver.py --input input.json --output result.npz
 
 Task-local public and scientific suites can be run with pytest from the repository root.
 
+## V1 acceptance criteria
+
+V1 ships only when every acceptance criterion below is proved by at least one automated test; the criteria-to-tests map and the fail-closed release-gate checker live in [docs/v1-acceptance.md](docs/v1-acceptance.md) (`uv run python scripts/check_v1_acceptance.py --report v1.json`).
+
+- **V1-AC1** all reference implementations pass every scientific gate;
+- **V1-AC2** every controlled mutant passes its designated weak profile and fails its expected scientific gate;
+- **V1-AC3** independent oracle and agent-facing code paths share no numerical update implementation;
+- **V1-AC4** repeated replay produces identical evaluator outcomes;
+- **V1-AC5** report totals equal the number of enumerated sample records;
+- **V1-AC6** result tables can be regenerated without API access;
+- **V1-AC7** CI exercises task validation, a complete smoke run and report reconstruction;
+- **V1-AC8** the public dataset contains task metadata, trajectories, patches, measurements and provenance without hidden credentials.
+
 ## Current scope
 
 InvariantLab is the benchmark core **plus** the evaluation harness used to run model studies against it.
