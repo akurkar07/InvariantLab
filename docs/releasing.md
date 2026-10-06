@@ -43,8 +43,21 @@ through a normal PR (all required checks green) before tagging.
 5. **Tag.** After the release PR has merged, the maintainer pushes an annotated tag on `main`:
    `git tag -a vX.Y.Z -m "InvariantLab X.Y.Z" <merge-sha>` then `git push origin vX.Y.Z`.
    Only the maintainer creates tags; agents and contributors do not.
-6. **Release workflow builds and publishes.** The tag-triggered release workflow builds the
-   sdist and wheel, checks that the tag, `CITATION.cff` and `CHANGELOG.md` agree, and
-   publishes the release. That workflow is tracked in
-   [#71](https://github.com/akurkar07/InvariantLab/issues/71); until it lands, build locally
-   with `uv build` and attach the artifacts to the GitHub release by hand.
+6. **Release workflow builds and publishes.** Pushing a `v*` tag triggers
+   [`.github/workflows/release.yml`](../.github/workflows/release.yml). It checks release
+   metadata with `scripts/check_release_metadata.py --tag`, runs
+   `scripts/check_v1_acceptance.py` for final tags, builds an sdist and wheel, checks the wheel
+   version against the tag, and smoke-tests `invariantlab version` from the wheel in a fresh
+   virtual environment. It then creates a GitHub Release with `dist/*` and the matching
+   CHANGELOG section as its body; `-rc`, `-a` and `-b` tags are marked prereleases. After steps
+   2–4, run `uv run python scripts/check_release_metadata.py --tag vX.Y.Z` locally to check the
+   release metadata before tagging.
+
+### Dry run
+
+Before tagging, open **Actions → Release → Run workflow** on the release branch, enter the
+intended tag, and leave `dry_run` enabled. Alternatively, dispatch it with
+`POST /repos/akurkar07/InvariantLab/actions/workflows/release.yml/dispatches` and
+`{"ref": "<branch>", "inputs": {"tag": "v1.0.0", "dry_run": "true"}}`. The workflow tags its
+checkout locally (never pushed) so hatch-vcs builds the intended tag's version, runs every
+build and validation step, and skips only the GitHub Release job.
