@@ -113,6 +113,20 @@ the four reference/mutant validation checks; each suite timeout defaults to
 temporary task copy without `mutations/`; their stable result names are consumed by #64
 and #88.
 
+Curated package mutants (each passes `validate_mutant`; checked by
+`tests/unit/test_mutation_registry.py::test_real_task_package_mutants_validate`):
+
+| Task | Mutant id | Family | Defect |
+|---|---|---|---|
+| oscillator | `non-conservative-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 1e-6` |
+| wave1d | `sign-error-startup` | `sign_error` | ghost level `u(-dt)` built with `-0.5 * C²` instead of `+` |
+| wave1d | `update-order-overwrite` | `update_order_error` | `state = next_state; previous = state` overwrites the old level |
+
+The oscillator update-order (stale acceleration) and sign-error defects fail the unmodified
+oscillator public example (`abs=1e-4`), so those families are realised on wave1d. The legacy
+`update-order` (Study 2 record id) and `sign-error` directories keep their defects and
+`interface: legacy_study` until #120.
+
 ## Add a model
 
 Create a YAML file under `configs/models/`; its `adapter` field selects the backend.

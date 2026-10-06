@@ -29,7 +29,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Verification layer 4: convergence studies | Partial (reference solvers only) | `tests/unit/test_ode_convergence.py`, `tests/unit/test_pde_convergence.py` | [#114](https://github.com/akurkar07/InvariantLab/issues/114) |
 | Verification layer 5: metamorphic tests | Implemented (`check_metamorphic` gate) | `src/invariantlab/verification/metamorphic.py` | [#115](https://github.com/akurkar07/InvariantLab/issues/115) |
 | Verification layer 6: held-out robustness cases | Partial (oscillator study verifier only) | `tasks/oscillator/verifier.py` | [#116](https://github.com/akurkar07/InvariantLab/issues/116) |
-| Defect injection / mutants | Partial (registry; two oscillator mutants) | `src/invariantlab/mutations/`, `tasks/oscillator/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
+| Defect injection / mutants | Partial (registry; three validated package mutants, two legacy oscillator study mutants) | `src/invariantlab/mutations/`, `tasks/*/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Reporting / dashboard / HF export | Partial (`report`, static `report.html`, local HF export via `export-hf`) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
