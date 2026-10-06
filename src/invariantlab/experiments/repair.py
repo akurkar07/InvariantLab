@@ -483,6 +483,9 @@ def audit_repair_experiment(
     experiment = load_experiment_config(config_path)
     _validate_experiment(experiment)
     model_config = load_model_config(Path(experiment.model))
+    model_id = model_config.model_id
+    if model_config.adapter == "replay":
+        model_id = build_adapter(model_config).model_id
     schedule = _build_schedule(
         list(experiment.conditions),
         experiment.n_attempts,
@@ -494,7 +497,7 @@ def audit_repair_experiment(
         records,
         schedule,
         experiment,
-        model_config.model_id,
+        model_id,
     )
     _write_integrity_report(run_dir, audit)
 

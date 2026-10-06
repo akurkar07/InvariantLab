@@ -8,7 +8,9 @@ from invariantlab.models.adapter import (
     ModelResponse,
     OllamaAdapter,
     OpenAICompatibleAdapter,
+    ReferenceStubAdapter,
     ReplayAdapter,
+    ReplayMissError,
     build_adapter,
 )
 
@@ -20,6 +22,8 @@ __all__ = [
     "ModelResponse",
     "OllamaAdapter",
     "OpenAICompatibleAdapter",
+    "ReferenceStubAdapter",
     "ReplayAdapter",
+    "ReplayMissError",
     "build_adapter",
 ]

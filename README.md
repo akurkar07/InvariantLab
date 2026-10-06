@@ -104,7 +104,7 @@ src/invariantlab/
 ├── schema.py                    # task/output contract and experiment models
 ├── experiments/                 # repair, first-model and feedback-replication runners
 ├── models/
-│   └── adapter.py               # replay, ollama and openai_compatible adapters
+│   └── adapter.py               # reference_stub, replay, ollama and openai_compatible adapters
 ├── tasks/
 │   └── validation.py            # package and path validation
 └── verification/
@@ -237,7 +237,7 @@ It currently provides:
 - trusted reference solvers and analytical / high-accuracy oracles
 - task contract and artifact validation (`invariantlab validate-task`, `scripts/validate_task.py`)
 - the oscillator repair experiment runner, which executes candidate repairs in Docker (`invariantlab run`)
-- `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
+- `reference_stub`, `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
 - raw run-evidence auditing (`invariantlab audit-run`)
 
 It does **not** provide yet:

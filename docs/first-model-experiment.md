@@ -11,7 +11,7 @@ uv sync
 uv run invariantlab run --experiment configs/experiments/first-model-oscillator.yaml
 ```
 
-The replay adapter performs the known repair and proves that the complete experiment pipeline works without an API key.
+The reference-stub adapter returns a fixed, known-correct solver, proving the pipeline works without an API key; it is not a model.
 
 ## First live model run
 

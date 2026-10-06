@@ -1,5 +1,6 @@
 """Unit tests for resilient model-adapter requests (no network)."""
 
+import hashlib
 import io
 import json
 import urllib.error
@@ -16,7 +17,9 @@ from invariantlab.models import (
     ModelResponse,
     OllamaAdapter,
     OpenAICompatibleAdapter,
+    ReferenceStubAdapter,
     ReplayAdapter,
+    ReplayMissError,
     build_adapter,
 )
 
@@ -364,19 +367,160 @@ def test_openai_compatible_rejects_malformed_payloads(monkeypatch, raw, match):
         adapter.generate("hello")
 
 
-def test_replay_adapter_complete_has_no_usage():
-    response = ReplayAdapter().complete("anything")
+def test_reference_stub_adapter_complete_has_no_usage():
+    response = ReferenceStubAdapter().complete("anything")
 
     assert "def solve_oscillator_verlet" in response.text
     assert response.input_tokens is None
-    assert ReplayAdapter().generate("anything") == response.text
+    assert ReferenceStubAdapter().generate("anything") == response.text
 
 
-def test_build_adapter_replay():
-    adapter = build_adapter(ModelConfig(adapter="replay", model_id=""))
+def test_build_adapter_reference_stub():
+    adapter = build_adapter(ModelConfig(adapter="reference_stub"))
+
+    assert isinstance(adapter, ReferenceStubAdapter)
+    assert adapter.model_id == "reference_stub/oscillator-verlet"
+
+
+def test_replay_adapter_loads_recorded_response_and_usage(tmp_path):
+    prompt = "recorded prompt"
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                "response": "recorded response",
+                "model": "orig/model",
+                "usage": {"input_tokens": 17, "output_tokens": 8},
+                "finish_reason": "stop",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    adapter = ReplayAdapter.from_events(events_path)
+
+    assert adapter.model_id == "replay/orig/model"
+    assert adapter.complete(prompt) == ModelResponse(
+        text="recorded response",
+        input_tokens=17,
+        output_tokens=8,
+        finish_reason="stop",
+    )
+
+
+def test_replay_adapter_serves_duplicate_prompts_in_schedule_order(tmp_path):
+    prompt_hash = hashlib.sha256(b"duplicate prompt").hexdigest()
+    records = [
+        {
+            "prompt_sha256": prompt_hash,
+            "response": "schedule three",
+            "model": "orig/model",
+            "schedule_index": 3,
+            "trial": 2,
+        },
+        {
+            "prompt_sha256": prompt_hash,
+            "response": "schedule one",
+            "model": "orig/model",
+            "schedule_index": 1,
+            "trial": 1,
+        },
+    ]
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records), encoding="utf-8"
+    )
+    adapter = ReplayAdapter.from_events(events_path)
+
+    assert adapter.generate("duplicate prompt") == "schedule one"
+    assert adapter.generate("duplicate prompt") == "schedule three"
+    with pytest.raises(ReplayMissError, match="2 recorded, 2 already served"):
+        adapter.generate("duplicate prompt")
+
+
+def test_replay_adapter_raises_for_unknown_prompt(tmp_path):
+    prompt = "recorded prompt"
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+                "response": "recorded response",
+                "model": "orig/model",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    adapter = ReplayAdapter.from_events(events_path)
+
+    with pytest.raises(ReplayMissError, match="0 recorded, 0 already served"):
+        adapter.complete("unknown prompt")
+
+
+def test_build_adapter_replay_requires_events_path():
+    with pytest.raises(ValueError, match=r"extra\.events_path"):
+        build_adapter(ModelConfig(adapter="replay"))
+
+
+def test_build_adapter_replay_loads_events_and_overrides_model_id(tmp_path):
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "prompt_sha256": "a" * 64,
+                "response": "response",
+                "model": "orig/model",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    adapter = build_adapter(
+        ModelConfig(
+            adapter="replay",
+            model_id="custom/replay",
+            extra={"events_path": str(events_path)},
+        )
+    )
 
     assert isinstance(adapter, ReplayAdapter)
-    assert adapter.model_id == "replay/oscillator-reference"
+    assert adapter.model_id == "custom/replay"
+
+
+def test_build_adapter_replay_uses_derived_model_id(tmp_path):
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "prompt_sha256": "b" * 64,
+                "response": "response",
+                "model": "orig/model",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    adapter = build_adapter(
+        ModelConfig(adapter="replay", extra={"events_path": str(events_path)})
+    )
+
+    assert adapter.model_id == "replay/orig/model"
+
+
+def test_replay_adapter_requires_explicit_model_id_without_recorded_models(tmp_path):
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps({"prompt_sha256": "c" * 64, "response": "response"}) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="explicit model_id"):
+        ReplayAdapter.from_events(events_path)
 
 
 def test_build_adapter_ollama_reads_retry_settings():

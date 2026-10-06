@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from invariantlab.config import ExperimentConfig
 from invariantlab.experiments import repair
 from invariantlab.experiments.repair import (
@@ -13,6 +15,7 @@ from invariantlab.experiments.repair import (
     _resolve_assets,
     run_repair_experiment,
 )
+from invariantlab.models import ReplayMissError
 from invariantlab.schema import (
     load_mutation_definition,
     load_task_definition,
@@ -53,7 +56,7 @@ def test_repair_assets_are_resolved_from_experiment_config():
     experiment = ExperimentConfig(
         name="generic-repair-test",
         task_suite="configs/task-suites/v1-smoke.yaml",
-        model="configs/models/replay-first-model.yaml",
+        model="configs/models/reference-stub-oscillator.yaml",
         runner="repair",
         task="tasks/oscillator",
         mutation="tasks/oscillator/mutations/update-order",
@@ -79,7 +82,7 @@ def test_path_based_config_audits_legacy_study_two_mutation_id():
     experiment = ExperimentConfig(
         name="legacy-study-two",
         task_suite="configs/task-suites/v1-smoke.yaml",
-        model="configs/models/replay-first-model.yaml",
+        model="configs/models/reference-stub-oscillator.yaml",
         runner="repair",
         task="tasks/oscillator",
         mutation="tasks/oscillator/mutations/update-order",
@@ -137,6 +140,75 @@ REPAIRED_RESULT = {
 }
 
 
+def _content_based_evaluator(source: str, *_args):
+    if "v = v_half + 0.5 * dt * a_new" in source:
+        return REPAIRED_RESULT
+    return BASELINE_RESULT
+
+
+def _write_replay_fixture_config(tmp_path: Path, n_attempts: int = 2) -> Path:
+    config = tmp_path / "replay-fixture-experiment.yaml"
+    config.write_text(
+        "\n".join(
+            [
+                "name: replay-fixture-oscillator",
+                f"task_suite: {(REPO_ROOT / 'configs/task-suites/v1-smoke.yaml').as_posix()}",
+                f"model: {(REPO_ROOT / 'tests/fixtures/replay/oscillator-update-order/model.yaml').as_posix()}",
+                "runner: repair",
+                f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
+                "mutation: "
+                f"{(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
+                "conditions: [weak, metrics]",
+                f"n_attempts: {n_attempts}",
+                "seed: 1729",
+                "randomize_order: false",
+                "container_image: python:3.12-slim",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return config
+
+
+def test_repair_runner_replays_fixture_events(tmp_path, monkeypatch):
+    monkeypatch.chdir(REPO_ROOT)
+    monkeypatch.setattr(repair, "_evaluate_source", _content_based_evaluator)
+    config_path = _write_replay_fixture_config(tmp_path)
+    output = tmp_path / "run"
+
+    run_repair_experiment(config_path, output)
+
+    events = _events(output)
+    assert len(events) == 4
+    assert [
+        (event["condition"], event["trial"], event["successful_repair"])
+        for event in events
+    ] == [
+        ("weak", 1, False),
+        ("weak", 2, True),
+        ("metrics", 1, True),
+        ("metrics", 2, True),
+    ]
+    assert all(event["model"] == "replay/fixture/scripted-oscillator" for event in events)
+    assert events[0]["usage"]["input_tokens"] == 100
+    assert _status(output)["status"] == "complete"
+    assert repair.audit_repair_experiment(config_path, output)["integrity_ok"] is True
+
+
+def test_repair_runner_fails_when_fixture_responses_are_exhausted(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(REPO_ROOT)
+    monkeypatch.setattr(repair, "_evaluate_source", _content_based_evaluator)
+
+    with pytest.raises(ReplayMissError):
+        run_repair_experiment(
+            _write_replay_fixture_config(tmp_path, n_attempts=3),
+            tmp_path / "run",
+        )
+
+
 def _write_repair_config(tmp_path: Path, n_attempts: int = 2) -> Path:
     config = tmp_path / "experiment.yaml"
     config.write_text(
@@ -144,7 +216,7 @@ def _write_repair_config(tmp_path: Path, n_attempts: int = 2) -> Path:
             [
                 "name: timeout-infra-test",
                 f"task_suite: {(REPO_ROOT / 'configs/task-suites/v1-smoke.yaml').as_posix()}",
-                f"model: {(REPO_ROOT / 'configs/models/replay-first-model.yaml').as_posix()}",
+                f"model: {(REPO_ROOT / 'configs/models/reference-stub-oscillator.yaml').as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
                 "mutation: "
@@ -315,7 +387,7 @@ def test_repair_runner_records_usage_and_finish_reason(tmp_path, monkeypatch):
     from invariantlab.models import ModelResponse
 
     class FakeAdapter:
-        model_id = "replay/oscillator-reference"
+        model_id = "reference_stub/oscillator-verlet"
 
         def generate(self, prompt: str) -> str:
             return self.complete(prompt).text
