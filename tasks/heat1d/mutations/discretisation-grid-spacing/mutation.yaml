@@ -1,0 +1,15 @@
+id: discretisation-grid-spacing
+task_id: heat_ftcs
+family: discretisation_error
+interface: package
+source: solver.py
+expected_effect: >-
+  The grid spacing is computed as dx = length / nx instead of length / (nx - 1), so the
+  diffusion number is inflated by (nx / (nx - 1))^2 while x is still the correct grid. The
+  scheme behaves as if alpha were about 5% too large at nx=41 (public max abs error about
+  1.7e-3, under the 2e-3 tolerance) and 1.25% too large at nx=161, where the decay error
+  gives a state relative L2 error of about 3e-3.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_non_special_ftcs_case_matches_manufactured_solution_and_decays
+    message: "state_relative_l2="
+max_changed_lines: 2

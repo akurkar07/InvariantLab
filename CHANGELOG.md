@@ -42,7 +42,8 @@ First release (V1). Numbers are pull requests on
   `hard-coded-fixture-shortcut`, `float32-position` and `early-termination` mutants (#175);
   wave1d `courant-not-squared`, `dirichlet-wrong-node` and `unstable-time-recurrence`
   mutants (#179); Kepler `unit-error-au-rounding` and `non-conservative-velocity-damping`
-  (#172).
+  (#172);
+  heat1d `discretisation-grid-spacing` and `sixth-order-stencil-ftcs-limit` mutants (#178).
 - **Repair runner and replay.** Generic task/mutation/repair experiment runner with Docker
   sandboxed evaluation (#53) and resilient, resumable provider runs (#46); local-first model
   configs (#55). The `replay` adapter replays recorded responses by prompt hash and the fixed
@@ -67,6 +68,8 @@ First release (V1). Numbers are pull requests on
   Makefile through uv plus pre-commit config (#168); schema-valid `CITATION.cff` (#122);
   status-first README (#151), docs index (#161), research-track roadmap (#162), Study 2
   corrections (#124, #128) and the documented evaluation protocol (#132).
+- Mutant catalogue and validation documentation, plus an acceptance test requiring package
+  mutant coverage for all ten mutation families or a documented infeasibility issue (issue #93).
 - This changelog and the [release procedure](docs/releasing.md).
 
 ### Changed
