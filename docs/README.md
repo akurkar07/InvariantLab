@@ -1,5 +1,6 @@
 # InvariantLab Documentation
 
+- [Methodology](methodology.md) — V1 design target: benchmark design, evaluation protocol, metrics, scientific evidence, contracts and run outputs
 - [Task Authoring](task-authoring.md) — Task layout, subprocess protocol, NPZ output contract and trust boundary
 - [Experiment Authoring](experiment-authoring.md) — Config-driven tasks, mutations, models and repair studies
 - [Local Models](local-models.md) — Running experiments against local model servers
@@ -9,4 +10,4 @@
 - [Update-Order Feedback Replication](update-order-feedback-replication.md) — Study 2 protocol
 - [Study 2: Two-Model Comparison](study-two-model-comparison.md) — Study 2 results
 
-The repository README describes the currently implemented benchmark, evaluation harness and scientific evidence.
+The repository README gives the implementation status and a quickstart; [Methodology](methodology.md) holds the V1 design.

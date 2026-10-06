@@ -45,7 +45,7 @@ from invariantlab.schema import (
     load_task_definition,
 )
 
-# Feedback conditions; see README "Evaluation protocol" > "Conditions".
+# Feedback conditions; see docs/methodology.md "Evaluation protocol" > "Conditions".
 # "Hardened" in study docs means the verifier-feedback conditions metrics/interpreted.
 CONDITIONS = ("weak", "placebo", "metrics", "interpreted")
 CellKey = tuple[str, int]
