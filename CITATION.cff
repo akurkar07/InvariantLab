@@ -5,12 +5,10 @@ authors:
   - family-names: Kurkar
     given-names: Alex
     affiliation: University of Nottingham
-    orcid: ""
 repository-code: "https://github.com/akurkar07/InvariantLab"
 license: MIT
-date-released: 2026-09-12
+# version and date-released are added when the first release is tagged.
 url: "https://github.com/akurkar07/InvariantLab"
-preferred-citation: ""
 keywords:
   - AI evaluation
   - scientific software

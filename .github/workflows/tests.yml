@@ -20,6 +20,7 @@ jobs:
           python-version: "3.12"
       - run: pip install ruff
       - run: ruff check src/ tests/
+      - run: pipx run cffconvert --validate -i CITATION.cff
 
   test:
     runs-on: ubuntu-latest
