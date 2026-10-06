@@ -69,7 +69,7 @@ First release (V1). Numbers are pull requests on
   status-first README (#151), docs index (#161), research-track roadmap (#162), Study 2
   corrections (#124, #128) and the documented evaluation protocol (#132).
 - Mutant catalogue and validation documentation, plus an acceptance test requiring package
-  mutant coverage for all ten mutation families or a documented infeasibility issue (issue #93).
+  mutant coverage for all ten mutation families or a documented infeasibility issue (#183).
 - This changelog and the [release procedure](docs/releasing.md).
 
 ### Changed
