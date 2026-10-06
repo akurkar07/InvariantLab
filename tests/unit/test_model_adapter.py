@@ -358,9 +358,7 @@ def test_openai_compatible_persistent_server_error(monkeypatch, no_sleep):
     ],
 )
 def test_openai_compatible_rejects_malformed_payloads(monkeypatch, raw, match):
-    monkeypatch.setattr(
-        urllib.request, "urlopen", lambda request, timeout: _FakeResponse(raw=raw)
-    )
+    monkeypatch.setattr(urllib.request, "urlopen", lambda request, timeout: _FakeResponse(raw=raw))
     adapter = OpenAICompatibleAdapter(
         model_id="provider/test", base_url="https://example.test/v1", max_retries=0
     )
@@ -507,9 +505,7 @@ def test_build_adapter_replay_uses_derived_model_id(tmp_path):
         encoding="utf-8",
     )
 
-    adapter = build_adapter(
-        ModelConfig(adapter="replay", extra={"events_path": str(events_path)})
-    )
+    adapter = build_adapter(ModelConfig(adapter="replay", extra={"events_path": str(events_path)}))
 
     assert adapter.model_id == "replay/orig/model"
 
@@ -594,8 +590,6 @@ def test_resolve_model_id_matches_built_adapter():
     events_path = (
         REPO_ROOT / "tests/fixtures/replay/oscillator-update-order/events.jsonl"
     ).as_posix()
-    replay_config = ModelConfig(
-        adapter="replay", extra={"events_path": events_path}
-    )
+    replay_config = ModelConfig(adapter="replay", extra={"events_path": events_path})
 
     assert resolve_model_id(replay_config) == "replay/fixture/scripted-oscillator"

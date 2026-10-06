@@ -85,7 +85,7 @@ def kepler_circular_orbit(
 
     Returns (rx, ry, rz, vx, vy, vz) at time t.
     """
-    omega = math.sqrt(mu / (r0 ** 3))  # mean motion
+    omega = math.sqrt(mu / (r0**3))  # mean motion
     theta = omega * t + phase
     rx = r0 * math.cos(theta)
     ry = r0 * math.sin(theta)
@@ -141,7 +141,7 @@ def kepler_elliptic_orbit(
     Returns:
         (rx, ry, rz, vx, vy, vz).
     """
-    n = math.sqrt(mu / (a ** 3))  # mean motion
+    n = math.sqrt(mu / (a**3))  # mean motion
     ma = n * t + phase  # mean anomaly
     ea = kepler_eccentric_anomaly(ma, e)
     cos_ea = math.cos(ea)

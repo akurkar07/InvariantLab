@@ -53,9 +53,7 @@ def _observed_orders(refinements: list[_Refinement]) -> list[float]:
     ]
 
 
-def _assert_orders_in_band(
-    refinements: list[_Refinement], lower: float, upper: float
-) -> None:
+def _assert_orders_in_band(refinements: list[_Refinement], lower: float, upper: float) -> None:
     orders = _observed_orders(refinements)
     details = ", ".join(
         f"dx={refinement.dx:.6g}, dt={refinement.dt:.6g}, "
@@ -82,9 +80,7 @@ def _legacy_fixed_c_wave(
     state[[0, -1]] = 0.0
     previous = state.copy()
     fixed_courant = 0.5
-    previous[1:-1] += 0.5 * fixed_courant**2 * (
-        state[2:] - 2.0 * state[1:-1] + state[:-2]
-    )
+    previous[1:-1] += 0.5 * fixed_courant**2 * (state[2:] - 2.0 * state[1:-1] + state[:-2])
 
     for _ in range(nt):
         next_state = np.zeros(nx, dtype=np.float64)
@@ -121,7 +117,10 @@ def test_ftcs_has_first_order_temporal_convergence() -> None:
         expected = _heat_semidiscrete_fundamental_mode(expected_x, alpha, horizon)
         refinements.append(_Refinement(dx, dt, _relative_l2(state, expected)))
 
-    assert all(math.isclose(refinement.dt * nt, horizon) for refinement, nt in zip(refinements, step_counts, strict=True))
+    assert all(
+        math.isclose(refinement.dt * nt, horizon)
+        for refinement, nt in zip(refinements, step_counts, strict=True)
+    )
     _assert_orders_in_band(refinements, FIRST_ORDER_MIN, FIRST_ORDER_MAX)
 
 
@@ -147,7 +146,10 @@ def test_ftcs_has_second_order_cfl_coupled_spatial_convergence(length: float) ->
 
     assert configurations[1][0] - 1 == 2 * (configurations[0][0] - 1)
     assert configurations[2][0] - 1 == 2 * (configurations[1][0] - 1)
-    assert all(math.isclose(refinement.dt * nt, horizon) for refinement, (_, nt) in zip(refinements, configurations, strict=True))
+    assert all(
+        math.isclose(refinement.dt * nt, horizon)
+        for refinement, (_, nt) in zip(refinements, configurations, strict=True)
+    )
     _assert_orders_in_band(refinements, SECOND_ORDER_MIN, SECOND_ORDER_MAX)
 
 
@@ -172,7 +174,10 @@ def test_crank_nicolson_has_second_order_temporal_convergence() -> None:
             _Refinement(float(expected_x[1] - expected_x[0]), dt, _relative_l2(state, expected))
         )
 
-    assert all(math.isclose(refinement.dt * nt, horizon) for refinement, nt in zip(refinements, step_counts, strict=True))
+    assert all(
+        math.isclose(refinement.dt * nt, horizon)
+        for refinement, nt in zip(refinements, step_counts, strict=True)
+    )
     _assert_orders_in_band(refinements, SECOND_ORDER_MIN, SECOND_ORDER_MAX)
 
 
@@ -186,9 +191,7 @@ def test_crank_nicolson_has_second_order_spatial_convergence(length: float) -> N
     refinements: list[_Refinement] = []
 
     for nx, nt in configurations:
-        x, state = solve_heat_crank_nicolson(
-            nx, nt, alpha, length=length, t_final=horizon
-        )
+        x, state = solve_heat_crank_nicolson(nx, nt, alpha, length=length, t_final=horizon)
         expected_x = _uniform_grid(nx, length)
         np.testing.assert_array_equal(x, expected_x)
         dx = float(expected_x[1] - expected_x[0])
@@ -199,7 +202,10 @@ def test_crank_nicolson_has_second_order_spatial_convergence(length: float) -> N
 
     assert configurations[1][0] - 1 == 2 * (configurations[0][0] - 1)
     assert configurations[2][0] - 1 == 2 * (configurations[1][0] - 1)
-    assert all(math.isclose(refinement.dt * nt, horizon) for refinement, (_, nt) in zip(refinements, configurations, strict=True))
+    assert all(
+        math.isclose(refinement.dt * nt, horizon)
+        for refinement, (_, nt) in zip(refinements, configurations, strict=True)
+    )
     _assert_orders_in_band(refinements, SECOND_ORDER_MIN, SECOND_ORDER_MAX)
 
 
@@ -225,7 +231,10 @@ def test_wave_leapfrog_has_second_order_cfl_preserving_convergence() -> None:
 
     assert configurations[1][0] - 1 == 2 * (configurations[0][0] - 1)
     assert configurations[2][0] - 1 == 2 * (configurations[1][0] - 1)
-    assert all(math.isclose(refinement.dt * nt, horizon) for refinement, (_, nt) in zip(refinements, configurations, strict=True))
+    assert all(
+        math.isclose(refinement.dt * nt, horizon)
+        for refinement, (_, nt) in zip(refinements, configurations, strict=True)
+    )
     _assert_orders_in_band(refinements, SECOND_ORDER_MIN, SECOND_ORDER_MAX)
 
 

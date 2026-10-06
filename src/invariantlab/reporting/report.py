@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from invariantlab.config import load_experiment_config, load_model_config
+from invariantlab.config import ExperimentConfig, load_experiment_config, load_model_config
 from invariantlab.experiments import repair
 from invariantlab.experiments.repair import ArtifactIntegrityError
 from invariantlab.models import resolve_model_id
@@ -61,12 +61,11 @@ def _write_csv(path: Path, columns: list[str], rows: list[list[Any]]) -> None:
         writer.writerows(rows)
 
 
-def build_report(
+def load_canonical_run(
     experiment_config: Path,
     run_dir: Path,
-    output_dir: Path,
-) -> dict[str, Any]:
-    """Validate a repair run and rebuild its summary and CSV tables."""
+) -> tuple[ExperimentConfig, str, list[dict[str, Any]], dict[str, Any]]:
+    """Load a repair run and return (experiment, model_id, canonical, summary)."""
 
     experiment = load_experiment_config(experiment_config)
     repair._validate_experiment(experiment)
@@ -105,13 +104,8 @@ def build_report(
         stored_by_condition = stored_summary.get("by_condition", {})
         recomputed_by_condition = json.loads(json.dumps(summary["by_condition"]))
         differences: list[str] = []
-        for condition in sorted(
-            set(stored_by_condition) | set(recomputed_by_condition)
-        ):
-            if (
-                condition not in stored_by_condition
-                or condition not in recomputed_by_condition
-            ):
+        for condition in sorted(set(stored_by_condition) | set(recomputed_by_condition)):
+            if condition not in stored_by_condition or condition not in recomputed_by_condition:
                 differences.append(condition)
                 continue
             stored_stats = stored_by_condition[condition]
@@ -129,10 +123,23 @@ def build_report(
                 + ", ".join(differences)
             )
 
+    return experiment, model_id, canonical, summary
+
+
+def build_report(
+    experiment_config: Path,
+    run_dir: Path,
+    output_dir: Path,
+    html: bool = False,
+) -> dict[str, Any]:
+    """Validate a repair run and rebuild its summary and CSV tables."""
+
+    experiment, model_id, canonical, summary = load_canonical_run(experiment_config, run_dir)
+    baseline = canonical[0]["baseline"] if canonical else {}
+    events_sha256 = summary["events_sha256"]
+
     task_id = (
-        canonical[0]["task"]
-        if canonical
-        else Path(experiment.task or "tasks/oscillator").name
+        canonical[0]["task"] if canonical else Path(experiment.task or "tasks/oscillator").name
     )
     mutation = summary["mutation"]
     by_condition_rows: list[list[Any]] = []
@@ -156,9 +163,7 @@ def build_report(
             ]
         )
 
-    condition_order = {
-        condition: index for index, condition in enumerate(experiment.conditions)
-    }
+    condition_order = {condition: index for index, condition in enumerate(experiment.conditions)}
     ordered_records = sorted(
         canonical,
         key=lambda record: (
@@ -182,8 +187,7 @@ def build_report(
         for record in ordered_records
     ]
     condition_total = sum(
-        int(summary["by_condition"][condition]["completed"])
-        for condition in experiment.conditions
+        int(summary["by_condition"][condition]["completed"]) for condition in experiment.conditions
     )
     if condition_total != len(sample_rows):
         raise ReportError(
@@ -199,11 +203,47 @@ def build_report(
     _write_csv(by_condition_path, BY_CONDITION_COLUMNS, by_condition_rows)
     _write_csv(samples_path, SAMPLE_COLUMNS, sample_rows)
 
+    paths = {
+        "summary": str(summary_path),
+        "by_condition": str(by_condition_path),
+        "samples": str(samples_path),
+    }
+    if html:
+        from invariantlab.reporting.html import render_html_report
+
+        baseline_path = run_dir / "baseline_solver.py"
+        if baseline_path.exists():
+            baseline_source = baseline_path.read_text(encoding="utf-8")
+            baseline_source_label = "run_dir/baseline_solver.py"
+        else:
+            _, _, mutation_dir, mutation, baseline_source, _ = repair._resolve_assets(experiment)
+            baseline_source_label = f"mutation source {(mutation_dir / mutation.source).as_posix()}"
+        by_condition_dicts = [
+            dict(zip(BY_CONDITION_COLUMNS, row, strict=True)) for row in by_condition_rows
+        ]
+        html_path = output_dir / "report.html"
+        rendered = render_html_report(
+            experiment_name=experiment.name,
+            model_id=model_id,
+            seed=experiment.seed,
+            events_sha256=events_sha256,
+            generation_command=(
+                "invariantlab report "
+                f"--experiment {experiment_config.as_posix()} "
+                f"--run-dir {run_dir.as_posix()} "
+                f"--output {output_dir.as_posix()} --html"
+            ),
+            baseline=baseline,
+            baseline_source=baseline_source,
+            baseline_source_label=baseline_source_label,
+            by_condition_rows=by_condition_dicts,
+            records=ordered_records,
+        )
+        with html_path.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(rendered)
+        paths["html"] = str(html_path)
+
     return {
         "summary": summary,
-        "paths": {
-            "summary": str(summary_path),
-            "by_condition": str(by_condition_path),
-            "samples": str(samples_path),
-        },
+        "paths": paths,
     }
