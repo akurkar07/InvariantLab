@@ -118,6 +118,8 @@ Curated package mutants (each passes `validate_mutant`; checked by
 
 | Task | Mutant id | Family | Defect |
 |---|---|---|---|
+| kepler | `non-conservative-velocity-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 2e-9` (fails `energy_relative_drift`) |
+| kepler | `unit-error-au-rounding` | `unit_error` | `mu` scaled by `(1.495978707e11 / 1.496e11)^3` (IAU vs rounded AU round trip) |
 | oscillator | `early-termination` | `termination_defect` | stops at a 10000-step cap and fills the remaining rows with the last state |
 | oscillator | `float32-position` | `precision_defect` | each position update rounded through `np.float32` |
 | oscillator | `hard-coded-fixture-shortcut` | `hard_coded_shortcut` | exact force for `n_steps <= 50` (public fixture sizes), force scaled by `1.001` otherwise |

@@ -39,7 +39,8 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   oscillator `update-order` and `sign-error` study mutants (#165); the oscillator
   `hard-coded-fixture-shortcut`, `float32-position` and `early-termination` mutants (#175);
   wave1d `courant-not-squared`, `dirichlet-wrong-node` and `unstable-time-recurrence`
-  mutants (#179).
+  mutants (#179); Kepler `unit-error-au-rounding` and `non-conservative-velocity-damping`
+  (#172).
 - **Repair runner and replay.** Generic task/mutation/repair experiment runner with Docker
   sandboxed evaluation (#53) and resilient, resumable provider runs (#46); local-first model
   configs (#55). The `replay` adapter replays recorded responses by prompt hash and the fixed
