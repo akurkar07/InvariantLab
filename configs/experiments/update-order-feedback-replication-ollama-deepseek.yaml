@@ -1,6 +1,5 @@
 name: update-order-feedback-replication-ollama-deepseek
 description: "Study 2 on local Ollama DeepSeek-Coder 6.7B."
-task_suite: configs/task-suites/v1-smoke.yaml
 model: configs/models/ollama-deepseek-coder-6.7b.yaml
 runner: repair
 task: tasks/oscillator

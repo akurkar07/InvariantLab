@@ -102,7 +102,7 @@ src/invariantlab/
 ├── cli.py                       # validate-task, model-check, run, audit-run
 ├── config.py                    # model and experiment config loading
 ├── schema.py                    # task/output contract and experiment models
-├── experiments/                 # repair, first-model and feedback-replication runners
+├── experiments/                 # repair and feedback-replication runners
 ├── models/
 │   └── adapter.py               # replay, ollama and openai_compatible adapters
 ├── tasks/

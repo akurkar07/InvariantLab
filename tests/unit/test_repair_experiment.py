@@ -52,7 +52,6 @@ def test_task_feedback_metadata_drives_condition_context():
 def test_repair_assets_are_resolved_from_experiment_config():
     experiment = ExperimentConfig(
         name="generic-repair-test",
-        task_suite="configs/task-suites/v1-smoke.yaml",
         model="configs/models/replay-first-model.yaml",
         runner="repair",
         task="tasks/oscillator",
@@ -78,7 +77,6 @@ def test_repair_assets_are_resolved_from_experiment_config():
 def test_path_based_config_audits_legacy_study_two_mutation_id():
     experiment = ExperimentConfig(
         name="legacy-study-two",
-        task_suite="configs/task-suites/v1-smoke.yaml",
         model="configs/models/replay-first-model.yaml",
         runner="repair",
         task="tasks/oscillator",
@@ -143,7 +141,6 @@ def _write_repair_config(tmp_path: Path, n_attempts: int = 2) -> Path:
         "\n".join(
             [
                 "name: timeout-infra-test",
-                f"task_suite: {(REPO_ROOT / 'configs/task-suites/v1-smoke.yaml').as_posix()}",
                 f"model: {(REPO_ROOT / 'configs/models/replay-first-model.yaml').as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",

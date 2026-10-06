@@ -1,21 +1,18 @@
 # First model experiment
 
-The first executable InvariantLab experiment tests the core benchmark claim on one controlled harmonic-oscillator defect.
+The original Study 1 experiment evaluated a controlled harmonic-oscillator sign defect.
+The current `first-model-oscillator` configurations express that experiment with the
+generic `repair` runner: they bind the oscillator task to the `sign-error` mutation,
+schedule one `weak` condition with `n_attempts: 1`, and use the task's `repair_prompt.txt`.
+The replay config is deterministic; the live config uses the default Ollama model.
 
-The supplied velocity-Verlet implementation is scientifically wrong but passes deliberately weak public checks. A coding model receives the equation, method requirement, weak-test status and source code, then returns a replacement `solver.py`. The candidate is executed in a network-disabled, resource-limited Docker container. InvariantLab independently checks long-horizon analytical-state error and energy conservation.
-
-## Deterministic smoke run
+## Run
 
 ```bash
-uv sync
 uv run invariantlab run --experiment configs/experiments/first-model-oscillator.yaml
 ```
 
-The replay adapter performs the known repair and proves that the complete experiment pipeline works without an API key.
-
-## First live model run
-
-The live example is local-first and uses the default Ollama model configuration.
+For a local live model, pull the configured Ollama model and run:
 
 ```bash
 ollama pull qwen2.5-coder:7b-instruct
@@ -23,11 +20,17 @@ uv run invariantlab model-check --model configs/models/default.yaml
 uv run invariantlab run --experiment configs/experiments/first-model-oscillator-live.yaml
 ```
 
-No API key is required. Hosted APIs remain available through an explicit
-`openai_compatible` model configuration when needed.
+The repair runner writes `events.jsonl`, `study-summary.json`, `baseline_solver.py`,
+`run-status.json`, and `artifact-integrity.json`. Candidate source and per-attempt
+verifier results are recorded in `events.jsonl`; the summary includes baseline and
+per-condition scientific pass rates.
 
-## Evidence
+## Study 1 mapping
 
-Each run writes `events.jsonl`, `baseline_solver.py`, `candidate_solver.py`, and `summary.json`.
+The original run used `runner: first_model`, an inline `BROKEN_SOLVER`, its own prompt,
+and an inline verifier copy. The defect is now
+`tasks/oscillator/mutations/sign-error/solver.py`; the prompt comes from the task's
+`repair_prompt.txt` under the `weak` condition. The recorded Study 1 results were not
+re-run as part of this migration.
 
-A useful first empirical result requires the baseline to pass the weak checks and fail scientific verification. A successful repair must pass both scientific gates. This experiment is intentionally small: it validates the measurement loop before scaling to multiple mutations, verifier conditions, models, and repeated trials.
+See [model execution](local-models.md) for Ollama, vLLM and optional API endpoint setup.
