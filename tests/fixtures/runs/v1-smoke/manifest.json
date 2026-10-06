@@ -1,0 +1,44 @@
+{
+  "run_id": "b997fd2534944b39b25f657f388c071e",
+  "experiment": "v1-smoke",
+  "created_at": "2026-10-06T02:32:09.734229+00:00",
+  "config_path": "tests/fixtures/runs/v1-smoke/experiment.yaml",
+  "config_sha256": "313c8241713d681df5a21e966699ed2851e91376b26366b63e8eb29f6216820a",
+  "git_commit": "f5c1648b5687334d6f32481dbbefd2fdb57c5c86",
+  "git_dirty": true,
+  "package_version": "0.1.dev72+gf5c1648b5",
+  "python_version": "3.12.15",
+  "platform": "Windows-2022Server-AMD64",
+  "task_id": "oscillator_verlet",
+  "mutation_id": "update-order",
+  "artifact_sha256": {
+    "task_yaml": "49a6a6a1e166903f46530546537e639094284985ce9c79bc7c73007865c9fbb4",
+    "contract_yaml": "6e932343ce75013752d241b5a80e56e131a99657e0e67f80872c46a0004b55ad",
+    "verifier": "2417f941157177372ae1268f692f1e1f6cca8c096865c72c6763eb9c07f0fd12",
+    "candidate_runner": "5a4619193116bf1969284d6dcdb3951b4520467b0aa3701d18002a7d2c081f08",
+    "prompt_template": "eea557010384783bd04e89491722eb6ab4cd75372cee1bb79ef283dcf9993bab",
+    "mutation_yaml": "eabbdb4e7ff72090ecdb06d886d1be45640a139e530f78919d0139290004991e",
+    "mutation_source": "bd50e71c7ffada1a9ce0a24eb33f667d60c5bd4e39f152e18004528adfd25f72"
+  },
+  "model": {
+    "adapter": "replay",
+    "model_id": "",
+    "temperature": 0.0,
+    "max_tokens": 4096,
+    "extra": {
+      "events_path": "tests/fixtures/runs/v1-smoke/replay-source.jsonl"
+    }
+  },
+  "model_sha256": "f6a3e416ffda4dfc964f9c9e7a6a2b2de980057191690cbf67d83d6458bccb5b",
+  "seed": 1729,
+  "conditions": [
+    "weak",
+    "metrics"
+  ],
+  "n_attempts": 2,
+  "randomize_order": false,
+  "configured_image": "python:3.12-slim",
+  "image_override": null,
+  "container_image": "python:3.12-slim",
+  "image_digest": "python@sha256:02108f5d322dd89f1c9e552442c25acb0543dfdbc455693a5599624f20d9155d"
+}

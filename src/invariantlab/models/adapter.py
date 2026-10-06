@@ -118,17 +118,13 @@ def _with_retries(
                 raise ModelRequestError(
                     f"{provider} HTTP {exc.code} persisted after {attempts} attempts"
                 ) from exc
-            time.sleep(
-                _backoff_delay(attempt, backoff_initial_seconds, backoff_max_seconds, exc)
-            )
+            time.sleep(_backoff_delay(attempt, backoff_initial_seconds, backoff_max_seconds, exc))
         except (TimeoutError, urllib.error.URLError) as exc:
             if attempt >= max_retries:
                 raise ModelConnectionError(
                     f"{provider} connection failed after {attempts} attempts: {exc}"
                 ) from exc
-            time.sleep(
-                _backoff_delay(attempt, backoff_initial_seconds, backoff_max_seconds)
-            )
+            time.sleep(_backoff_delay(attempt, backoff_initial_seconds, backoff_max_seconds))
 
     raise AssertionError("unreachable")
 
@@ -151,9 +147,7 @@ def _post_json(
     try:
         parsed = json.loads(raw_payload)
     except json.JSONDecodeError as exc:
-        raise ModelRequestError(
-            f"{provider} returned invalid JSON: {raw_payload[:200]!r}"
-        ) from exc
+        raise ModelRequestError(f"{provider} returned invalid JSON: {raw_payload[:200]!r}") from exc
     if not isinstance(parsed, dict):
         raise ModelRequestError(f"Unexpected {provider} response: {parsed}")
     return parsed
@@ -256,9 +250,7 @@ class ReplayAdapter:
             resolved_model_id = model_id
         else:
             models = [record.get("model") for record in records]
-            if not all(isinstance(model, str) for model in models) or len(
-                set(models)
-            ) != 1:
+            if not all(isinstance(model, str) for model in models) or len(set(models)) != 1:
                 raise ValueError(
                     "Replay events contain multiple or missing model values; "
                     "declare an explicit model_id"
@@ -309,9 +301,7 @@ class OpenAICompatibleAdapter:
 
         api_key = os.environ.get(self.api_key_env)
         if not api_key:
-            raise RuntimeError(
-                f"Missing API key environment variable {self.api_key_env!r}"
-            )
+            raise RuntimeError(f"Missing API key environment variable {self.api_key_env!r}")
         headers["Authorization"] = f"Bearer {api_key}"
         return headers
 
@@ -343,9 +333,7 @@ class OpenAICompatibleAdapter:
             choice = payload["choices"][0]
             text = str(choice["message"]["content"])
         except (KeyError, IndexError, TypeError) as exc:
-            raise ModelRequestError(
-                f"Unexpected provider response: {payload}"
-            ) from exc
+            raise ModelRequestError(f"Unexpected provider response: {payload}") from exc
 
         usage = payload.get("usage")
         if not isinstance(usage, dict):
@@ -439,17 +427,13 @@ def build_adapter(config: ModelConfig) -> ModelAdapter:
     """Construct an adapter from a validated ModelConfig."""
 
     if config.adapter == "reference_stub":
-        return ReferenceStubAdapter(
-            model_id=config.model_id or "reference_stub/oscillator-verlet"
-        )
+        return ReferenceStubAdapter(model_id=config.model_id or "reference_stub/oscillator-verlet")
 
     if config.adapter == "replay":
         events_path = config.extra.get("events_path")
         if not events_path:
             raise ValueError("replay model configs must declare extra.events_path")
-        return ReplayAdapter.from_events(
-            Path(str(events_path)), model_id=config.model_id
-        )
+        return ReplayAdapter.from_events(Path(str(events_path)), model_id=config.model_id)
 
     extra = config.extra
     if config.adapter == "ollama":
@@ -458,13 +442,9 @@ def build_adapter(config: ModelConfig) -> ModelAdapter:
             base_url=str(extra.get("base_url", "http://localhost:11434")),
             temperature=float(config.temperature),
             max_tokens=int(config.max_tokens),
-            request_timeout_seconds=float(
-                extra.get("request_timeout_seconds", 300.0)
-            ),
+            request_timeout_seconds=float(extra.get("request_timeout_seconds", 300.0)),
             max_retries=int(extra.get("max_retries", 3)),
-            backoff_initial_seconds=float(
-                extra.get("backoff_initial_seconds", 1.0)
-            ),
+            backoff_initial_seconds=float(extra.get("backoff_initial_seconds", 1.0)),
             backoff_max_seconds=float(extra.get("backoff_max_seconds", 30.0)),
         )
 
@@ -480,17 +460,11 @@ def build_adapter(config: ModelConfig) -> ModelAdapter:
             api_key_env=str(extra.get("api_key_env", "")),
             temperature=float(config.temperature),
             max_tokens=int(config.max_tokens),
-            request_timeout_seconds=float(
-                extra.get("request_timeout_seconds", 120.0)
-            ),
+            request_timeout_seconds=float(extra.get("request_timeout_seconds", 120.0)),
             max_retries=int(extra.get("max_retries", 5)),
-            backoff_initial_seconds=float(
-                extra.get("backoff_initial_seconds", 2.0)
-            ),
+            backoff_initial_seconds=float(extra.get("backoff_initial_seconds", 2.0)),
             backoff_max_seconds=float(extra.get("backoff_max_seconds", 60.0)),
-            min_request_interval_seconds=float(
-                extra.get("min_request_interval_seconds", 0.0)
-            ),
+            min_request_interval_seconds=float(extra.get("min_request_interval_seconds", 0.0)),
         )
 
     raise ValueError(f"Unsupported model adapter: {config.adapter}")

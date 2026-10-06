@@ -43,8 +43,12 @@ def test_dop853_oracle_matches_nontrivial_circular_position_and_velocity() -> No
         [_state_from_analytical(kepler_circular_orbit(t, mu, radius, phase)) for t in times]
     )
 
-    np.testing.assert_allclose(states[:, :2], expected[:, :2], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL)
-    np.testing.assert_allclose(states[:, 2:], expected[:, 2:], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL)
+    np.testing.assert_allclose(
+        states[:, :2], expected[:, :2], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL
+    )
+    np.testing.assert_allclose(
+        states[:, 2:], expected[:, 2:], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL
+    )
     assert states.dtype == np.dtype(np.float64)
     assert np.isfinite(states).all()
 
@@ -68,8 +72,12 @@ def test_dop853_oracle_matches_eccentric_non_special_phase_orbit() -> None:
         ]
     )
 
-    np.testing.assert_allclose(states[:, :2], expected[:, :2], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL)
-    np.testing.assert_allclose(states[:, 2:], expected[:, 2:], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL)
+    np.testing.assert_allclose(
+        states[:, :2], expected[:, :2], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL
+    )
+    np.testing.assert_allclose(
+        states[:, 2:], expected[:, 2:], rtol=0.0, atol=ANALYTICAL_COMPARISON_ATOL
+    )
 
 
 def test_dop853_oracle_is_deterministic_and_uses_required_tolerances() -> None:
@@ -100,7 +108,9 @@ def test_dop853_oracle_rejects_invalid_initial_value_problems(arguments, message
         solve_kepler_high_accuracy(*arguments)
 
 
-def test_dop853_oracle_reports_adaptive_integration_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dop853_oracle_reports_adaptive_integration_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import invariantlab.verification.kepler_oracle as oracle_module
 
     monkeypatch.setattr(

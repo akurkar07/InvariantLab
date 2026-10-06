@@ -132,8 +132,7 @@ def test_nonzero_exit_fails_execution_gate(tmp_path: Path) -> None:
             "array 'state' has rank 1; expected 2",
         ),
         (
-            "np.savez(args.output, time=np.array([0.0]), "
-            "state=np.array([[np.nan, 0.0]]))",
+            "np.savez(args.output, time=np.array([0.0]), state=np.array([[np.nan, 0.0]]))",
             None,
             False,
             "finite",
@@ -182,9 +181,7 @@ def test_failures_close_later_gates_and_discard_arrays(
 
 def test_candidate_contract_cannot_change_trusted_archive_schema(tmp_path: Path) -> None:
     task_dir = TASKS_ROOT / "oscillator"
-    candidate_root = _candidate_root(
-        tmp_path, "np.savez(args.output, time=np.array([0.0]))"
-    )
+    candidate_root = _candidate_root(tmp_path, "np.savez(args.output, time=np.array([0.0]))")
     (candidate_root / "contract.yaml").write_text(
         "id: untrusted\n"
         "family: oscillator\n"

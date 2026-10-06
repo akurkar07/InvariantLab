@@ -15,12 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: "3.12"
-      - run: pip install ruff
-      - run: ruff check src/ tests/ tasks/ scripts/validate_task.py
-      - run: pipx run cffconvert --validate -i CITATION.cff
+      - run: uv lock --check
+      - run: uv sync --locked --extra dev
+      - run: uv run ruff check src tests tasks scripts
+      - run: uv run ruff format --check src tests tasks scripts
+      - run: uvx cffconvert --validate -i CITATION.cff
 
   test:
     runs-on: ubuntu-latest
@@ -29,11 +31,14 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/ -v --ignore=tests/acceptance
+      - run: uv sync --locked --extra dev
+      - if: matrix.python-version != '3.12'
+        run: uv run pytest tests/ -v --ignore=tests/acceptance
+      - if: matrix.python-version == '3.12'
+        run: uv run pytest tests --cov=invariantlab --cov-report=term -v --ignore=tests/acceptance
 
   task-tests:
     runs-on: ubuntu-latest
@@ -43,30 +48,30 @@ jobs:
         task: [oscillator, kepler, heat1d, wave1d]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: pytest tests -q
+      - run: uv sync --locked --extra dev
+      - run: uv run pytest tests -q
         working-directory: tasks/${{ matrix.task }}
 
   typecheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: mypy src/invariantlab/
+      - run: uv sync --locked --extra dev
+      - run: uv run mypy src/invariantlab/
 
   acceptance:
     runs-on: ubuntu-latest
     needs: [lint, test, task-tests, typecheck]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/acceptance/ -v
+      - run: uv sync --locked --extra dev
+      - run: uv run pytest tests/acceptance/ -v
