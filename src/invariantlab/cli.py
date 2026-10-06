@@ -137,17 +137,33 @@ def run(
         "--max-new-attempts",
         help="Stop cleanly after this many new cells; rerun to resume.",
     ),
+    image: str | None = typer.Option(
+        None,
+        "--image",
+        help="Override the configured container image (recorded in manifest.json).",
+    ),
+    allow_code_change: bool = typer.Option(
+        False,
+        "--allow-code-change",
+        help="Resume even if the git commit or package version differs from manifest.json.",
+    ),
 ) -> None:
     """Run an evaluation experiment."""
     from dotenv import load_dotenv
 
     load_dotenv()
-    from invariantlab.config import load_experiment_config, load_model_config
+    from invariantlab.config import (
+        load_experiment_config,
+        load_model_config,
+        validate_container_image,
+    )
 
     config_path = Path(experiment)
     try:
         config = load_experiment_config(config_path)
         load_model_config(Path(config.model))
+        if image is not None:
+            validate_container_image(image)
         if max_new_attempts is not None and max_new_attempts < 1:
             raise ValueError("--max-new-attempts must be at least 1")
         if config.runner == "repair":
@@ -174,6 +190,8 @@ def run(
                 config_path,
                 output_path,
                 max_new_attempts=max_new_attempts,
+                image=image,
+                allow_code_change=allow_code_change,
             )
         elif config.runner == "feedback_replication":
             from invariantlab.experiments import run_feedback_replication
@@ -182,6 +200,8 @@ def run(
                 config_path,
                 output_path,
                 max_new_attempts=max_new_attempts,
+                image=image,
+                allow_code_change=allow_code_change,
             )
         elif config.runner == "first_model":
             if max_new_attempts is not None:
@@ -190,7 +210,7 @@ def run(
                 )
             from invariantlab.experiments import run_first_model_experiment
 
-            result_dir = run_first_model_experiment(config_path, output_path)
+            result_dir = run_first_model_experiment(config_path, output_path, image=image)
         else:
             raise ValueError(f"Unsupported experiment runner: {config.runner}")
 

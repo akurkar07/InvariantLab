@@ -164,27 +164,32 @@ def heat_manufactured_solution(
     x: float,
     t: float,
     alpha: float,
+    length: float = 1.0,
 ) -> float:
-    """Manufactured solution: u(x,t) = sin(pi x) exp(-alpha pi^2 t).
+    """Manufactured solution: u(x,t) = sin(pi x/L) exp(-alpha (pi/L)^2 t).
 
-    Satisfies u_t = alpha u_xx with u(0,t) = u(1,t) = 0.
+    Satisfies u_t = alpha u_xx with u(0,t) = u(L,t) = 0.
     """
-    return math.sin(math.pi * x) * math.exp(-alpha * math.pi * math.pi * t)
+    k = math.pi / length
+    return math.sin(k * x) * math.exp(-alpha * k * k * t)
 
 
 def heat_trajectory(
     x: np.ndarray,
     t: float,
     alpha: float,
+    length: float = 1.0,
 ) -> np.ndarray:
-    """Compute the manufactured solution at a fixed time over a spatial grid."""
-    decay_float = math.exp(-alpha * math.pi * math.pi * t)
-    return np.sin(np.pi * x) * decay_float
+    """Compute the manufactured solution on a grid with u(0,t) = u(L,t) = 0."""
+    k = math.pi / length
+    decay_float = math.exp(-alpha * k * k * t)
+    return np.sin(k * x) * decay_float
 
 
-def heat_decay_rate(alpha: float) -> float:
-    """Decay rate lambda = alpha pi^2 for the manufactured solution."""
-    return alpha * math.pi * math.pi
+def heat_decay_rate(alpha: float, length: float = 1.0) -> float:
+    """Decay rate lambda = alpha (pi/L)^2 for the manufactured solution."""
+    k = math.pi / length
+    return alpha * k * k
 
 
 # -- 1-D Wave Equation --------------------------------------------------------

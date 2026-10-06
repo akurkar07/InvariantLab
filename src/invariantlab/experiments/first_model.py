@@ -9,7 +9,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from invariantlab.config import load_experiment_config, load_model_config
+from invariantlab.config import (
+    load_experiment_config,
+    load_model_config,
+    validate_container_image,
+)
 from invariantlab.experiments.repair import _evaluate_source
 from invariantlab.models import build_adapter
 from invariantlab.schema import load_task_definition
@@ -66,7 +70,11 @@ def _evaluate_in_docker(source: str, image: str) -> dict[str, Any]:
     return _evaluate_source(source, task_dir, load_task_definition(task_dir), image)
 
 
-def run_first_model_experiment(config_path: Path, output_dir: Path | None = None) -> Path:
+def run_first_model_experiment(
+    config_path: Path,
+    output_dir: Path | None = None,
+    image: str | None = None,
+) -> Path:
     """Run the first repair experiment and write sample-level evidence."""
 
     experiment = load_experiment_config(config_path)
@@ -75,9 +83,7 @@ def run_first_model_experiment(config_path: Path, output_dir: Path | None = None
     output = output_dir or Path("runs") / experiment.name
     output.mkdir(parents=True, exist_ok=True)
 
-    image = experiment.container_image
-    if "placeholder" in image:
-        image = "python:3.12-slim"
+    image = validate_container_image(image or experiment.container_image)
 
     baseline = _evaluate_in_docker(BROKEN_SOLVER, image)
     prompt = PROMPT.format(source=BROKEN_SOLVER)
