@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
@@ -12,6 +13,7 @@ import statistics
 import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Any, cast
 
@@ -32,49 +34,51 @@ from invariantlab.schema import (
 
 CONDITIONS = ("weak", "placebo", "metrics", "interpreted")
 CellKey = tuple[str, int]
+CANDIDATE_TIMEOUT_SECONDS = 60
+DOCKER_KILL_TIMEOUT_SECONDS = 30
+DOCKER_RUN_FAILURE_EXIT_CODE = 125
 
 
 class ArtifactIntegrityError(RuntimeError):
     """Raised when a run directory contains inconsistent experiment records."""
 
 
-def _extract_python(text: str) -> str:
-    match = re.search(r"```python\s*(.*?)```", text, flags=re.DOTALL | re.IGNORECASE)
-    if match:
-        return match.group(1).strip() + "\n"
-    if "def " in text:
-        return text.strip() + "\n"
-    raise ValueError("Model response did not contain a Python source file")
+class InfrastructureError(RuntimeError):
+    """Raised when the sandbox itself (Docker, image, daemon) fails."""
 
 
-def _evaluate_source(
-    source: str,
-    task_dir: Path,
-    task: TaskDefinition,
-    image: str,
-) -> dict[str, Any]:
-    """Evaluate candidate source with the verifier declared by the task."""
+class CandidateTimeoutError(RuntimeError):
+    """Raised when evaluated code exceeds the candidate timeout."""
 
-    if shutil.which("docker") is None:
-        raise RuntimeError("Docker is required to execute model-generated code safely")
 
-    verifier_path = task_dir / task.verifier
-    if not verifier_path.exists():
-        raise FileNotFoundError(f"Task verifier not found: {verifier_path}")
-
-    with tempfile.TemporaryDirectory(prefix="invariantlab-") as tmp:
-        work = Path(tmp)
-        (work / "solver.py").write_text(source, encoding="utf-8")
-        (work / "evaluate.py").write_text(
-            verifier_path.read_text(encoding="utf-8"),
-            encoding="utf-8",
+def _kill_container(name: str) -> None:
+    with contextlib.suppress(OSError, subprocess.SubprocessError):
+        subprocess.run(
+            ["docker", "kill", name],
+            capture_output=True,
+            text=True,
+            timeout=DOCKER_KILL_TIMEOUT_SECONDS,
+            check=False,
         )
 
+
+def run_sandboxed_evaluation(work: Path, image: str) -> dict[str, Any]:
+    """Run ``/work/evaluate.py`` from ``work`` in a locked-down container."""
+
+    if shutil.which("docker") is None:
+        raise InfrastructureError(
+            "Docker is required to execute model-generated code safely"
+        )
+
+    name = f"invariantlab-eval-{uuid.uuid4().hex[:12]}"
+    try:
         completed = subprocess.run(
             [
                 "docker",
                 "run",
                 "--rm",
+                "--name",
+                name,
                 "--network",
                 "none",
                 "--memory",
@@ -94,16 +98,58 @@ def _evaluate_source(
             ],
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=CANDIDATE_TIMEOUT_SECONDS,
             check=False,
         )
-        if completed.returncode != 0:
-            detail = completed.stderr.strip() or completed.stdout.strip()
-            raise RuntimeError(f"Candidate evaluation failed: {detail}")
-        return cast(
-            "dict[str, Any]",
-            json.loads(completed.stdout.strip().splitlines()[-1]),
+    except FileNotFoundError as exc:
+        raise InfrastructureError(f"Docker could not be started: {exc}") from exc
+    except subprocess.TimeoutExpired as exc:
+        _kill_container(name)
+        raise CandidateTimeoutError(
+            f"Candidate evaluation timed out after {CANDIDATE_TIMEOUT_SECONDS} s"
+        ) from exc
+
+    detail = completed.stderr.strip() or completed.stdout.strip()
+    if completed.returncode == DOCKER_RUN_FAILURE_EXIT_CODE:
+        raise InfrastructureError(f"docker run failed (exit 125): {detail}")
+    if completed.returncode != 0:
+        raise RuntimeError(f"Candidate evaluation failed: {detail}")
+    lines = completed.stdout.strip().splitlines()
+    try:
+        return cast("dict[str, Any]", json.loads(lines[-1]))
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Verifier output was not JSON: {detail}") from exc
+
+
+def _extract_python(text: str) -> str:
+    match = re.search(r"```python\s*(.*?)```", text, flags=re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip() + "\n"
+    if "def " in text:
+        return text.strip() + "\n"
+    raise ValueError("Model response did not contain a Python source file")
+
+
+def _evaluate_source(
+    source: str,
+    task_dir: Path,
+    task: TaskDefinition,
+    image: str,
+) -> dict[str, Any]:
+    """Evaluate candidate source with the verifier declared by the task."""
+
+    verifier_path = task_dir / task.verifier
+    if not verifier_path.exists():
+        raise FileNotFoundError(f"Task verifier not found: {verifier_path}")
+
+    with tempfile.TemporaryDirectory(prefix="invariantlab-") as tmp:
+        work = Path(tmp)
+        (work / "solver.py").write_text(source, encoding="utf-8")
+        (work / "evaluate.py").write_text(
+            verifier_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
         )
+        return run_sandboxed_evaluation(work, image)
 
 
 def _legacy_feedback_metrics() -> dict[str, FeedbackMetricSpec]:
@@ -640,12 +686,6 @@ def run_repair_experiment(
     if "placeholder" in image:
         image = "python:3.12-slim"
 
-    baseline = _evaluate_source(mutation_source, task_dir, task, image)
-    if not baseline["public_passed"] or baseline["scientific_passed"]:
-        raise RuntimeError(
-            "Configured mutation does not have the intended public/scientific gap"
-        )
-
     events_path = output / "events.jsonl"
     summary_path = output / "study-summary.json"
     (output / "baseline_solver.py").write_text(mutation_source, encoding="utf-8")
@@ -675,6 +715,22 @@ def run_repair_experiment(
             reason=reason,
         )
         raise ArtifactIntegrityError(reason)
+
+    try:
+        baseline = _evaluate_source(mutation_source, task_dir, task, image)
+    except InfrastructureError as exc:
+        _write_run_status(
+            output,
+            status="paused_infrastructure",
+            completed=len(records),
+            target=target_total,
+            reason=str(exc),
+        )
+        return output
+    if not baseline["public_passed"] or baseline["scientific_passed"]:
+        raise RuntimeError(
+            "Configured mutation does not have the intended public/scientific gap"
+        )
 
     completed = {
         (str(record["condition"]), int(record["trial"])) for record in records
@@ -740,9 +796,23 @@ def run_repair_experiment(
 
         latency = time.perf_counter() - started
         candidate_error = ""
+        timed_out = False
         try:
             repaired_source = _extract_python(response)
             repaired = _evaluate_source(repaired_source, task_dir, task, image)
+        except InfrastructureError as exc:
+            _write_run_status(
+                output,
+                status="paused_infrastructure",
+                completed=len(records),
+                target=target_total,
+                reason=str(exc),
+            )
+            return output
+        except CandidateTimeoutError as exc:
+            repaired = _failed_repair_result(exc)
+            candidate_error = str(exc)
+            timed_out = True
         except (RuntimeError, ValueError) as exc:
             repaired_source = ""
             repaired = _failed_repair_result(exc)
@@ -779,6 +849,7 @@ def run_repair_experiment(
             "response": response,
             "candidate_source": repaired_source,
             "candidate_error": candidate_error,
+            "timeout": timed_out,
         }
         with events_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
