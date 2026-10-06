@@ -132,12 +132,15 @@ def report(
     experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
     run_dir: str = typer.Option(..., "--run-dir", help="Existing run directory."),
     output: str = typer.Option(..., "--output", help="Directory for rebuilt report files."),
+    html: bool = typer.Option(
+        False, "--html", help="Also write a static report.html."
+    ),
 ) -> None:
     """Rebuild report tables from a repair run's events."""
     from invariantlab.reporting import build_report
 
     try:
-        result = build_report(Path(experiment), Path(run_dir), Path(output))
+        result = build_report(Path(experiment), Path(run_dir), Path(output), html=html)
         count = result["summary"]["source_records"]
         console.print(
             f"[green]OK[/green] Report rebuilt from {count} canonical records."

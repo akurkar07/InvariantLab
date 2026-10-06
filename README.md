@@ -303,6 +303,17 @@ The command writes:
 - `summary.json` — recomputed run summary, source-record count and events digest
 - `by_condition.csv` — aggregate repair outcomes by feedback condition
 - `samples.csv` — one row per canonical scheduled record
+- `report.html` — static evidence-first report (only with `--html`)
+
+### Static HTML report
+
+Passing `--html` also writes `report.html`, a single self-contained file with inline CSS,
+no JavaScript and no network requests. It lists run provenance, baseline status, condition
+summaries, sample outcomes, severity values and candidate-source diffs. Candidate output is
+escaped before rendering because it is untrusted model output.
+
+**Planned**, not delivered: drift/convergence plots, filters by task/mutation/model/seed, a
+served dashboard and multi-run comparison.
 
 Example `by_condition.csv`:
 
@@ -490,12 +501,12 @@ It currently provides:
 - the oscillator repair experiment runner, which executes candidate repairs in Docker (`invariantlab run`)
 - `reference_stub`, `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
 - raw run-evidence auditing (`invariantlab audit-run`)
-- rebuilding a repair run's summary and CSV tables from `events.jsonl` alone (`invariantlab report`)
+- rebuilding a repair run's summary and CSV tables from `events.jsonl` alone, with an optional
+  static `report.html` (`invariantlab report`)
 
 It does **not** provide yet:
 
 - verification layers 3-6 (invariants, convergence, metamorphic, robustness) as reusable gates
 - a mutation registry
-- HTML reports and plots
-- a dashboard
+- plots, interactive filtering or a served dashboard (the static `report.html` is the V1 dashboard)
 - Hugging Face dataset export
