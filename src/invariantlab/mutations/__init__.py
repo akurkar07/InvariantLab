@@ -9,5 +9,19 @@ from invariantlab.mutations.registry import (
     RegisteredMutant,
     discover_mutants,
 )
+from invariantlab.mutations.validation import (
+    MutantValidation,
+    ReferenceValidation,
+    validate_mutant,
+    validate_reference,
+)
 
-__all__ = ["MutationRegistryError", "RegisteredMutant", "discover_mutants"]
+__all__ = [
+    "MutantValidation",
+    "MutationRegistryError",
+    "ReferenceValidation",
+    "RegisteredMutant",
+    "discover_mutants",
+    "validate_mutant",
+    "validate_reference",
+]

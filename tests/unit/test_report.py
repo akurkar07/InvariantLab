@@ -61,9 +61,7 @@ def test_report_totals_wilson_intervals_and_stored_summary(tmp_path: Path) -> No
     output_dir = tmp_path / "out"
     result = build_report(EXPERIMENT, FIXTURE, output_dir)
 
-    with (output_dir / "by_condition.csv").open(
-        encoding="utf-8", newline=""
-    ) as handle:
+    with (output_dir / "by_condition.csv").open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         rows = list(reader)
         assert reader.fieldnames == BY_CONDITION_COLUMNS
@@ -98,13 +96,12 @@ def test_report_totals_wilson_intervals_and_stored_summary(tmp_path: Path) -> No
     }
 
     summary = json.loads((output_dir / "summary.json").read_text(encoding="utf-8"))
-    stored_summary = json.loads(
-        (FIXTURE / "study-summary.json").read_text(encoding="utf-8")
-    )
+    stored_summary = json.loads((FIXTURE / "study-summary.json").read_text(encoding="utf-8"))
     assert summary["source_records"] == 4
-    assert summary["events_sha256"] == hashlib.sha256(
-        (FIXTURE / "events.jsonl").read_bytes()
-    ).hexdigest()
+    assert (
+        summary["events_sha256"]
+        == hashlib.sha256((FIXTURE / "events.jsonl").read_bytes()).hexdigest()
+    )
     assert summary["by_condition"] == stored_summary["by_condition"]
     assert result["summary"] == summary
     assert not (FIXTURE / "artifact-integrity.json").exists()
@@ -127,15 +124,12 @@ def test_samples_are_grouped_by_condition_and_total_counts_match(
         ("metrics", "1"),
         ("metrics", "2"),
     ]
-    with (output_dir / "by_condition.csv").open(
-        encoding="utf-8", newline=""
-    ) as handle:
+    with (output_dir / "by_condition.csv").open(encoding="utf-8", newline="") as handle:
         by_condition = list(csv.DictReader(handle))
     assert sum(int(row["n"]) for row in by_condition) == len(rows)
-    assert sum(
-        stats["completed"]
-        for stats in result["summary"]["by_condition"].values()
-    ) == len(rows)
+    assert sum(stats["completed"] for stats in result["summary"]["by_condition"].values()) == len(
+        rows
+    )
 
 
 def test_report_output_is_deterministic_and_uses_lf(tmp_path: Path) -> None:
@@ -184,9 +178,7 @@ def test_report_resolves_model_id_like_runner(tmp_path: Path) -> None:
 
     expected = resolve_model_id(load_model_config(FIXTURE / "model.yaml"))
     assert expected == "fixture/replay-mini"
-    with (output_dir / "by_condition.csv").open(
-        encoding="utf-8", newline=""
-    ) as handle:
+    with (output_dir / "by_condition.csv").open(encoding="utf-8", newline="") as handle:
         assert [row["model"] for row in csv.DictReader(handle)] == [
             expected,
             expected,
@@ -196,9 +188,7 @@ def test_report_resolves_model_id_like_runner(tmp_path: Path) -> None:
 def test_report_rejects_replay_model_without_events_path(tmp_path: Path) -> None:
     """A replay model config that the runner cannot build is rejected."""
     model = tmp_path / "model.yaml"
-    model.write_text(
-        "adapter: replay\nmodel_id: fixture/replay-mini\n", encoding="utf-8"
-    )
+    model.write_text("adapter: replay\nmodel_id: fixture/replay-mini\n", encoding="utf-8")
     experiment = tmp_path / "experiment.yaml"
     experiment.write_text(
         EXPERIMENT.read_text(encoding="utf-8").replace(

@@ -45,7 +45,7 @@ from invariantlab.schema import (
     load_task_definition,
 )
 
-# Feedback conditions; see README "Evaluation protocol" > "Conditions".
+# Feedback conditions; see docs/methodology.md "Evaluation protocol" > "Conditions".
 # "Hardened" in study docs means the verifier-feedback conditions metrics/interpreted.
 CONDITIONS = ("weak", "placebo", "metrics", "interpreted")
 CellKey = tuple[str, int]
@@ -124,9 +124,7 @@ def _run_container(
     """Run one locked-down container, mapping sandbox failures to typed errors."""
 
     if shutil.which("docker") is None:
-        raise InfrastructureError(
-            "Docker is required to execute model-generated code safely"
-        )
+        raise InfrastructureError("Docker is required to execute model-generated code safely")
 
     name = f"invariantlab-eval-{uuid.uuid4().hex[:12]}"
     try:
@@ -288,9 +286,7 @@ def _build_schedule(
     """Build a balanced condition-by-trial schedule."""
 
     schedule = [
-        (condition, trial)
-        for condition in conditions
-        for trial in range(1, n_attempts + 1)
+        (condition, trial) for condition in conditions for trial in range(1, n_attempts + 1)
     ]
     if randomize_order:
         random.Random(seed).shuffle(schedule)
@@ -303,11 +299,7 @@ def _ratio(value: Any, baseline: Any) -> float | None:
         denominator = float(baseline)
     except (TypeError, ValueError):
         return None
-    if (
-        not math.isfinite(numerator)
-        or not math.isfinite(denominator)
-        or denominator <= 0.0
-    ):
+    if not math.isfinite(numerator) or not math.isfinite(denominator) or denominator <= 0.0:
         return None
     return numerator / denominator
 
@@ -427,22 +419,14 @@ def audit_records(
         if len(valid_by_key.get((condition, trial), [])) > 1
     ]
 
-    canonical = [
-        valid_by_key[key][0][1]
-        for key in schedule
-        if key in valid_by_key
-    ]
+    canonical = [valid_by_key[key][0][1] for key in schedule if key in valid_by_key]
     missing = [
         {"condition": condition, "trial": trial}
         for condition, trial in schedule
         if (condition, trial) not in valid_by_key
     ]
-    duplicate_records = sum(
-        max(0, len(entries) - 1) for entries in valid_by_key.values()
-    )
-    integrity_ok = not (
-        malformed or unexpected or metadata_mismatches or duplicates
-    )
+    duplicate_records = sum(max(0, len(entries) - 1) for entries in valid_by_key.values())
+    integrity_ok = not (malformed or unexpected or metadata_mismatches or duplicates)
     canonical_complete = len(canonical) == len(schedule)
 
     audit = {
@@ -460,9 +444,7 @@ def audit_records(
         "metadata_mismatches": metadata_mismatches,
         "malformed_records": malformed,
         "missing_cells": missing,
-        "canonical_selection": (
-            "first valid record per scheduled cell in raw file order"
-        ),
+        "canonical_selection": ("first valid record per scheduled cell in raw file order"),
     }
     return canonical, audit
 
@@ -520,10 +502,7 @@ def audit_repair_experiment(
     if write_canonical:
         canonical_path = run_dir / "events.canonical.jsonl"
         canonical_path.write_text(
-            "".join(
-                json.dumps(record, sort_keys=True) + "\n"
-                for record in canonical
-            ),
+            "".join(json.dumps(record, sort_keys=True) + "\n" for record in canonical),
             encoding="utf-8",
         )
         audit["canonical_events_path"] = str(canonical_path)
@@ -565,9 +544,7 @@ def _failed_repair_result(error: Exception) -> dict[str, Any]:
 def _baseline_verification_gap(baseline: dict[str, Any]) -> int | None:
     if "public_passed" not in baseline or "scientific_passed" not in baseline:
         return None
-    return int(bool(baseline["public_passed"])) - int(
-        bool(baseline["scientific_passed"])
-    )
+    return int(bool(baseline["public_passed"])) - int(bool(baseline["scientific_passed"]))
 
 
 def summarize_records(
@@ -602,13 +579,10 @@ def summarize_records(
         subset = [record for record in records if record["condition"] == condition]
         passed = sum(bool(record["successful_repair"]) for record in subset)
         public_passed = sum(
-            bool(record.get("repaired", {}).get("public_passed", False))
-            for record in subset
+            bool(record.get("repaired", {}).get("public_passed", False)) for record in subset
         )
         total = len(subset)
-        regressions = sum(
-            bool(record["scientific_regression"]) for record in subset
-        )
+        regressions = sum(bool(record["scientific_regression"]) for record in subset)
         ratios = [
             float(record["severity"]["worst_scientific_ratio"])
             for record in subset
@@ -628,14 +602,10 @@ def summarize_records(
             ),
             "public_passes": public_passed,
             "public_pass_rate": public_rate,
-            "public_pass_rate_wilson95": (
-                list(public_interval) if public_interval else None
-            ),
+            "public_pass_rate_wilson95": (list(public_interval) if public_interval else None),
             "verification_gap": verification_gap(public_rate, rate),
             "scientific_regressions": regressions,
-            "median_worst_scientific_ratio": (
-                statistics.median(ratios) if ratios else None
-            ),
+            "median_worst_scientific_ratio": (statistics.median(ratios) if ratios else None),
             "max_worst_scientific_ratio": max(ratios) if ratios else None,
         }
         if condition == "weak":
@@ -644,9 +614,7 @@ def summarize_records(
     if weak_rate is not None:
         for stats in by_condition.values():
             rate = stats["scientific_pass_rate"]
-            stats["pass_rate_difference_vs_weak"] = (
-                None if rate is None else rate - weak_rate
-            )
+            stats["pass_rate_difference_vs_weak"] = None if rate is None else rate - weak_rate
 
     target_total = len(experiment.conditions) * experiment.n_attempts
     return {
@@ -714,11 +682,7 @@ def _validate_experiment(experiment: ExperimentConfig) -> None:
 def _resolve_assets(
     experiment: ExperimentConfig,
 ) -> tuple[Path, TaskDefinition, Path, MutationDefinition, str, str]:
-    task_dir = (
-        Path(experiment.task)
-        if experiment.task is not None
-        else Path("tasks/oscillator")
-    )
+    task_dir = Path(experiment.task) if experiment.task is not None else Path("tasks/oscillator")
     mutation_value = experiment.mutation
     if mutation_value is None:
         raise ValueError("Repair experiments require a mutation")
@@ -729,9 +693,7 @@ def _resolve_assets(
     task = load_task_definition(task_dir)
     mutation = load_mutation_definition(mutation_dir)
     if mutation.task_id != task.id:
-        raise ValueError(
-            f"Mutation {mutation.id!r} targets {mutation.task_id!r}, not {task.id!r}"
-        )
+        raise ValueError(f"Mutation {mutation.id!r} targets {mutation.task_id!r}, not {task.id!r}")
 
     mutation_source_path = mutation_dir / mutation.source
     prompt_path = task_dir / task.prompt_template
@@ -801,9 +763,7 @@ def _resolve_image_digest(image: str) -> str:
     """Resolve ``image`` to its repository digest, pulling it first if absent."""
 
     if shutil.which("docker") is None:
-        raise InfrastructureError(
-            "Docker is required to execute model-generated code safely"
-        )
+        raise InfrastructureError("Docker is required to execute model-generated code safely")
     try:
         inspected = _inspect_image_digest(image)
         if inspected.returncode != 0:
@@ -833,9 +793,7 @@ def _model_manifest(config: ModelConfig) -> dict[str, Any]:
     data = config.model_dump(mode="json")
     data["extra"] = {
         key: (
-            "<redacted>"
-            if _SECRET_KEY_PATTERN.search(key) and not key.endswith("_env")
-            else value
+            "<redacted>" if _SECRET_KEY_PATTERN.search(key) and not key.endswith("_env") else value
         )
         for key, value in data["extra"].items()
     }
@@ -882,9 +840,7 @@ def _build_manifest(
             name: _sha256_file(path) for name, path in artifacts.items() if path.exists()
         },
         model=model,
-        model_sha256=hashlib.sha256(
-            json.dumps(model, sort_keys=True).encode()
-        ).hexdigest(),
+        model_sha256=hashlib.sha256(json.dumps(model, sort_keys=True).encode()).hexdigest(),
         seed=experiment.seed,
         conditions=list(experiment.conditions),
         n_attempts=experiment.n_attempts,
@@ -920,9 +876,7 @@ def _write_checksums(output: Path) -> None:
         for path in sorted(output.rglob("*"))
         if path.is_file() and path.relative_to(output).as_posix() != CHECKSUMS_FILE
     ]
-    (output / CHECKSUMS_FILE).write_text(
-        "\n".join(lines) + "\n", encoding="utf-8", newline="\n"
-    )
+    (output / CHECKSUMS_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def run_repair_experiment(
@@ -1012,15 +966,12 @@ def run_repair_experiment(
     if manifest_path.exists():
         try:
             existing_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            mismatches = _manifest_mismatches(
-                existing_manifest, manifest, allow_code_change
-            )
+            mismatches = _manifest_mismatches(existing_manifest, manifest, allow_code_change)
         except (json.JSONDecodeError, AttributeError):
             mismatches = ["<unreadable manifest.json>"]
         if mismatches:
-            reason = (
-                "manifest.json provenance differs from the current run: "
-                + ", ".join(mismatches)
+            reason = "manifest.json provenance differs from the current run: " + ", ".join(
+                mismatches
             )
             _write_run_status(
                 output,
@@ -1031,9 +982,7 @@ def run_repair_experiment(
             )
             raise ArtifactIntegrityError(reason)
     else:
-        manifest_path.write_text(
-            manifest.model_dump_json(indent=2) + "\n", encoding="utf-8"
-        )
+        manifest_path.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
 
     try:
         baseline = _evaluate_source(mutation_source, task_dir, task, image)
@@ -1047,13 +996,9 @@ def run_repair_experiment(
         )
         return output
     if not baseline["public_passed"] or baseline["scientific_passed"]:
-        raise RuntimeError(
-            "Configured mutation does not have the intended public/scientific gap"
-        )
+        raise RuntimeError("Configured mutation does not have the intended public/scientific gap")
 
-    completed = {
-        (str(record["condition"]), int(record["trial"])) for record in records
-    }
+    completed = {(str(record["condition"]), int(record["trial"])) for record in records}
     new_attempts = 0
     _write_summary(summary_path, experiment, adapter.model_id, baseline, records)
     _write_run_status(
@@ -1141,9 +1086,7 @@ def run_repair_experiment(
         severity = _severity_ratios(baseline, repaired)
         worst_ratio = severity["worst_scientific_ratio"]
         scientific_regression = bool(
-            not repaired["scientific_passed"]
-            and worst_ratio is not None
-            and worst_ratio > 1.0
+            not repaired["scientific_passed"] and worst_ratio is not None and worst_ratio > 1.0
         )
 
         record = {
@@ -1162,9 +1105,7 @@ def run_repair_experiment(
             "severity": severity,
             "successful_repair": bool(repaired["scientific_passed"]),
             "scientific_regression": scientific_regression,
-            "needs_manual_failure_review": not bool(
-                repaired["scientific_passed"]
-            ),
+            "needs_manual_failure_review": not bool(repaired["scientific_passed"]),
             "latency_seconds": latency,
             "usage": {
                 "input_tokens": model_response.input_tokens,

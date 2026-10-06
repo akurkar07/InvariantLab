@@ -77,9 +77,7 @@ def _env_secret_values() -> list[tuple[str, str]]:
     secrets: list[tuple[str, str]] = []
     for name, value in os.environ.items():
         upper = name.upper()
-        if not any(
-            fnmatch.fnmatchcase(upper, pattern) for pattern in _ENV_NAME_PATTERNS
-        ):
+        if not any(fnmatch.fnmatchcase(upper, pattern) for pattern in _ENV_NAME_PATTERNS):
             continue
         if len(value) < _MIN_ENV_VALUE_LENGTH:
             continue
@@ -132,9 +130,7 @@ def _build_card(
 ) -> str:
     front_matter = yaml.safe_dump(
         {
-            "configs": [
-                {"config_name": "default", "data_files": "data/samples.jsonl"}
-            ],
+            "configs": [{"config_name": "default", "data_files": "data/samples.jsonl"}],
             "license": "mit",
         },
         sort_keys=False,
@@ -186,8 +182,7 @@ def _build_card(
         "- `data/samples.jsonl` — one JSON object per canonical scheduled record",
         "- `baseline_solver.py` — baseline solver source used for candidate_diff",
         "",
-        "Load with `datasets.load_dataset(\"json\", "
-        "data_files=\"data/samples.jsonl\")`.",
+        'Load with `datasets.load_dataset("json", data_files="data/samples.jsonl")`.',
         "",
     ]
     return "\n".join(lines)
@@ -200,13 +195,9 @@ def export_hf_dataset(
 ) -> dict[str, Any]:
     """Write a Hugging Face-loadable dataset directory for a repair run."""
 
-    experiment, model_id, canonical, summary = load_canonical_run(
-        experiment_config, run_dir
-    )
+    experiment, model_id, canonical, summary = load_canonical_run(experiment_config, run_dir)
     task_dir, task, _, _, mutation_source, _ = repair._resolve_assets(experiment)
-    contract_sha256 = hashlib.sha256(
-        (task_dir / task.contract).read_bytes()
-    ).hexdigest()
+    contract_sha256 = hashlib.sha256((task_dir / task.contract).read_bytes()).hexdigest()
 
     baseline_path = run_dir / "baseline_solver.py"
     if baseline_path.exists():
@@ -226,8 +217,7 @@ def export_hf_dataset(
         "package_version": manifest.get("package_version"),
         "model_id": model_id,
         "adapter": adapter,
-        "container_image": manifest.get("container_image")
-        or experiment.container_image,
+        "container_image": manifest.get("container_image") or experiment.container_image,
         "image_digest": manifest.get("image_digest"),
         "experiment_config_sha256": hashlib.sha256(
             Path(experiment_config).read_bytes()
@@ -235,9 +225,7 @@ def export_hf_dataset(
         "events_sha256": summary["events_sha256"],
     }
 
-    condition_order = {
-        condition: index for index, condition in enumerate(experiment.conditions)
-    }
+    condition_order = {condition: index for index, condition in enumerate(experiment.conditions)}
     ordered_records = sorted(
         canonical,
         key=lambda record: (
@@ -262,12 +250,7 @@ def export_hf_dataset(
             "candidate_error": record.get("candidate_error", ""),
             "provenance": provenance,
         }
-        rows.append(
-            {
-                field: values.get(field, record.get(field))
-                for field in EXPORT_FIELDS
-            }
-        )
+        rows.append({field: values.get(field, record.get(field)) for field in EXPORT_FIELDS})
 
     task_id = ordered_records[0]["task"] if ordered_records else task.id
     card = _build_card(
@@ -291,9 +274,7 @@ def export_hf_dataset(
         rows,
     )
     if findings:
-        raise CredentialLeakError(
-            "Credential scan found potential secrets: " + "; ".join(findings)
-        )
+        raise CredentialLeakError("Credential scan found potential secrets: " + "; ".join(findings))
 
     data_dir = output_dir / "data"
     data_dir.mkdir(parents=True, exist_ok=True)

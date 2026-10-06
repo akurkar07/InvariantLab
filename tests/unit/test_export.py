@@ -37,9 +37,7 @@ def _copy_run(tmp_path: Path) -> Path:
 def _read_rows(output_dir: Path) -> list[dict]:
     return [
         json.loads(line)
-        for line in (output_dir / "data" / "samples.jsonl")
-        .read_text(encoding="utf-8")
-        .splitlines()
+        for line in (output_dir / "data" / "samples.jsonl").read_text(encoding="utf-8").splitlines()
     ]
 
 
@@ -71,20 +69,22 @@ def test_export_row_count_and_schema(tmp_path: Path) -> None:
         assert provenance["git_sha"] is None
         assert provenance["package_version"] is None
         assert provenance["image_digest"] is None
-        assert provenance["events_sha256"] == hashlib.sha256(
-            (FIXTURE / "events.jsonl").read_bytes()
-        ).hexdigest()
+        assert (
+            provenance["events_sha256"]
+            == hashlib.sha256((FIXTURE / "events.jsonl").read_bytes()).hexdigest()
+        )
 
     contract_sha256 = hashlib.sha256(
         (REPO_ROOT / "tasks/oscillator/contract.yaml").read_bytes()
     ).hexdigest()
     assert all(row["contract_sha256"] == contract_sha256 for row in rows)
-    assert all(
-        row["candidate_diff"].startswith("--- baseline_solver.py") for row in rows
-    )
-    assert [
-        (row["condition"], row["trial"]) for row in rows
-    ] == [("weak", 1), ("weak", 2), ("metrics", 1), ("metrics", 2)]
+    assert all(row["candidate_diff"].startswith("--- baseline_solver.py") for row in rows)
+    assert [(row["condition"], row["trial"]) for row in rows] == [
+        ("weak", 1),
+        ("weak", 2),
+        ("metrics", 1),
+        ("metrics", 2),
+    ]
 
 
 def test_export_provenance_from_manifest(tmp_path: Path) -> None:
@@ -118,9 +118,7 @@ def test_export_dataset_card(tmp_path: Path) -> None:
     front_matter = card.split("---")[1]
     metadata = yaml.safe_load(front_matter)
     assert metadata == {
-        "configs": [
-            {"config_name": "default", "data_files": "data/samples.jsonl"}
-        ],
+        "configs": [{"config_name": "default", "data_files": "data/samples.jsonl"}],
         "license": "mit",
     }
     assert "4 rows" in card
@@ -138,19 +136,13 @@ def test_export_baseline_solver_source(tmp_path: Path) -> None:
 
     output_dir = tmp_path / "out"
     export_hf_dataset(EXPERIMENT, FIXTURE, output_dir)
-    assert (
-        output_dir / "baseline_solver.py"
-    ).read_text(encoding="utf-8") == mutation_source
+    assert (output_dir / "baseline_solver.py").read_text(encoding="utf-8") == mutation_source
 
     run_dir = _copy_run(tmp_path)
-    (run_dir / "baseline_solver.py").write_text(
-        "# stored baseline\n", encoding="utf-8"
-    )
+    (run_dir / "baseline_solver.py").write_text("# stored baseline\n", encoding="utf-8")
     output_dir2 = tmp_path / "out2"
     export_hf_dataset(EXPERIMENT, run_dir, output_dir2)
-    assert (
-        output_dir2 / "baseline_solver.py"
-    ).read_text(encoding="utf-8") == "# stored baseline\n"
+    assert (output_dir2 / "baseline_solver.py").read_text(encoding="utf-8") == "# stored baseline\n"
 
 
 def test_export_refuses_env_secret_in_response(

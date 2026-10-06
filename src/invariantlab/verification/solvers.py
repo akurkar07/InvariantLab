@@ -145,10 +145,7 @@ def solve_heat_ftcs(
     r = alpha * dt / (dx * dx)
 
     if r > 0.5:
-        raise ValueError(
-            f"FTCS stability violated: r={r:.4f} > 0.5. "
-            f"Reduce dt or increase dx."
-        )
+        raise ValueError(f"FTCS stability violated: r={r:.4f} > 0.5. Reduce dt or increase dx.")
 
     x = np.linspace(0, length, nx)
     u = np.sin(np.pi * x / length)  # initial condition matching manufactured solution
@@ -203,10 +200,7 @@ def solve_heat_crank_nicolson(
         rhs = np.zeros(n_inner)
         for i in range(n_inner):
             idx = i + 1
-            rhs[i] = (
-                0.5 * r * (u[idx - 1] + u[idx + 1])
-                + (1.0 - r) * u[idx]
-            )
+            rhs[i] = 0.5 * r * (u[idx - 1] + u[idx + 1]) + (1.0 - r) * u[idx]
         # Apply BCs to RHS
         rhs[0] += 0.5 * r * u[0]  # u[0] = 0 so no effect
         rhs[-1] += 0.5 * r * u[-1]  # u[-1] = 0 so no effect
@@ -248,9 +242,7 @@ def thomas_solve(
         denom = main[i] - lower[i - 1] * c[i - 1]
         c[i] = upper[i] / denom
         d[i] = (rhs[i] - lower[i - 1] * d[i - 1]) / denom
-    d[n - 1] = (rhs[n - 1] - lower[n - 2] * d[n - 2]) / (
-        main[n - 1] - lower[n - 2] * c[n - 2]
-    )
+    d[n - 1] = (rhs[n - 1] - lower[n - 2] * d[n - 2]) / (main[n - 1] - lower[n - 2] * c[n - 2])
 
     # Back substitution
     x[n - 1] = d[n - 1]
