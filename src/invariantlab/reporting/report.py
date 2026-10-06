@@ -105,13 +105,8 @@ def build_report(
         stored_by_condition = stored_summary.get("by_condition", {})
         recomputed_by_condition = json.loads(json.dumps(summary["by_condition"]))
         differences: list[str] = []
-        for condition in sorted(
-            set(stored_by_condition) | set(recomputed_by_condition)
-        ):
-            if (
-                condition not in stored_by_condition
-                or condition not in recomputed_by_condition
-            ):
+        for condition in sorted(set(stored_by_condition) | set(recomputed_by_condition)):
+            if condition not in stored_by_condition or condition not in recomputed_by_condition:
                 differences.append(condition)
                 continue
             stored_stats = stored_by_condition[condition]
@@ -130,9 +125,7 @@ def build_report(
             )
 
     task_id = (
-        canonical[0]["task"]
-        if canonical
-        else Path(experiment.task or "tasks/oscillator").name
+        canonical[0]["task"] if canonical else Path(experiment.task or "tasks/oscillator").name
     )
     mutation = summary["mutation"]
     by_condition_rows: list[list[Any]] = []
@@ -156,9 +149,7 @@ def build_report(
             ]
         )
 
-    condition_order = {
-        condition: index for index, condition in enumerate(experiment.conditions)
-    }
+    condition_order = {condition: index for index, condition in enumerate(experiment.conditions)}
     ordered_records = sorted(
         canonical,
         key=lambda record: (
@@ -182,8 +173,7 @@ def build_report(
         for record in ordered_records
     ]
     condition_total = sum(
-        int(summary["by_condition"][condition]["completed"])
-        for condition in experiment.conditions
+        int(summary["by_condition"][condition]["completed"]) for condition in experiment.conditions
     )
     if condition_total != len(sample_rows):
         raise ReportError(

@@ -221,7 +221,9 @@ def test_rejects_symlinked_test_file_escape(tmp_path: Path, field: str) -> None:
 
     errors = validate_task_artifacts(task_root, contract)
 
-    assert errors == [f"task '{TASK_ID}': field '{field}' contains a path that escapes the task root"]
+    assert errors == [
+        f"task '{TASK_ID}': field '{field}' contains a path that escapes the task root"
+    ]
 
 
 @pytest.mark.parametrize("field", ("public_tests", "scientific_tests"))
@@ -333,7 +335,9 @@ def test_root_validation_requires_every_fixed_v1_package(tmp_path: Path) -> None
         assert f"required V1 task package '{task_name}' does not exist" in result.stderr
 
 
-def test_root_validation_requires_contract_and_specification_for_fixed_packages(tmp_path: Path) -> None:
+def test_root_validation_requires_contract_and_specification_for_fixed_packages(
+    tmp_path: Path,
+) -> None:
     tasks_root = tmp_path / "tasks"
     for task_name in ("oscillator", "kepler", "heat1d", "wave1d"):
         (tasks_root / task_name).mkdir(parents=True)

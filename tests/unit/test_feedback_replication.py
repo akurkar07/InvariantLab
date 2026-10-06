@@ -46,8 +46,7 @@ def test_schedule_randomisation_changes_grouped_order():
 def test_feedback_conditions_are_distinct():
     task = load_task_definition("tasks/oscillator")
     contexts = {
-        condition: _condition_context(condition, BASELINE, task)
-        for condition in CONDITIONS
+        condition: _condition_context(condition, BASELINE, task) for condition in CONDITIONS
     }
 
     assert contexts["weak"] == ""
@@ -193,9 +192,7 @@ def test_audit_rejects_out_of_schedule_trial():
 
     assert canonical == []
     assert audit["integrity_ok"] is False
-    assert audit["unexpected_records"] == [
-        {"line": 1, "condition": "weak", "trial": 3}
-    ]
+    assert audit["unexpected_records"] == [{"line": 1, "condition": "weak", "trial": 3}]
 
 
 def test_audit_rejects_mixed_model_record():

@@ -85,7 +85,9 @@ def test_oscillator_velocity_verlet_has_second_order_trajectory_convergence() ->
         exact = oscillator_trajectory(times, x0, v0, omega)[:, 1:]
         refinements.append((dt, _relative_l2(trajectory[:, 1:], exact)))
 
-    assert all(math.isclose(dt * step_counts[index], horizon) for index, (dt, _) in enumerate(refinements))
+    assert all(
+        math.isclose(dt * step_counts[index], horizon) for index, (dt, _) in enumerate(refinements)
+    )
     _assert_second_order(refinements)
 
 
@@ -111,7 +113,9 @@ def test_circular_kepler_velocity_verlet_has_second_order_trajectory_convergence
         )
         refinements.append((dt, _relative_l2(trajectory[:, 1:5], exact)))
 
-    assert all(math.isclose(dt * step_counts[index], horizon) for index, (dt, _) in enumerate(refinements))
+    assert all(
+        math.isclose(dt * step_counts[index], horizon) for index, (dt, _) in enumerate(refinements)
+    )
     _assert_second_order(refinements)
 
 
@@ -138,7 +142,9 @@ def test_eccentric_kepler_velocity_verlet_has_second_order_trajectory_convergenc
         oracle = solve_kepler_high_accuracy(*initial, mu, times)
         refinements.append((dt, _relative_l2(trajectory[:, 1:5], oracle)))
 
-    assert all(math.isclose(dt * step_counts[index], horizon) for index, (dt, _) in enumerate(refinements))
+    assert all(
+        math.isclose(dt * step_counts[index], horizon) for index, (dt, _) in enumerate(refinements)
+    )
     _assert_second_order(refinements)
 
 

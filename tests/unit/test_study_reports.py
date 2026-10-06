@@ -36,11 +36,7 @@ def _published_intervals() -> tuple[
                 continue
 
             wilson_index = next(
-                (
-                    index
-                    for index, header in enumerate(headers)
-                    if "wilson" in header.casefold()
-                ),
+                (index for index, header in enumerate(headers) if "wilson" in header.casefold()),
                 None,
             )
             if wilson_index is None:
@@ -50,38 +46,23 @@ def _published_intervals() -> tuple[
             while row_index < len(lines) and lines[row_index].strip().startswith("|"):
                 cells = _table_cells(lines[row_index])
                 count_match = next(
-                    (
-                        match
-                        for cell in cells
-                        if (match := _COUNT.fullmatch(cell))
-                    ),
+                    (match for cell in cells if (match := _COUNT.fullmatch(cell))),
                     None,
                 )
                 if count_match is not None:
-                    wilson_cell = (
-                        cells[wilson_index] if wilson_index < len(cells) else ""
-                    )
+                    wilson_cell = cells[wilson_index] if wilson_index < len(cells) else ""
                     if wilson_cell:
-                        location = (
-                            f"{report.relative_to(repo_root)}:{row_index + 1}"
-                        )
+                        location = f"{report.relative_to(repo_root)}:{row_index + 1}"
                         proportion_match = _PROPORTION.fullmatch(wilson_cell)
                         percent_match = _PERCENT.fullmatch(wilson_cell)
                         if proportion_match is not None:
-                            published_lo, published_hi = map(
-                                float, proportion_match.groups()
-                            )
+                            published_lo, published_hi = map(float, proportion_match.groups())
                         elif percent_match is not None:
-                            published_lo, published_hi = map(
-                                float, percent_match.groups()
-                            )
-                            percent_rows.add(
-                                (str(report.relative_to(repo_root)), row_index + 1)
-                            )
+                            published_lo, published_hi = map(float, percent_match.groups())
+                            percent_rows.add((str(report.relative_to(repo_root)), row_index + 1))
                         else:
                             raise AssertionError(
-                                f"{location}: unsupported Wilson interval "
-                                f"{wilson_cell!r}"
+                                f"{location}: unsupported Wilson interval {wilson_cell!r}"
                             )
 
                         rows.append(
@@ -122,8 +103,7 @@ def test_study_report_intervals_match_the_runner_formula():
 
         if published != expected:
             mismatches.append(
-                f"{report}:{line} {successes}/{total}: "
-                f"published {published} vs expected {expected}"
+                f"{report}:{line} {successes}/{total}: published {published} vs expected {expected}"
             )
 
     assert not mismatches, "\n".join(mismatches)

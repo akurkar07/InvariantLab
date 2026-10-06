@@ -124,9 +124,7 @@ def test_untampered_evaluation_workspace_tests_pass(task_name: str, tmp_path: Pa
 
 
 @pytest.mark.parametrize("task_name", TASK_NAMES)
-def test_evaluation_workspace_runs_under_execution_gate(
-    task_name: str, tmp_path: Path
-) -> None:
+def test_evaluation_workspace_runs_under_execution_gate(task_name: str, tmp_path: Path) -> None:
     task_root = REPO_ROOT / "tasks" / task_name
     agent_workspace = build_agent_workspace(task_root, tmp_path / "agent")
     evaluation_workspace = build_evaluation_workspace(
