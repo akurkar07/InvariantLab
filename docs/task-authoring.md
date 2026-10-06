@@ -12,6 +12,8 @@ Every task contract names real paths beneath its own directory:
 tasks/<family>/
 ├── contract.yaml
 ├── specification.md
+├── examples/
+│   └── input.json
 ├── src/
 │   └── solver.py
 └── tests/
@@ -23,7 +25,11 @@ tasks/<family>/
 
 - `contract.yaml` declares the entrypoint, visible and hidden tests, output archive,
   budgets, dtype, seed, and task-specific tolerances.
-- `specification.md`, `src/`, and `tests/public/` are visible in the agent workspace.
+- `examples/input.json` is a small committed input in the envelope below with the
+  task's own `task_id`; it runs in well under 5 s, and a public test runs the
+  entrypoint on it so the documented command cannot rot.
+- `specification.md`, `examples/`, `src/`, and `tests/public/` are visible in the
+  agent workspace.
 - `tests/scientific/`, trusted oracle code, mutation manifests, and evaluator source
   are excluded from the agent mount and added only by the evaluator.
 - Every declared path is relative to the task root. Absolute paths, `..` traversal,

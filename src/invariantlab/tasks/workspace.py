@@ -91,6 +91,12 @@ def _copy_tree(source: Path, dest: Path, *, dirs_exist_ok: bool = False) -> None
         raise ValueError(f"Could not copy {source} to {dest}: {error}") from error
 
 
+def _copy_examples(task_root: Path, source_root: Path) -> None:
+    examples = task_root / "examples"
+    if examples.exists():
+        _copy_tree(examples, source_root / "examples")
+
+
 def _load_contract(task_dir: Path, task_root: Path) -> TaskContract:
     try:
         return load_task_contract(task_dir)
@@ -133,6 +139,7 @@ def build_agent_workspace(task_dir: Path, dest: Path) -> Path:
     _copy_tree(source_tree, source_root / source_tree.relative_to(task_root))
     _copy_file(task_root / "tests" / "conftest.py", source_root / "tests" / "conftest.py")
     _copy_tree(public_tests, source_root / public_tests.relative_to(task_root))
+    _copy_examples(task_root, source_root)
     return source_root
 
 
@@ -161,6 +168,7 @@ def build_evaluation_workspace(task_dir: Path, candidate_workspace: Path, dest: 
     _copy_file(task_root / "contract.yaml", source_root / "contract.yaml")
     _copy_file(task_root / "specification.md", source_root / "specification.md")
     _copy_tree(tests_tree, source_root / "tests")
+    _copy_examples(task_root, source_root)
     for test_tree in (public_tests, scientific_tests):
         if not test_tree.is_relative_to(tests_tree):
             _copy_tree(

@@ -1,0 +1,18 @@
+id: sign-error-startup
+task_id: wave_leapfrog
+family: sign_error
+interface: package
+source: solver.py
+expected_effect: >-
+  The zero-velocity ghost level is built as u(-dt) = u(0) - 0.5 * C^2 * delta2(u(0))
+  instead of +. The wrong sign gives a spurious initial velocity of order c^2 * dt * u_xx,
+  so the one-step startup case has a relative error of about 0.6 and the long cases have
+  a phase and amplitude error of about 1e-3.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_zero_velocity_startup_matches_non_special_standing_wave_oracle
+    message: "startup_relative_l2="
+  - test: tests/scientific/test_reference.py::test_different_wave_speeds_produce_distinct_correct_phases
+    message: "Not equal to tolerance"
+max_changed_lines: 2

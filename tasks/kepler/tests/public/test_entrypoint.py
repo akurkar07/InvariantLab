@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from typing import TYPE_CHECKING
 
 import numpy as np
+import yaml
 from conftest import ENTRYPOINT, TASK_ROOT, make_input, write_input
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 N_STEPS = 120
+
+EXAMPLE_INPUT = TASK_ROOT / "examples" / "input.json"
 
 
 def _invoke(input_path: Path, output_path: Path) -> subprocess.CompletedProcess[str]:
@@ -64,3 +68,16 @@ def test_entrypoint_exits_non_zero_on_invalid_input(tmp_path: Path) -> None:
     assert completed.returncode != 0
     assert "mu" in completed.stderr
     assert not output_path.exists()
+
+
+def test_committed_example_input_writes_exactly_the_contract_arrays(tmp_path: Path) -> None:
+    contract = yaml.safe_load((TASK_ROOT / "contract.yaml").read_text(encoding="utf-8"))
+    example = json.loads(EXAMPLE_INPUT.read_text(encoding="utf-8"))
+    assert example["task_id"] == contract["id"]
+    output_path = tmp_path / "result.npz"
+
+    completed = _invoke(EXAMPLE_INPUT.relative_to(TASK_ROOT), output_path)
+
+    assert completed.returncode == 0, completed.stderr
+    with np.load(output_path) as archive:
+        assert sorted(archive.files) == sorted(a["name"] for a in contract["output"]["arrays"])
