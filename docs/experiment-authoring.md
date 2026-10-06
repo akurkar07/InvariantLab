@@ -103,6 +103,16 @@ scientific pytest node id in `test` and an output regex in `message`, and may se
 the manifests and returns registered mutants; it raises `MutationRegistryError` with
 all discovered problems when any declaration is invalid.
 
+`invariantlab.mutations.validate_reference` requires at least one testcase in each public
+and scientific suite and no failures, errors, or skips. `validate_mutant` verifies that
+(1) public tests pass, (2) every declared scientific failure occurs with its declared
+message and there are no unexpected failures or errors, and (3) the parseable mutant source
+diff stays within its line budget and imports no `invariantlab` modules. These implement
+the four reference/mutant validation checks; each suite timeout defaults to
+`budgets.wall_seconds`. Both run tests on the repository virtual environment against a
+temporary task copy without `mutations/`; their stable result names are consumed by #64
+and #88.
+
 ## Add a model
 
 Create a YAML file under `configs/models/`; its `adapter` field selects the backend.
