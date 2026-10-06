@@ -1,0 +1,17 @@
+id: unit-error-au-rounding
+task_id: kepler_verlet
+family: unit_error
+interface: package
+source: solver.py
+expected_effect: >-
+  AU vs m unit confusion: mu is converted to SI with the IAU astronomical unit
+  (1.495978707e11 m) and back with a rounded AU (1.496e11 m), so the force uses
+  mu * (1.495978707 / 1.496)^3, about 4.3e-5 too small. The 40-step public circular orbit
+  stays within about 2e-5 of the closed form (tolerance 2e-4), but over the scientific
+  horizons the phase error gives a state error of about 1.3e-4 against the 1e-5 tolerance.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_circular_trajectory_matches_analytical_state_and_conserves_invariants
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_eccentric_non_special_phase_matches_dop853_and_conserves_invariants
+    message: "state_relative_l2="
+max_changed_lines: 2

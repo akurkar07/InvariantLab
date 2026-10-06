@@ -33,7 +33,8 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   #139); validation that each package mutant passes the public tests and fails its declared
   scientific gate (#158); the curated mutants `oscillator/non-conservative-damping`,
   `wave1d/sign-error-startup` and `wave1d/update-order-overwrite`, plus the legacy
-  oscillator `update-order` and `sign-error` study mutants (#165).
+  oscillator `update-order` and `sign-error` study mutants (#165); Kepler
+  `unit-error-au-rounding` and `non-conservative-velocity-damping` (#PRNUM).
 - **Repair runner and replay.** Generic task/mutation/repair experiment runner with Docker
   sandboxed evaluation (#53) and resilient, resumable provider runs (#46); local-first model
   configs (#55). The `replay` adapter replays recorded responses by prompt hash and the fixed

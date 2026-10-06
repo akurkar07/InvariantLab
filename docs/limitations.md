@@ -32,8 +32,9 @@ that tracks it. The [CHANGELOG](../CHANGELOG.md) links this page from its
   registered mutant is tracked in
   [#120](https://github.com/akurkar07/InvariantLab/issues/120); until then `task_suite` is
   ignored.
-- **Mutant coverage.** Package mutants exist for `oscillator` and `wave1d` only; `kepler` and
-  `heat1d` have none yet.
+- **Mutant coverage.** Package mutants exist for `oscillator`, `kepler` and `wave1d`; `heat1d`
+  has none yet. Covered families: `sign_error`, `update_order_error`,
+  `non_conservative_update` and `unit_error`.
 - **Reporting.** The static `report.html` is the V1 dashboard: no plots, interactive
   filtering or served dashboard.
 

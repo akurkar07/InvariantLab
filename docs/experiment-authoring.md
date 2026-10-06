@@ -118,6 +118,8 @@ Curated package mutants (each passes `validate_mutant`; checked by
 
 | Task | Mutant id | Family | Defect |
 |---|---|---|---|
+| kepler | `non-conservative-velocity-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 2e-9` (fails `energy_relative_drift`) |
+| kepler | `unit-error-au-rounding` | `unit_error` | `mu` scaled by `(1.495978707e11 / 1.496e11)^3` (IAU vs rounded AU round trip) |
 | oscillator | `non-conservative-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 1e-6` |
 | wave1d | `sign-error-startup` | `sign_error` | ghost level `u(-dt)` built with `-0.5 * C²` instead of `+` |
 | wave1d | `update-order-overwrite` | `update_order_error` | `state = next_state; previous = state` overwrites the old level |

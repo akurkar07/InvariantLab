@@ -1,0 +1,16 @@
+id: non-conservative-velocity-damping
+task_id: kepler_verlet
+family: non_conservative_update
+interface: package
+source: solver.py
+expected_effect: >-
+  The closing velocity half-step is scaled by (1 - 2e-9), adding artificial drag of about
+  2e-9 per step. The state stays within the 1e-5 tolerance (about 2e-6 circular, 3e-6
+  eccentric), but over the 1080- and 2178-step scientific horizons the orbital energy
+  drifts by about 4e-6 and 5e-6 against the 1e-6 tolerance.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_circular_trajectory_matches_analytical_state_and_conserves_invariants
+    message: "energy_relative_drift="
+  - test: tests/scientific/test_reference.py::test_eccentric_non_special_phase_matches_dop853_and_conserves_invariants
+    message: "energy_relative_drift="
+max_changed_lines: 4
