@@ -89,6 +89,19 @@ uv run invariantlab run \
 
 Running the same command again continues from the existing `events.jsonl`.
 
+### Reproducible outputs
+
+Each repair run directory starts with `manifest.json` (code revision, task/mutation/verifier
+hashes, model config, seed and the resolved container image digest) and, once complete, ends
+with `checksums.sha256` in `sha256sum` format. Resuming with different provenance stops with
+`invalid_artifact`. Placeholder images are rejected; pin a digest in `container_image` or pass
+`--image` (recorded in the manifest). See
+[run provenance](docs/local-models.md#run-provenance-manifest-image-digest-and-checksums).
+
+Hosted APIs are optional rather than the default. To use one, configure the generic
+`openai_compatible` adapter with an explicit `base_url` and API-key environment variable;
+see `configs/models/api-example.yaml`.
+
 ### Model backends
 
 Implemented adapter IDs are `reference_stub`, `replay`, `ollama` and `openai_compatible`. vLLM, OpenRouter and

@@ -22,6 +22,14 @@ from invariantlab.schema import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _no_docker_provenance(monkeypatch):
+    monkeypatch.setattr(
+        repair, "_resolve_image_digest", lambda image: f"python@sha256:{'a' * 64}"
+    )
+    monkeypatch.setattr(repair, "_git_state", lambda: ("0" * 40, False))
+
+
 def test_loads_config_driven_task_and_mutation():
     task = load_task_definition("tasks/oscillator")
     mutation = load_mutation_definition(

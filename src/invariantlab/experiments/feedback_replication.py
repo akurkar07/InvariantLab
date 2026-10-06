@@ -36,6 +36,8 @@ def run_feedback_replication(
     config_path: Path,
     output_dir: Path | None = None,
     max_new_attempts: int | None = None,
+    image: str | None = None,
+    allow_code_change: bool = False,
 ) -> Path:
     """Run a Study 2 config through the generic repair runner."""
 
@@ -43,6 +45,8 @@ def run_feedback_replication(
         config_path,
         output_dir,
         max_new_attempts=max_new_attempts,
+        image=image,
+        allow_code_change=allow_code_change,
     )
 
 
