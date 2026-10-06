@@ -765,7 +765,7 @@ def run_repair_experiment(
         )
         started = time.perf_counter()
         try:
-            response = adapter.generate(prompt)
+            model_response = adapter.complete(prompt)
         except ModelRateLimitError as exc:
             _write_run_status(
                 output,
@@ -795,6 +795,7 @@ def run_repair_experiment(
             return output
 
         latency = time.perf_counter() - started
+        response = model_response.text
         candidate_error = ""
         timed_out = False
         try:
@@ -846,6 +847,11 @@ def run_repair_experiment(
                 repaired["scientific_passed"]
             ),
             "latency_seconds": latency,
+            "usage": {
+                "input_tokens": model_response.input_tokens,
+                "output_tokens": model_response.output_tokens,
+            },
+            "finish_reason": model_response.finish_reason,
             "response": response,
             "candidate_source": repaired_source,
             "candidate_error": candidate_error,

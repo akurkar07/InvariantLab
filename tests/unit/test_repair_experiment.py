@@ -286,3 +286,44 @@ def test_candidate_exit_failure_is_recorded_as_failed_repair(tmp_path, monkeypat
     assert "Candidate evaluation failed" in failed["candidate_error"]
     assert fake.killed == []
     assert _status(output)["status"] == "complete"
+
+
+def test_repair_runner_records_usage_and_finish_reason(tmp_path, monkeypatch):
+    from invariantlab.experiments import repair
+    from invariantlab.models import ModelResponse
+
+    class FakeAdapter:
+        model_id = "replay/oscillator-reference"
+
+        def generate(self, prompt: str) -> str:
+            return self.complete(prompt).text
+
+        def complete(self, prompt: str) -> ModelResponse:
+            del prompt
+            return ModelResponse(
+                text="```python\nprint('fixed')\n```",
+                input_tokens=321,
+                output_tokens=54,
+                finish_reason="stop",
+            )
+
+    evaluations = iter(
+        [
+            {"public_passed": True, "scientific_passed": False, "metrics": {}},
+            {"public_passed": True, "scientific_passed": True, "metrics": {}},
+        ]
+    )
+    monkeypatch.setattr(repair, "build_adapter", lambda config: FakeAdapter())
+    monkeypatch.setattr(repair, "_evaluate_source", lambda *args: next(evaluations))
+    config_path = _write_repair_config(tmp_path, n_attempts=1)
+    output = tmp_path / "run"
+
+    repair.run_repair_experiment(config_path, output)
+
+    lines = (output / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    record = json.loads(lines[0])
+    assert record["usage"] == {"input_tokens": 321, "output_tokens": 54}
+    assert record["finish_reason"] == "stop"
+
+    audit = repair.audit_repair_experiment(config_path, output)
+    assert audit["integrity_ok"] is True
