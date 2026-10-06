@@ -25,7 +25,8 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   Layer 3 physical invariants (`check_invariants`, #148), Layer 4 observed-order convergence
   through the CLI/NPZ boundary (`check_convergence`, #166), Layer 5 metamorphic relations
   (`check_metamorphic`, #149) and Layer 6 held-out robustness cases (`check_robustness`,
-  #163). Agent workspaces are built without hidden tests and candidates are evaluated against
+  #163), composed into one `VerificationResult` by `verify_candidate` / `invariantlab verify`
+  (#171). Agent workspaces are built without hidden tests and candidates are evaluated against
   trusted task files (#137); the oscillator study verifier no longer trusts candidate stdout
   (#129) and its thresholds are single-sourced from `task.yaml` (#134).
 - **Mutants.** Mutant manifest and registry (`invariantlab.mutations.discover_mutants`,
