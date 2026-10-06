@@ -139,3 +139,29 @@ At minimum, a completed reference task must prove:
 The reusable six-layer verification pipeline, controlled mutants, model evaluation,
 and report generation are later milestones; they are not prerequisites for authoring
 an executable M2 task package.
+
+## Repair-study files
+
+The oscillator package also carries the files used by the repair studies. They sit
+beside the task package but are a separate, evaluator-side interface:
+
+```text
+tasks/oscillator/
+├── task.yaml           # evaluator metadata: verifier, prompt, feedback_metrics thresholds
+├── candidate_runner.py # stage 1: imports the candidate, writes trajectories.json
+├── verifier.py         # stage 2: scores trajectories against held-out cases
+├── repair_prompt.txt   # prompt template given to the model
+└── mutations/          # buggy solvers (update-order, sign-error) to be repaired
+```
+
+- Repair candidates implement `solve_oscillator_verlet(x0, v0, omega, dt, n_steps)`
+  returning a trajectory list, not the `src/solver.py` NPZ protocol above. The
+  mutations therefore declare `interface: legacy_study` in `mutation.yaml`.
+- None of these files are part of the agent workspace (`build_agent_workspace`).
+  The repair runner places `candidate_runner.py` beside the candidate in stage 1
+  and mounts `verifier.py` only in stage 2.
+- The study gate thresholds in `task.yaml` are independent of the `contract.yaml`
+  tolerances.
+
+See [Experiment Authoring](experiment-authoring.md) for how tasks, mutations and
+models are combined into a repair experiment.
