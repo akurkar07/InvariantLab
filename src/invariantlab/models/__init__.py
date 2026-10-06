@@ -10,6 +10,7 @@ from invariantlab.models.adapter import (
     OpenAICompatibleAdapter,
     ReplayAdapter,
     build_adapter,
+    resolve_model_id,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "OpenAICompatibleAdapter",
     "ReplayAdapter",
     "build_adapter",
+    "resolve_model_id",
 ]
