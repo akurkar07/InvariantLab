@@ -114,7 +114,7 @@ its status symbols.
 uv run invariantlab validate-task --task-dir tasks/oscillator
 
 # Check a model config (replay needs no server; default.yaml needs a running Ollama)
-uv run invariantlab model-check --model configs/models/replay-first-model.yaml
+uv run invariantlab model-check --model configs/models/reference-stub-oscillator.yaml
 uv run invariantlab model-check --model configs/models/default.yaml
 
 # Validate an experiment config without calling a model or Docker
@@ -184,6 +184,20 @@ tree (the manifest is tracked in #80).
 Generated from `git ls-files`; every path below exists on `main`.
 
 ```text
+src/invariantlab/
+├── cli.py                       # validate-task, model-check, run, audit-run
+├── config.py                    # model and experiment config loading
+├── schema.py                    # task/output contract and experiment models
+├── experiments/                 # repair, first-model and feedback-replication runners
+├── models/
+│   └── adapter.py               # reference_stub, replay, ollama and openai_compatible adapters
+├── tasks/
+│   └── validation.py            # package and path validation
+└── verification/
+    ├── analytical.py            # exact solutions and physical quantities
+    ├── kepler_oracle.py         # independent DOP853 Kepler oracle
+    └── solvers.py               # trusted numerical references used by tests
+
 .github/workflows/          # CI: tests.yml (lint, typecheck, tests), task-validation.yml
 configs/
 ├── experiments/            # first-model smoke/live, Study 2 repair configs, v1-smoke (placeholder)
@@ -341,7 +355,7 @@ It currently provides:
 - trusted reference solvers and analytical / high-accuracy oracles
 - task contract and artifact validation (`invariantlab validate-task`, `scripts/validate_task.py`)
 - the oscillator repair experiment runner, which executes candidate repairs in Docker (`invariantlab run`)
-- `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
+- `reference_stub`, `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
 - raw run-evidence auditing (`invariantlab audit-run`)
 
 It does **not** provide yet:

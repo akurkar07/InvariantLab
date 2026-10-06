@@ -162,7 +162,7 @@ def test_generic_task_mutation_experiment_types() -> None:
     experiment = ExperimentDefinition(
         task="tasks/oscillator",
         mutation="tasks/oscillator/mutations/update-order",
-        model="configs/models/replay-first-model.yaml",
+        model="configs/models/reference-stub-oscillator.yaml",
         conditions=["weak", "metrics"],
         n_attempts=2,
         seed=1729,
