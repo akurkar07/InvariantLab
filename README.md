@@ -63,6 +63,9 @@ Docker Hub rate-limits `python:3.12-slim`, add `--image mirror.gcr.io/library/py
 
 To run against a local model with Ollama, see [Model execution](docs/local-models.md).
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full local verification commands (including the
+per-task suite loop), branch policy and required CI checks.
+
 ## Current scope
 
 InvariantLab is the benchmark core **plus** the evaluation harness used to run model studies against it.
@@ -251,106 +254,6 @@ Python packages: the former `mutations/`, `reporting/` and `dashboard/` packages
 `tests/property/` and `tests/integration/` directories were removed on `develop` (#44) and are
 gone from `main` since the develop/main merge.
 
-<<<<<<< HEAD
-=======
-## Scientific evidence
-
-The benchmark currently checks several kinds of failure that ordinary unit tests can miss.
-
-### Independent solutions
-
-Where a closed form exists, numerical output is compared with the exact solution. Eccentric Kepler trajectories use a separately implemented SciPy DOP853 integration with substantially tighter tolerances than the candidate method.
-
-### Physical behaviour
-
-Task-specific tests check properties such as:
-
-- oscillator energy behaviour
-- Kepler energy and angular momentum drift
-- zero Dirichlet boundaries
-- heat-equation diffusion decay
-- wave-equation CFL stability and phase accuracy
-- finite float64 output
-
-### Empirical convergence
-
-Reference methods are also tested over controlled refinement sequences. The repository measures observed order rather than merely checking that an error decreases.
-
-Current evidence includes:
-
-- second-order oscillator Velocity Verlet
-- second-order circular and eccentric Kepler Velocity Verlet
-- first-order FTCS temporal convergence
-- second-order FTCS coupled spatial convergence
-- second-order Crank-Nicolson temporal and spatial convergence
-- second-order leapfrog convergence under fixed CFL
-
-## Trust boundary
-
-Agent-facing task code is deliberately separate from trusted verification code.
-
-Scientific tests consume serialized task output rather than calling candidate Python functions directly. Acceptance tests enforce that hidden scientific tests do not import candidate solver modules and that agent-facing code does not import trusted verification modules.
-
-This separation is intentional. The benchmark should not certify an implementation using the same numerical update code that it is evaluating.
-
-## Contracts
-
-Each `contract.yaml` declares the task identity, executable paths, numerical settings and exact NPZ output.
-
-Example:
-
-```yaml
-id: oscillator_verlet
-family: oscillator
-language: python
-entrypoint: src/solver.py
-public_tests: tests/public
-scientific_tests: tests/scientific
-output:
-  path: result.npz
-  arrays:
-    - name: time
-      shape: [null]
-      dtype: float64
-    - name: state
-      shape: [null, 2]
-      dtype: float64
-```
-
-The validator fails closed on malformed contracts, missing required V1 packages and unsafe declared paths.
-
-See [docs/task-authoring.md](docs/task-authoring.md) for the task protocol.
-
-## Running the current benchmark checks
-
-Install development dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-Validate the four task packages:
-
-```bash
-python scripts/validate_task.py --task-dir tasks/
-```
-
-Run top-level tests:
-
-```bash
-pytest tests/
-```
-
-Run a task directly:
-
-```bash
-cd tasks/oscillator
-python src/solver.py --input input.json --output result.npz
-```
-
-Task-local public and scientific suites run from each task directory (`cd tasks/oscillator && pytest tests`); see [CONTRIBUTING.md](CONTRIBUTING.md) for the full local verification commands, branch policy and required CI checks.
-
->>>>>>> origin/main
 ## V1 acceptance criteria
 
 V1 ships only when every acceptance criterion below is proved by at least one automated test; the criteria-to-tests map and the fail-closed release-gate checker live in [docs/v1-acceptance.md](docs/v1-acceptance.md) (`uv run python scripts/check_v1_acceptance.py --report v1.json`).
