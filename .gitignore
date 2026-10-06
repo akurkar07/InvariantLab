@@ -54,3 +54,5 @@ htmlcov/
 
 # Project-specific
 *.manifest.json.bak
+# Output of the documented example run (cd tasks/<task> && ... --output result.npz)
+tasks/*/result.npz
