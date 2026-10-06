@@ -1,4 +1,4 @@
-This fixture contains four responses recorded from a two-condition oscillator repair run.
-The weak-condition first trial replays the unchanged mutation; the other responses replay
-the known-correct solver. It was generated once with `~/work/generate_replay_fixture.py`,
-using the real repair runner, scripted model responses, and a content-based evaluator.
+Four repair records written by the real `run_repair_experiment` (conditions `weak`, `metrics`; 2 trials;
+seed 1729; no order randomisation) with a scripted model `fixture/scripted-oscillator` and a
+content-based `_evaluate_source` (see `_content_based_evaluator` in `tests/unit/test_repair_experiment.py`).
+The weak trial-1 response is the unchanged mutation (failing repair); the other three are the reference solver.
