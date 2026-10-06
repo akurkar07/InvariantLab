@@ -66,6 +66,8 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   Makefile through uv plus pre-commit config (#168); schema-valid `CITATION.cff` (#122);
   status-first README (#151), docs index (#161), research-track roadmap (#162), Study 2
   corrections (#124, #128) and the documented evaluation protocol (#132).
+- Mutant catalogue and validation documentation, plus an acceptance test requiring package
+  mutant coverage for all ten mutation families or a documented infeasibility issue (issue #93).
 - This changelog and the [release procedure](docs/releasing.md).
 
 ### Changed

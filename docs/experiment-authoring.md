@@ -82,6 +82,10 @@ tasks/<task>/mutations/<mutation>/
 └── solver.py
 ```
 
+An **operator**, in the M4 milestone's terminology, is a defect family
+(`invariantlab.schema.MutationFamily`) realised as one or more curated mutant directories;
+V1 has no AST/programmatic operators.
+
 Example:
 
 ```yaml
@@ -93,25 +97,41 @@ source: solver.py
 expected_effect: stale acceleration in the second velocity half-step
 ```
 
+`MutationDefinition` (`invariantlab.schema.MutationDefinition`) accepts these manifest
+fields; extra fields are rejected:
+
+| Field | Meaning |
+|---|---|
+| `id` | Mutant id; must match its directory name. |
+| `task_id` | Task contract id. |
+| `family` | A `MutationFamily` defect family. |
+| `interface` | `package` (default) or `legacy_study`. |
+| `source` | Solver source path inside the mutant directory (default `solver.py`). |
+| `expected_effect` | Required, non-empty description of the intended defect. |
+| `expected_failures` | List of `{test: scientific pytest node id, message: regex}` entries; required and non-empty for `package` mutants. |
+| `max_changed_lines` | Maximum added plus removed diff lines (default 10; must be at least 1). |
+
 The mutation identifier is written to run records. The directory path is only configuration,
 so moving from the legacy `mutation: update-order` field to a path does not change the
 Study 2 record identifier.
 
-Package mutants use `interface: package`, declare `expected_failures` entries with a
-scientific pytest node id in `test` and an output regex in `message`, and may set
-`max_changed_lines` (default 10). `invariantlab.mutations.discover_mutants` validates
-the manifests and returns registered mutants; it raises `MutationRegistryError` with
-all discovered problems when any declaration is invalid.
+`invariantlab.mutations.discover_mutants` validates the manifests and returns registered
+mutants; it raises `MutationRegistryError` with all discovered problems when any declaration
+is invalid. `validate_reference` and `validate_mutant` enforce four checks: (1) reference
+public and scientific suites each collect at least one test and have no failures, errors, or
+skips; (2) a mutant's public suite has no failures or errors and at least one passing test;
+(3) failing scientific node ids equal the declared `expected_failures`, each is a JUnit
+failure (not an error or skip) whose message matches its declared regex, and any error fails;
+(4) mutant source differs from `src/solver.py`, its unified diff stays within
+`max_changed_lines` added plus removed lines, it parses, and it imports no `invariantlab`
+modules. Each suite timeout defaults to `budgets.wall_seconds`. Both run tests on the
+repository virtual environment against a temporary task copy without `mutations/`; their
+stable result names are consumed by #64 and #88.
 
-`invariantlab.mutations.validate_reference` requires at least one testcase in each public
-and scientific suite and no failures, errors, or skips. `validate_mutant` verifies that
-(1) public tests pass, (2) every declared scientific failure occurs with its declared
-message and there are no unexpected failures or errors, and (3) the parseable mutant source
-diff stays within its line budget and imports no `invariantlab` modules. These implement
-the four reference/mutant validation checks; each suite timeout defaults to
-`budgets.wall_seconds`. Both run tests on the repository virtual environment against a
-temporary task copy without `mutations/`; their stable result names are consumed by #64
-and #88.
+Run mutant validation with `uv run python scripts/validate_mutants.py --task-dir tasks/
+[--task <name>]`. It runs in the Task Validation workflow's `validate` CI job and through
+`make validate-tasks`; it fails closed (exit 1) on zero package mutants, registry errors, or
+any failed reference or mutant validation.
 
 Curated package mutants (each passes `validate_mutant`; checked by
 `tests/unit/test_mutation_registry.py::test_real_task_package_mutants_validate`):
@@ -143,6 +163,11 @@ public `atol=2e-3` example by 2.6e-3, so `boundary_error` is left to wave1d (#91
 The wave1d public and scientific suites reject unstable CFL with the same input (`C = 20`),
 so a partly loosened CFL guard fails no scientific test; the wave1d `stability_error` mutant
 is a scheme-level instability instead.
+
+When adding a mutant, also add it to
+`test_real_task_package_mutants_validate`'s pinned list and this catalogue.
+`tests/acceptance/test_mutation_coverage.py` enforces package-mutant coverage of every
+`MutationFamily` (or a documented infeasibility issue).
 
 ## Add a model
 

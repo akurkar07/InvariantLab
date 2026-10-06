@@ -43,6 +43,49 @@ public-test success
 scientific correctness
 ```
 
+## Controlled defect injection
+
+The benchmark uses deterministic, reviewable curated mutants to inject controlled defects.
+
+An **operator**, in the M4 milestone's terminology, is a defect family
+(`invariantlab.schema.MutationFamily`, with 10 values), realised as one or more curated
+mutant directories at `tasks/<task>/mutations/<id>/` containing `mutation.yaml` and
+`solver.py`; `solver.py` is a full replacement for `src/solver.py`. V1 has no
+AST/programmatic operators.
+
+| Mutation family | Example | Typical scientific symptom | Committed mutants |
+|---|---|---|---|
+| `sign_error` | Reverse a force or derivative sign | Trajectory evolves in the wrong direction | `wave1d/sign-error-startup` |
+| `update_order_error` | Overwrite the previous state before the next step | Recurrence uses a stale or incorrect state | `wave1d/update-order-overwrite` |
+| `boundary_error` | Apply a boundary condition at the wrong node | Boundary value or spatial profile is incorrect | `wave1d/dirichlet-wrong-node` |
+| `discretisation_error` | Omit the square on the Courant number | Wave amplitude or propagation speed is wrong | `wave1d/courant-not-squared`, `heat1d/discretisation-grid-spacing` |
+| `stability_error` | Change the sign in a leapfrog recurrence | Numerical error grows exponentially with time | `wave1d/unstable-time-recurrence`, `heat1d/sixth-order-stencil-ftcs-limit` |
+| `unit_error` | Round the astronomical-unit conversion | Orbital trajectory has a systematic scale error | `kepler/unit-error-au-rounding` |
+| `non_conservative_update` | Dampen a velocity update | Energy drifts over an otherwise conservative trajectory | `kepler/non-conservative-velocity-damping`, `oscillator/non-conservative-damping` |
+| `hard_coded_shortcut` | Special-case public fixture sizes | Correct-looking public fixtures, incorrect general inputs | `oscillator/hard-coded-fixture-shortcut` |
+| `precision_defect` | Round position updates through `float32` | Small per-step errors accumulate | `oscillator/float32-position` |
+| `termination_defect` | Stop integration before the requested final step | Output ends early or repeats a stale state | `oscillator/early-termination` |
+
+Heat1d has no `boundary_error` mutant: any wall defect fails its public example, so that
+family is covered on wave1d ([issue #90](https://github.com/akurkar07/InvariantLab/issues/90)).
+
+`validate_reference` and `validate_mutant` enforce four checks:
+
+1. **Reference:** public and scientific suites each collect at least one test and have no
+   failures, errors, or skips.
+2. **Public profile:** a mutant's public suite has no failures or errors and at least one
+   passing test.
+3. **Expected scientific reason:** the failing scientific node ids equal the declared
+   `expected_failures`; each is a JUnit failure (not an error or skip) whose message matches
+   its declared regex. Any error fails validation.
+4. **Controlled defect:** mutant source differs from `src/solver.py`, its unified diff stays
+   within `max_changed_lines` added plus removed lines, it parses, and it imports no
+   `invariantlab` modules.
+
+`scripts/validate_mutants.py` runs these checks in CI. See
+[Add a mutation](experiment-authoring.md#add-a-mutation) for the manifest schema and
+validation command.
+
 ## Evaluation protocol
 
 V1 measures **one-shot repair of a mutated solver**. The implemented runner is
