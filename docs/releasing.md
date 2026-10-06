@@ -39,7 +39,7 @@ through a normal PR (all required checks green) before tagging.
    `## [X.Y.Z] - YYYY-MM-DD`, add a fresh empty `## [Unreleased]` above it, and update the
    compare links at the bottom of the file.
 4. **Set the classifier.** Update the `Development Status :: ...` classifier in
-   `pyproject.toml` (currently `3 - Alpha`) to the maturity of this release.
+   `pyproject.toml` (`5 - Production/Stable` since 1.0.0) to the maturity of this release.
 5. **Tag.** After the release PR has merged, the maintainer pushes an annotated tag on `main`:
    `git tag -a vX.Y.Z -m "InvariantLab X.Y.Z" <merge-sha>` then `git push origin vX.Y.Z`.
    Only the maintainer creates tags; agents and contributors do not.

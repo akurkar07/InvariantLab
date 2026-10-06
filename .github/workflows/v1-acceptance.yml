@@ -12,10 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  #69: V1-AC1 (#63) and V1-AC2 (#64) have no marked tests yet, so the gate is expected to fail; remove continue-on-error before the v1.0.0 release PR (#72).
   v1-acceptance:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v10.2.0
