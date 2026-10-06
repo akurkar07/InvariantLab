@@ -494,7 +494,8 @@ It currently provides:
 
 It does **not** provide yet:
 
-- verification layers 3-6 (invariants, convergence, metamorphic, robustness) as reusable gates
+- verification layers 3, 4 and 6 (invariants, convergence, robustness) as reusable gates
+  (Layer 5 metamorphic relations are `invariantlab.verification.metamorphic.check_metamorphic`)
 - a mutation registry
 - HTML reports and plots
 - a dashboard
