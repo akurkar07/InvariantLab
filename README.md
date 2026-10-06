@@ -89,11 +89,21 @@ uv run invariantlab run \
 
 Running the same command again continues from the existing `events.jsonl`.
 
-Hosted APIs are optional rather than the default. To use one, configure the generic
-`openai_compatible` adapter with an explicit `base_url` and API-key environment variable;
-see `configs/models/api-example.yaml`.
+### Model backends
 
-See [model execution](docs/local-models.md) for Ollama, vLLM and optional API endpoint setup.
+Implemented adapter IDs are `reference_stub`, `replay`, `ollama` and `openai_compatible`. vLLM, OpenRouter and
+other hosted APIs use `openai_compatible`; Anthropic and Hugging Face `transformers` are not
+native adapters. Use an OpenAI-compatible endpoint for Anthropic models, or serve Hugging Face
+weights with vLLM or TGI and point `openai_compatible` at that server.
+
+Study 1 used Cohere North Mini Code via OpenRouter (`configs/models/cohere-north-mini-code-free.yaml`).
+Study 2 used Qwen2.5-Coder-7B-Instruct and DeepSeek-Coder-6.7B-Instruct via local Ollama
+(`configs/models/ollama-qwen2.5-coder-7b.yaml`,
+`configs/models/ollama-deepseek-coder-6.7b.yaml`). The default config uses
+Qwen2.5-Coder-7B-Instruct through Ollama.
+
+See [Model adapters](docs/model-adapters.md) for configuration and backend details, and
+[model execution](docs/local-models.md) for local server setup.
 
 ## Command-line interface
 
@@ -213,7 +223,7 @@ src/invariantlab/
 ├── metrics.py              # pass rates, Wilson intervals and verification gap
 ├── experiments/            # first_model.py, repair.py (Docker runner and audit), feedback_replication.py (Study 2 wrapper)
 ├── models/
-│   └── adapter.py          # replay, ollama and openai_compatible adapters
+│   └── adapter.py          # reference_stub, replay, ollama and openai_compatible adapters
 ├── tasks/
 │   └── validation.py       # package and path validation
 └── verification/           # analytical.py, kepler_oracle.py, solvers.py: trusted references

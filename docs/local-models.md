@@ -124,6 +124,8 @@ the same command to resume.
 
 ## Configuring another OpenAI-compatible server
 
+See [Model adapters](model-adapters.md) for the supported adapter ids and all configuration defaults.
+
 Model configs support the following `extra` fields:
 
 ```yaml
