@@ -1,7 +1,10 @@
-"""Trusted reference code and Layer 0-6 verification gates for the V1 benchmark.
+"""Trusted reference code and the Layers 0-6 (seven layers) verification gates.
 
-The package exposes analytical solutions, high-accuracy Kepler integration,
-numerical reference solvers, candidate execution with archive validation, the
-Layer 2-6 gates, and ``verify.verify_candidate``, which composes them into one
-``VerificationResult`` (also exposed as ``invariantlab verify``).
+Layer 0 is ``execution.run_task``; Layer 1 is the task's public tests
+(``tasks/*/tests/public``), run by ``verify``; Layers 2-6 are ``oracles``,
+``invariants``, ``convergence``, ``metamorphic`` and ``robustness``. The package also
+holds analytical solutions, the high-accuracy Kepler oracle and numerical reference
+solvers. ``verify.verify_candidate`` composes the seven layers into one
+``VerificationResult`` (also exposed as ``invariantlab verify``). See
+``docs/verification.md``.
 """

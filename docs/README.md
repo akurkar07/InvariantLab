@@ -15,6 +15,7 @@ The repository [README](../README.md) gives the implementation status and a quic
 ## Design
 
 - [Methodology](methodology.md) — V1 design target: benchmark design, evaluation protocol, metrics, scientific evidence, contracts and run outputs
+- [Verification](verification.md) — Layers 0-6 (seven layers): status table, per-task gates and thresholds, trust boundary and `invariantlab verify`
 
 ## Reference
 
