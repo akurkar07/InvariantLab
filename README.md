@@ -28,7 +28,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Verification layer 3: invariant checks | Implemented (`check_invariants` gate) | `src/invariantlab/verification/invariants.py` | [#113](https://github.com/akurkar07/InvariantLab/issues/113) |
 | Verification layer 4: convergence studies | Implemented (`check_convergence` gate) | `src/invariantlab/verification/convergence.py` | [#114](https://github.com/akurkar07/InvariantLab/issues/114) |
 | Verification layer 5: metamorphic tests | Implemented (`check_metamorphic` gate) | `src/invariantlab/verification/metamorphic.py` | [#115](https://github.com/akurkar07/InvariantLab/issues/115) |
-| Verification layer 6: held-out robustness cases | Partial (oscillator study verifier only) | `tasks/oscillator/verifier.py` | [#116](https://github.com/akurkar07/InvariantLab/issues/116) |
+| Verification layer 6: held-out robustness cases | Implemented (`check_robustness` gate) | `src/invariantlab/verification/robustness.py` | [#116](https://github.com/akurkar07/InvariantLab/issues/116) |
 | Defect injection / mutants | Partial (registry; three validated package mutants, two legacy oscillator study mutants) | `src/invariantlab/mutations/`, `tasks/*/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
@@ -84,6 +84,9 @@ It currently provides:
 
 - four task packages (`oscillator`, `kepler`, `heat1d`, `wave1d`) with public and scientific suites
 - trusted reference solvers and analytical / high-accuracy oracles
+- reusable verification gates in `invariantlab.verification`: `run_task` (layer 0),
+  `check_oracle`, `check_invariants`, `check_convergence`, `check_metamorphic` and
+  `check_robustness` (layers 2-6)
 - task contract and artifact validation (`invariantlab validate-task`, `scripts/validate_task.py`)
 - the oscillator repair experiment runner, which executes candidate repairs in Docker (`invariantlab run`)
 - `reference_stub`, `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
@@ -94,9 +97,7 @@ It currently provides:
 
 It does **not** provide yet:
 
-- verification layer 6 (robustness) as a reusable gate; layers 2-5 are `check_oracle`,
-  `check_invariants`, `check_convergence` and `check_metamorphic` in `invariantlab.verification`
-- controlled mutants for kepler, heat1d and wave1d (only the oscillator has mutants)
+- controlled mutants for kepler and heat1d (only the oscillator and wave1d have package mutants)
 - plots, interactive filtering or a served dashboard (the static `report.html` is the V1 dashboard)
 
 ## Empirical results
@@ -230,7 +231,9 @@ src/invariantlab/
     ├── kepler_oracle.py         # independent DOP853 Kepler oracle
     ├── oracles.py               # Layer 2 oracle-comparison gate
     ├── invariants.py            # Layer 3 physical-invariant gates
+    ├── convergence.py           # Layer 4 observed-order convergence gate
     ├── metamorphic.py           # Layer 5 metamorphic-relation gates
+    ├── robustness.py            # Layer 6 held-out robustness cases
     └── solvers.py               # trusted numerical references used by tests
 
 .github/workflows/          # CI: tests.yml (lint, typecheck, tests), task-validation.yml
@@ -251,7 +254,7 @@ src/invariantlab/
 │   └── adapter.py          # reference_stub, replay, ollama and openai_compatible adapters
 ├── tasks/
 │   └── validation.py       # package and path validation
-└── verification/           # analytical.py, kepler_oracle.py, solvers.py: trusted references; oracles.py, invariants.py, metamorphic.py: gates
+└── verification/           # analytical.py, kepler_oracle.py, solvers.py: trusted references; oracles.py, invariants.py, convergence.py, metamorphic.py, robustness.py: gates
 tasks/
 ├── oscillator/             # task package plus repair assets: task.yaml, candidate_runner.py,
 │                           #   verifier.py, repair_prompt.txt, mutations/update-order/
@@ -265,8 +268,8 @@ tests/
 
 Placeholders: `tasks/*/.gitkeep` are empty markers. There are no stub
 Python packages: the former `mutations/`, `reporting/` and `dashboard/` packages, the
-`verification/{invariants,convergence,metamorphic,robustness}.py` stubs (`invariants.py`,
-`convergence.py` and `metamorphic.py` have since returned as real gates) and the empty
+`verification/{invariants,convergence,metamorphic,robustness}.py` stubs (all four have since
+returned as real gates) and the empty
 `tests/property/` and `tests/integration/` directories were removed on `develop` (#44) and are
 gone from `main` since the develop/main merge.
 
