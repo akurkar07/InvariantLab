@@ -7,9 +7,7 @@ import sys
 from pathlib import Path
 
 from invariantlab.schema import load_task_contract
-from invariantlab.tasks.validation import validate_task_artifacts
-
-REQUIRED_V1_TASKS = ("oscillator", "kepler", "heat1d", "wave1d")
+from invariantlab.tasks.validation import REQUIRED_V1_TASKS, validate_task_artifacts
 
 
 def validate_task_dir(task_dir: Path) -> list[str]:

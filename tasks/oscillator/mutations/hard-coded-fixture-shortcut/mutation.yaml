@@ -1,0 +1,18 @@
+id: hard-coded-fixture-shortcut
+task_id: oscillator_verlet
+family: hard_coded_shortcut
+interface: package
+source: solver.py
+expected_effect: >-
+  The solver special-cases the public fixture sizes: runs with n_steps <= 50 use the exact
+  Verlet force, while longer runs scale the restoring force by 1.001. The public 40- and
+  50-step examples are unchanged, but over the 15000-step scientific horizon the shifted
+  frequency causes a phase error and the energy measured with the true omega oscillates
+  by about 1e-3. The shortcut is a single conditional expression, so the default
+  max_changed_lines budget is kept.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_state_matches_analytical_solution
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_energy_drift_is_bounded_over_horizon
+    message: "energy_relative_drift="
+max_changed_lines: 2

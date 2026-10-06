@@ -23,13 +23,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 |---|---|---|---|
 | Task packages (4: oscillator, kepler, heat1d, wave1d) | Implemented | `tasks/` | [M2](https://github.com/akurkar07/InvariantLab/milestone/1) |
 | Reference solvers and oracles | Implemented | `src/invariantlab/verification/` | [M2](https://github.com/akurkar07/InvariantLab/milestone/1) |
-| Verification layer 0: execution and archive schema | Implemented | `src/invariantlab/verification/execution.py` | [#110](https://github.com/akurkar07/InvariantLab/issues/110) |
-| Verification layer 2: analytical and high-accuracy oracles | Implemented (`check_oracle` gate) | `src/invariantlab/verification/oracles.py` | [#112](https://github.com/akurkar07/InvariantLab/issues/112) |
-| Verification layer 3: invariant checks | Implemented (`check_invariants` gate) | `src/invariantlab/verification/invariants.py` | [#113](https://github.com/akurkar07/InvariantLab/issues/113) |
-| Verification layer 4: convergence studies | Implemented (`check_convergence` gate) | `src/invariantlab/verification/convergence.py` | [#114](https://github.com/akurkar07/InvariantLab/issues/114) |
-| Verification layer 5: metamorphic tests | Implemented (`check_metamorphic` gate) | `src/invariantlab/verification/metamorphic.py` | [#115](https://github.com/akurkar07/InvariantLab/issues/115) |
-| Verification layer 6: held-out robustness cases | Implemented (`check_robustness` gate) | `src/invariantlab/verification/robustness.py` | [#116](https://github.com/akurkar07/InvariantLab/issues/116) |
-| Layered verification entrypoint | Implemented (`verify_candidate`, `invariantlab verify`) | `src/invariantlab/verification/verify.py` | [#117](https://github.com/akurkar07/InvariantLab/issues/117) |
+| Verification: Layers 0-6 (seven layers) and `invariantlab verify` | Implemented ([layer status](docs/verification.md#layer-status)) | `src/invariantlab/verification/` | [#110](https://github.com/akurkar07/InvariantLab/issues/110)-[#117](https://github.com/akurkar07/InvariantLab/issues/117) |
 | Defect injection / mutants | Partial (registry; three validated package mutants, two legacy oscillator study mutants) | `src/invariantlab/mutations/`, `tasks/*/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
@@ -93,9 +87,9 @@ It currently provides:
 
 - four task packages (`oscillator`, `kepler`, `heat1d`, `wave1d`) with public and scientific suites
 - trusted reference solvers and analytical / high-accuracy oracles
-- reusable verification gates in `invariantlab.verification`: `run_task` (layer 0),
-  `check_oracle`, `check_invariants`, `check_convergence`, `check_metamorphic` and
-  `check_robustness` (layers 2-6)
+- verification Layers 0-6 (seven layers) in `invariantlab.verification`, composed by
+  `invariantlab verify`; see [Verification](docs/verification.md) for the layer status,
+  per-task gates and thresholds
 - task contract and artifact validation (`invariantlab validate-task`, `scripts/validate_task.py`)
 - the oscillator repair experiment runner, which executes candidate repairs in Docker (`invariantlab run`)
 - `reference_stub`, `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
@@ -133,7 +127,7 @@ The V1 design and reference material lives in [docs/methodology.md](docs/methodo
 - [Evaluation protocol](docs/methodology.md#evaluation-protocol): one-shot repair of a mutated solver under the `weak`, `placebo`, `metrics` and `interpreted` conditions.
 - [Metrics](docs/methodology.md#metrics): public and scientific pass rates, verification gap, Wilson intervals and regressions, each tagged Implemented or Planned.
 - [Scientific evidence](docs/methodology.md#scientific-evidence): independent solutions, physical-behaviour checks and empirical convergence order.
-- [Trust boundary](docs/methodology.md#trust-boundary): agent-facing task code is kept separate from trusted verification code.
+- [Trust boundary](docs/verification.md#trust-boundary): agents work in a copy without hidden tests, only the candidate's `src/` is graded, and `run_task` is not a sandbox.
 - [Contracts](docs/methodology.md#contracts): what each `contract.yaml` declares; see also [Task Authoring](docs/task-authoring.md).
 - [Reproducible outputs](docs/methodology.md#reproducible-outputs): files in a repair run directory, run manifest and checksums.
 - [Reporting a run](docs/methodology.md#reporting-a-run): `invariantlab report` rebuilds summary and CSV tables (and, with `--html`, a static `report.html`) from `events.jsonl` without a model or Docker.

@@ -142,8 +142,8 @@ At minimum, a completed reference task must prove:
 - M2 oracle and refinement tests pass for non-special parameter values;
 - no forbidden dependency crosses the task/verifier boundary.
 
-The reusable six-layer verification pipeline, controlled mutants, model evaluation,
-and report generation are later milestones; they are not prerequisites for authoring
+The verification pipeline (Layers 0-6 (seven layers); see [Verification](verification.md)),
+controlled mutants, model evaluation, and report generation are later milestones; they are not prerequisites for authoring
 an executable M2 task package.
 
 ## Repair-study files

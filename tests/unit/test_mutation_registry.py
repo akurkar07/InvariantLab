@@ -228,8 +228,16 @@ def test_real_task_package_mutants_validate() -> None:
         (mutant.task_dir.name, mutant.definition.id, mutant.definition.family.value)
         for mutant in mutants
     ] == [
+        ("kepler", "non-conservative-velocity-damping", "non_conservative_update"),
+        ("kepler", "unit-error-au-rounding", "unit_error"),
+        ("oscillator", "early-termination", "termination_defect"),
+        ("oscillator", "float32-position", "precision_defect"),
+        ("oscillator", "hard-coded-fixture-shortcut", "hard_coded_shortcut"),
         ("oscillator", "non-conservative-damping", "non_conservative_update"),
+        ("wave1d", "courant-not-squared", "discretisation_error"),
+        ("wave1d", "dirichlet-wrong-node", "boundary_error"),
         ("wave1d", "sign-error-startup", "sign_error"),
+        ("wave1d", "unstable-time-recurrence", "stability_error"),
         ("wave1d", "update-order-overwrite", "update_order_error"),
     ]
     for mutant in mutants:
