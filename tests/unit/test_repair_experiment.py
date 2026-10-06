@@ -137,14 +137,17 @@ REPAIRED_RESULT = {
 }
 
 
-def _write_repair_config(tmp_path: Path, n_attempts: int = 2) -> Path:
+def _write_repair_config(
+    tmp_path: Path, n_attempts: int = 2, model: Path | None = None
+) -> Path:
+    model = model or REPO_ROOT / "configs/models/replay-first-model.yaml"
     config = tmp_path / "experiment.yaml"
     config.write_text(
         "\n".join(
             [
                 "name: timeout-infra-test",
                 f"task_suite: {(REPO_ROOT / 'configs/task-suites/v1-smoke.yaml').as_posix()}",
-                f"model: {(REPO_ROOT / 'configs/models/replay-first-model.yaml').as_posix()}",
+                f"model: {model.as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
                 "mutation: "
@@ -349,3 +352,43 @@ def test_repair_runner_records_usage_and_finish_reason(tmp_path, monkeypatch):
 
     audit = repair.audit_repair_experiment(config_path, output)
     assert audit["integrity_ok"] is True
+
+
+def test_audit_resolves_replay_model_id_like_runner(tmp_path, monkeypatch):
+    model = tmp_path / "model.yaml"
+    model.write_text("adapter: replay\n", encoding="utf-8")
+    evaluations = iter(
+        [
+            {"public_passed": True, "scientific_passed": False, "metrics": {}},
+            {"public_passed": True, "scientific_passed": True, "metrics": {}},
+        ]
+    )
+    monkeypatch.setattr(repair, "_evaluate_source", lambda *args: next(evaluations))
+    config_path = _write_repair_config(tmp_path, n_attempts=1, model=model)
+    output = tmp_path / "run"
+
+    repair.run_repair_experiment(config_path, output)
+
+    assert _events(output)[0]["model"] == "replay/oscillator-reference"
+    audit = repair.audit_repair_experiment(config_path, output)
+    assert audit["integrity_ok"] is True
+    assert audit["metadata_mismatches"] == []
+
+
+def test_audit_run_missing_run_dir_fails_without_writing(tmp_path):
+    from typer.testing import CliRunner
+
+    from invariantlab.cli import app
+
+    config_path = _write_repair_config(tmp_path, n_attempts=1)
+    missing = tmp_path / "missing-run"
+
+    result = CliRunner().invoke(
+        app,
+        ["audit-run", "--experiment", str(config_path), "--run-dir", str(missing)],
+    )
+
+    assert result.exit_code != 0
+    assert "Run directory does not exist" in result.output
+    assert "missing-run" in result.output
+    assert not missing.exists()

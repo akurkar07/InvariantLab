@@ -33,6 +33,7 @@ SYSTEM_PROMPT = (
     "You repair numerical Python code. Return only the complete "
     "replacement solver.py inside one Python code fence."
 )
+DEFAULT_REPLAY_MODEL_ID = "replay/oscillator-reference"
 RETRYABLE_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 T = TypeVar("T")
@@ -157,7 +158,7 @@ def _post_json(
 class ReplayAdapter:
     """Deterministic adapter for CI and end-to-end smoke testing."""
 
-    model_id: str = "replay/oscillator-reference"
+    model_id: str = DEFAULT_REPLAY_MODEL_ID
 
     def generate(self, prompt: str) -> str:
         return self.complete(prompt).text
@@ -332,11 +333,19 @@ class OllamaAdapter:
         return self.complete(prompt).text
 
 
+def resolve_model_id(config: ModelConfig) -> str:
+    """Return the model id an adapter built from ``config`` will report."""
+
+    if config.adapter == "replay":
+        return config.model_id or DEFAULT_REPLAY_MODEL_ID
+    return config.model_id
+
+
 def build_adapter(config: ModelConfig) -> ModelAdapter:
     """Construct an adapter from a validated ModelConfig."""
 
     if config.adapter == "replay":
-        return ReplayAdapter(model_id=config.model_id or "replay/oscillator-reference")
+        return ReplayAdapter(model_id=resolve_model_id(config))
 
     extra = config.extra
     if config.adapter == "ollama":
