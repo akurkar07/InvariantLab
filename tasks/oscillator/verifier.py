@@ -30,7 +30,7 @@ try:
         and all(len(row) == 3 for row in short)
     )
     public["initial_state"] = public["shape"] and all(
-        abs(a - b) < 1e-12 for a, b in zip(short[0], (0.0, 1.0, 0.0))
+        abs(a - b) < 1e-12 for a, b in zip(short[0], (0.0, 1.0, 0.0), strict=True)
     )
     public["finite"] = public["shape"] and all(
         math.isfinite(float(value)) for row in short for value in row

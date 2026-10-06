@@ -5,14 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import shutil
-import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from invariantlab.config import load_experiment_config, load_model_config
+from invariantlab.experiments.repair import run_sandboxed_evaluation
 from invariantlab.models import build_adapter
 
 BROKEN_SOLVER = """def solve_oscillator_verlet(x0, v0, omega, dt, n_steps):
@@ -142,30 +141,11 @@ def _extract_python(text: str) -> str:
 
 
 def _evaluate_in_docker(source: str, image: str) -> dict[str, Any]:
-    if shutil.which("docker") is None:
-        raise RuntimeError("Docker is required to execute model-generated code safely")
-
     with tempfile.TemporaryDirectory(prefix="invariantlab-") as tmp:
         work = Path(tmp)
         (work / "solver.py").write_text(source, encoding="utf-8")
         (work / "evaluate.py").write_text(EVALUATOR, encoding="utf-8")
-
-        completed = subprocess.run(
-            [
-                "docker", "run", "--rm", "--network", "none",
-                "--memory", "256m", "--cpus", "1", "--pids-limit", "64",
-                "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-                "-v", f"{work.resolve()}:/work:ro", image, "python", "/work/evaluate.py",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
-        )
-        if completed.returncode != 0:
-            detail = completed.stderr.strip() or completed.stdout.strip()
-            raise RuntimeError(f"Candidate evaluation failed: {detail}")
-        return cast("dict[str, Any]", json.loads(completed.stdout.strip().splitlines()[-1]))
+        return run_sandboxed_evaluation(work, image)
 
 
 def run_first_model_experiment(config_path: Path, output_dir: Path | None = None) -> Path:
