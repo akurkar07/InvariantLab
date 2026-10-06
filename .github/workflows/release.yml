@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v1.0.0 or v1.0.0-rc.1"
+        required: true
+        type: string
+      dry_run:
+        description: "Run every step except creating the GitHub Release"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.classify.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Real releases build the tag itself; dry runs build the dispatched branch.
+          ref: ${{ (github.event_name == 'workflow_dispatch' && !inputs.dry_run) && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen --extra dev
+      - name: Classify tag
+        id: classify
+        run: |
+          if [[ "$TAG" =~ -(rc|a|b)\.?[0-9]+$ ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Tag the checkout locally (dry run only, never pushed)
+        if: env.DRY_RUN == 'true'
+        run: git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || git tag "$TAG"
+      - name: Tag points at the checked-out commit
+        run: test "$(git rev-parse HEAD)" = "$(git rev-parse "$TAG^{commit}")"
+      - name: Check release metadata
+        run: uv run python scripts/check_release_metadata.py --tag "$TAG" --notes-output "$RUNNER_TEMP/release-notes.md"
+      - name: V1 acceptance gate (final tags only)
+        if: steps.classify.outputs.prerelease == 'false'
+        run: uv run python scripts/check_v1_acceptance.py --report "$RUNNER_TEMP/v1-acceptance.json"
+      - run: uv build
+      - name: Wheel version matches tag
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          import os
+          from packaging.version import Version
+
+          tag = os.environ["TAG"]
+          wheels = list(Path("dist").glob("*.whl"))
+          assert len(wheels) == 1, f"expected exactly one wheel, found {len(wheels)}"
+          wheel_version = Version(wheels[0].name.split("-")[1])
+          tag_version = Version(tag[1:])
+          assert wheel_version == tag_version, f"{wheel_version} != {tag_version}"
+          print(f"Wheel version: {wheel_version}; tag version: {tag_version}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"VERSION={tag_version}\n")
+          PY
+      - name: Smoke-test the wheel in a fresh venv
+        run: |
+          uv venv "$RUNNER_TEMP/wheel-venv" --python 3.12
+          uv pip install --python "$RUNNER_TEMP/wheel-venv/bin/python" dist/*.whl
+          out="$("$RUNNER_TEMP/wheel-venv/bin/invariantlab" version)"
+          echo "$out"
+          grep -F "$VERSION" <<<"$out"
+      - name: Stage release artifacts
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-artifact/dist"
+          cp dist/* "$RUNNER_TEMP/release-artifact/dist/"
+          cp "$RUNNER_TEMP/release-notes.md" "$RUNNER_TEMP/release-artifact/release-notes.md"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dist
+          path: ${{ runner.temp }}/release-artifact/
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: (github.event_name == 'push' && github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: artifact
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          args=()
+          if [[ "$PRERELEASE" == true ]]; then args+=(--prerelease); fi
+          gh release create "$TAG" artifact/dist/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "InvariantLab $TAG" --notes-file artifact/release-notes.md "${args[@]}"

@@ -118,6 +118,9 @@ Curated package mutants (each passes `validate_mutant`; checked by
 
 | Task | Mutant id | Family | Defect |
 |---|---|---|---|
+| oscillator | `early-termination` | `termination_defect` | stops at a 10000-step cap and fills the remaining rows with the last state |
+| oscillator | `float32-position` | `precision_defect` | each position update rounded through `np.float32` |
+| oscillator | `hard-coded-fixture-shortcut` | `hard_coded_shortcut` | exact force for `n_steps <= 50` (public fixture sizes), force scaled by `1.001` otherwise |
 | oscillator | `non-conservative-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 1e-6` |
 | wave1d | `courant-not-squared` | `discretisation_error` | second difference scaled by `C` instead of `C²` |
 | wave1d | `dirichlet-wrong-node` | `boundary_error` | right Dirichlet condition applied at node `-2` instead of `-1` |
