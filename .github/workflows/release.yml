@@ -57,7 +57,7 @@ jobs:
       - run: uv build
       - name: Wheel version matches tag
         run: |
-          python - <<'PY'
+          uv run python - <<'PY'
           from pathlib import Path
           import os
           from packaging.version import Version
