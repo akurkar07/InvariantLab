@@ -1,0 +1,14 @@
+id: float32-position
+task_id: oscillator_verlet
+family: precision_defect
+interface: package
+source: solver.py
+expected_effect: >-
+  Each position update is rounded through float32 before being stored back in the float64
+  state. The rounding error (up to about 6e-8 relative per step) stays far below the 1e-4 public
+  tolerance and the 1e-5 state tolerance, but it breaks the symplectic energy behaviour, so
+  over the 15000-step scientific horizon the energy drift exceeds the 1e-6 bound.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_energy_drift_is_bounded_over_horizon
+    message: "energy_relative_drift="
+max_changed_lines: 2

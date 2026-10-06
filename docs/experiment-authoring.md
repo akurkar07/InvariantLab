@@ -118,6 +118,9 @@ Curated package mutants (each passes `validate_mutant`; checked by
 
 | Task | Mutant id | Family | Defect |
 |---|---|---|---|
+| oscillator | `early-termination` | `termination_defect` | stops at a 10000-step cap and fills the remaining rows with the last state |
+| oscillator | `float32-position` | `precision_defect` | each position update rounded through `np.float32` |
+| oscillator | `hard-coded-fixture-shortcut` | `hard_coded_shortcut` | exact force for `n_steps <= 50` (public fixture sizes), force scaled by `1.001` otherwise |
 | oscillator | `non-conservative-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 1e-6` |
 | wave1d | `sign-error-startup` | `sign_error` | ghost level `u(-dt)` built with `-0.5 * C²` instead of `+` |
 | wave1d | `update-order-overwrite` | `update_order_error` | `state = next_state; previous = state` overwrites the old level |
