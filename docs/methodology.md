@@ -245,6 +245,17 @@ The command writes:
 - `summary.json` — recomputed run summary, source-record count and events digest
 - `by_condition.csv` — aggregate repair outcomes by feedback condition
 - `samples.csv` — one row per canonical scheduled record
+- `report.html` — static evidence-first report (only with `--html`)
+
+### Static HTML report
+
+Passing `--html` also writes `report.html`, a single self-contained file with inline CSS,
+no JavaScript and no network requests. It lists run provenance, baseline status, condition
+summaries, sample outcomes, severity values and candidate-source diffs. Candidate output is
+escaped before rendering because it is untrusted model output.
+
+**Planned**, not delivered: drift/convergence plots, filters by task/mutation/model/seed, a
+served dashboard and multi-run comparison.
 
 Example `by_condition.csv`:
 

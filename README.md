@@ -32,7 +32,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Defect injection / mutants | Partial (registry; two oscillator mutants) | `src/invariantlab/mutations/`, `tasks/oscillator/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
-| Reporting / dashboard / HF export | Partial (`report` only) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
+| Reporting / dashboard / HF export | Partial (`report`, static `report.html`; no HF export) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
 | Release | Planned | - | [M7](https://github.com/akurkar07/InvariantLab/milestone/6) |
 
 ## Quickstart
@@ -78,14 +78,14 @@ It currently provides:
 - the oscillator repair experiment runner, which executes candidate repairs in Docker (`invariantlab run`)
 - `reference_stub`, `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
 - raw run-evidence auditing (`invariantlab audit-run`)
-- rebuilding a repair run's summary and CSV tables from `events.jsonl` alone (`invariantlab report`)
+- rebuilding a repair run's summary and CSV tables from `events.jsonl` alone, with an optional
+  static `report.html` (`invariantlab report --html`)
 
 It does **not** provide yet:
 
 - verification layers 3-6 (invariants, convergence, metamorphic, robustness) as reusable gates
 - controlled mutants for kepler, heat1d and wave1d (only the oscillator has mutants)
-- HTML reports and plots
-- a dashboard
+- plots, interactive filtering or a served dashboard (the static `report.html` is the V1 dashboard)
 - Hugging Face dataset export
 
 ## Empirical results
@@ -114,7 +114,7 @@ The V1 design and reference material lives in [docs/methodology.md](docs/methodo
 - [Trust boundary](docs/methodology.md#trust-boundary): agent-facing task code is kept separate from trusted verification code.
 - [Contracts](docs/methodology.md#contracts): what each `contract.yaml` declares; see also [Task Authoring](docs/task-authoring.md).
 - [Reproducible outputs](docs/methodology.md#reproducible-outputs): files in a repair run directory, run manifest and checksums.
-- [Reporting a run](docs/methodology.md#reporting-a-run): `invariantlab report` rebuilds summary and CSV tables from `events.jsonl` without a model or Docker.
+- [Reporting a run](docs/methodology.md#reporting-a-run): `invariantlab report` rebuilds summary and CSV tables (and, with `--html`, a static `report.html`) from `events.jsonl` without a model or Docker.
 
 ## Local-first model execution
 

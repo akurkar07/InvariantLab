@@ -65,6 +65,7 @@ def build_report(
     experiment_config: Path,
     run_dir: Path,
     output_dir: Path,
+    html: bool = False,
 ) -> dict[str, Any]:
     """Validate a repair run and rebuild its summary and CSV tables."""
 
@@ -189,11 +190,47 @@ def build_report(
     _write_csv(by_condition_path, BY_CONDITION_COLUMNS, by_condition_rows)
     _write_csv(samples_path, SAMPLE_COLUMNS, sample_rows)
 
+    paths = {
+        "summary": str(summary_path),
+        "by_condition": str(by_condition_path),
+        "samples": str(samples_path),
+    }
+    if html:
+        from invariantlab.reporting.html import render_html_report
+
+        baseline_path = run_dir / "baseline_solver.py"
+        if baseline_path.exists():
+            baseline_source = baseline_path.read_text(encoding="utf-8")
+            baseline_source_label = "run_dir/baseline_solver.py"
+        else:
+            _, _, mutation_dir, mutation, baseline_source, _ = repair._resolve_assets(experiment)
+            baseline_source_label = f"mutation source {(mutation_dir / mutation.source).as_posix()}"
+        by_condition_dicts = [
+            dict(zip(BY_CONDITION_COLUMNS, row, strict=True)) for row in by_condition_rows
+        ]
+        html_path = output_dir / "report.html"
+        rendered = render_html_report(
+            experiment_name=experiment.name,
+            model_id=model_id,
+            seed=experiment.seed,
+            events_sha256=events_sha256,
+            generation_command=(
+                "invariantlab report "
+                f"--experiment {experiment_config.as_posix()} "
+                f"--run-dir {run_dir.as_posix()} "
+                f"--output {output_dir.as_posix()} --html"
+            ),
+            baseline=baseline,
+            baseline_source=baseline_source,
+            baseline_source_label=baseline_source_label,
+            by_condition_rows=by_condition_dicts,
+            records=ordered_records,
+        )
+        with html_path.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(rendered)
+        paths["html"] = str(html_path)
+
     return {
         "summary": summary,
-        "paths": {
-            "summary": str(summary_path),
-            "by_condition": str(by_condition_path),
-            "samples": str(samples_path),
-        },
+        "paths": paths,
     }
