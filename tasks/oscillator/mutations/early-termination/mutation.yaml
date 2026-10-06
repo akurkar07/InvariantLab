@@ -1,0 +1,16 @@
+id: early-termination
+task_id: oscillator_verlet
+family: termination_defect
+interface: package
+source: solver.py
+expected_effect: >-
+  Integration stops at a hard iteration cap of 10000 steps and the remaining rows are
+  filled with the last computed state, so the archive keeps its declared shape and stays
+  finite. The public 40- and 50-step examples never reach the cap, but the 15000-step
+  scientific run freezes for the last 5000 steps and its state error against the analytical
+  solution is of order one. Energy is constant on the frozen tail, so only the state test
+  fails, on its metric message rather than on a shape or finiteness check.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_state_matches_analytical_solution
+    message: "state_relative_l2="
+max_changed_lines: 3

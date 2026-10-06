@@ -1,0 +1,20 @@
+id: courant-not-squared
+task_id: wave_leapfrog
+family: discretisation_error
+interface: package
+source: solver.py
+expected_effect: >-
+  The leapfrog update scales the second difference by C instead of C^2, so the scheme
+  solves the wave equation with an effective Courant number sqrt(C) (wave speed too high by
+  1/sqrt(C)). It stays stable and finite with exact Dirichlet boundaries, but the long cases
+  have a state error of about 0.8-1.1 and the one-step startup case about 0.07.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle[slow-wave-nonunit-domain]
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle[fast-wave-nonunit-domain]
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_zero_velocity_startup_matches_non_special_standing_wave_oracle
+    message: "startup_relative_l2="
+  - test: tests/scientific/test_reference.py::test_different_wave_speeds_produce_distinct_correct_phases
+    message: "Not equal to tolerance"
+max_changed_lines: 2
