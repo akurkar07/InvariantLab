@@ -35,6 +35,14 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Reporting / dashboard / HF export | Partial (`report`, static `report.html`, local HF export via `export-hf`) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
 | Release | Planned | - | [M7](https://github.com/akurkar07/InvariantLab/milestone/6) |
 
+## Installation
+
+**V1 runs from a source checkout**: `git clone https://github.com/akurkar07/InvariantLab.git`,
+then `uv sync --extra dev` inside it. The wheel provides the library and the `invariantlab`
+CLI, but benchmark tasks (`tasks/`) and configs (`configs/`) are read from the checkout, so run
+the CLI from the repository root. Packaging tasks/configs as package data is deferred to
+post-V1; see [Releasing](docs/releasing.md) and [Known limitations](docs/limitations.md).
+
 ## Quickstart
 
 Prerequisites:

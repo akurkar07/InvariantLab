@@ -20,6 +20,9 @@ The repository [README](../README.md) gives the implementation status and a quic
 
 - [Model Adapters](model-adapters.md) — Adapter interface, supported backends, config keys and adding a backend
 - [V1 Acceptance Criteria Map](v1-acceptance.md) — Which tests prove each V1 acceptance criterion and how to run the release gate
+- [Releasing](releasing.md) — Release procedure, hatch-vcs versioning and the V1 run-from-checkout packaging decision
+- [Known Limitations](limitations.md) — What V1 does not do yet: checkout-only install, single-machine Docker sandbox, oscillator-only study harness, study reproducibility
+- [Changelog](../CHANGELOG.md) — What V1 contains, by pull request
 
 ## Study reports
 
