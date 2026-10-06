@@ -53,3 +53,20 @@ Exit codes:
 - `1` — any criterion is failed, skipped or missing, an unknown or invalid id was seen,
   or pytest failed.
 - `2` — invalid command line.
+
+## `check_release_metadata.py`
+
+Checks that the release tag agrees with `CITATION.cff`, `CHANGELOG.md`, and (for final
+releases) the development-status classifier in `pyproject.toml`. It also validates the CFF
+schema with `cffconvert`.
+
+```bash
+uv run python scripts/check_release_metadata.py --tag v1.0.0
+uv run python scripts/check_release_metadata.py --tag v1.0.0-rc.1 --notes-output release-notes.md
+```
+
+Exit codes:
+
+- `0` — release metadata is consistent.
+- `1` — a metadata or CFF validation check failed.
+- `2` — invalid command line.
