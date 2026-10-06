@@ -868,7 +868,7 @@ def _build_manifest(
         git_dirty=git_dirty,
         package_version=_package_version(),
         python_version=sys.version.split()[0],
-        platform=platform.platform(),
+        platform=f"{platform.system()}-{platform.release()}-{platform.machine()}",
         task_id=task.id,
         mutation_id=mutation.id,
         artifact_sha256={
