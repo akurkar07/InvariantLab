@@ -1,8 +1,5 @@
-"""Verification stack — all 6 layers.
+"""Trusted scientific reference code for the implemented V1 benchmark.
 
-Layers: (0) execution & schema, (2) analytical/oracle, (3) invariants,
-(4) convergence, (5) metamorphic, (6) robustness.
-TODO: implement in M3.
+The current package exposes analytical solutions, high-accuracy Kepler
+integration and numerical reference solvers used by the benchmark tests.
 """
-
-__all__ = []

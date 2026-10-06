@@ -1,4 +1,4 @@
-"""CLI entrypoint for InvariantLab."""
+"""CLI entrypoint for the implemented InvariantLab benchmark utilities."""
 
 import json
 from pathlib import Path
@@ -9,7 +9,7 @@ from rich.console import Console
 app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
-    help="InvariantLab — Physics-grounded evaluation for AI-generated scientific software.",
+    help="InvariantLab — physics-grounded evaluation for numerical software.",
 )
 console = Console()
 
@@ -27,17 +27,25 @@ def version() -> None:
 
 @app.command()
 def validate_task(
-    task_dir: str = typer.Option(..., "--task-dir", help="Path to task directory."),
+    task_dir: str = typer.Option(..., "--task-dir", help="Path to one task directory."),
 ) -> None:
-    """Validate a task contract against the schema."""
-    from invariantlab.tasks import load_task_contract
+    """Validate one task contract and its declared package artifacts."""
+    from invariantlab.schema import load_task_contract
+    from invariantlab.tasks.validation import validate_task_artifacts
 
     try:
         contract = load_task_contract(task_dir)
+        errors = validate_task_artifacts(task_dir, contract)
+        if errors:
+            for error in errors:
+                console.print(f"[red]✗[/red] {error}")
+            raise typer.Exit(code=1)
         console.print(f"[green]✓[/green] Task [bold]{contract.id}[/bold] is valid.")
-    except Exception as e:
-        console.print(f"[red]✗[/red] Validation failed: {e}")
-        raise typer.Exit(code=1) from e
+    except typer.Exit:
+        raise
+    except Exception as error:
+        console.print(f"[red]✗[/red] Validation failed: {error}")
+        raise typer.Exit(code=1) from error
 
 
 @app.command("model-check")
@@ -213,15 +221,6 @@ def run(
     except Exception as e:
         console.print(f"[red]✗[/red] Run failed: {e}")
         raise typer.Exit(code=1) from e
-
-
-@app.command()
-def report(
-    run_id: str = typer.Option(..., "--run-id", help="Run ID to report on."),
-) -> None:
-    """Generate a report for a completed run."""
-    console.print(f"Generating report for run: [bold]{run_id}[/bold]")
-    console.print("[yellow]report command not yet implemented — coming in M6.[/yellow]")
 
 
 if __name__ == "__main__":
