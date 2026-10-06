@@ -27,7 +27,6 @@ from invariantlab.models import (
     build_adapter,
 )
 from invariantlab.schema import (
-    FeedbackMetricSpec,
     MutationDefinition,
     TaskDefinition,
     load_mutation_definition,
@@ -186,6 +185,17 @@ def _evaluate_source(
             verifier_path.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
+        (verifier_dir / "thresholds.json").write_text(
+            json.dumps(
+                {
+                    name: spec.threshold
+                    for name, spec in task.feedback_metrics.items()
+                    if spec.threshold is not None
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
 
         _run_container(
             image,
@@ -205,44 +215,25 @@ def _evaluate_source(
                 f"{verifier_dir.resolve()}:/verifier:ro",
                 f"{output.resolve()}:/data:ro",
             ],
-            ["/verifier/verifier.py", "/data/trajectories.json"],
+            [
+                "/verifier/verifier.py",
+                "/data/trajectories.json",
+                "/verifier/thresholds.json",
+            ],
         )
         return _parse_verdict(completed)
-
-
-def _legacy_feedback_metrics() -> dict[str, FeedbackMetricSpec]:
-    return {
-        "max_state_relative_error": FeedbackMetricSpec(
-            label="max state relative error",
-            threshold=1e-3,
-            interpretation="long-horizon disagreement with the analytical solution",
-        ),
-        "max_energy_relative_drift": FeedbackMetricSpec(
-            label="max energy relative drift",
-            threshold=1e-3,
-            interpretation="failure to conserve total energy",
-        ),
-    }
 
 
 def _condition_context(
     condition: str,
     baseline: dict[str, Any],
-    task: TaskDefinition | None = None,
+    task: TaskDefinition,
 ) -> str:
     """Return the condition-specific information shown to the model."""
 
     metrics = baseline.get("metrics", {})
-    metric_specs = task.feedback_metrics if task is not None else _legacy_feedback_metrics()
-    interpreted_feedback = (
-        task.interpreted_feedback
-        if task is not None
-        else (
-            "Both metrics exceed the hidden scientific acceptance threshold of 1e-3. "
-            "The state metric measures long-horizon disagreement with the analytical "
-            "solution, while the energy metric measures failure to conserve total energy."
-        )
-    )
+    metric_specs = task.feedback_metrics
+    interpreted_feedback = task.interpreted_feedback
 
     if condition == "weak":
         return ""

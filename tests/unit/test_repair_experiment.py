@@ -31,6 +31,18 @@ def test_loads_config_driven_task_and_mutation():
     assert mutation.task_id == task.id
 
 
+def test_oscillator_study_gate_thresholds_stay_at_study_values():
+    task = load_task_definition("tasks/oscillator")
+
+    assert {
+        name: spec.threshold for name, spec in task.feedback_metrics.items()
+    } == {
+        "max_state_relative_error": 1e-3,
+        "max_energy_relative_drift": 1e-3,
+    }
+    assert "threshold of 1e-3" in task.interpreted_feedback
+
+
 def test_task_feedback_metadata_drives_condition_context():
     task = load_task_definition("tasks/oscillator")
     baseline = {

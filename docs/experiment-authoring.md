@@ -34,8 +34,43 @@ interpreted_feedback: >-
   Explain what the exposed metrics mean without revealing held-out cases.
 ```
 
-The verifier must read `/work/solver.py`, run public and scientific checks, and print one
-JSON result containing `public_passed`, `scientific_passed` and `metrics`.
+Evaluation runs in two sandboxed stages. Stage 1 runs `candidate_runner.py` next to the
+candidate and writes `/output/trajectories.json`. Stage 2 runs the verifier alone as
+`verifier.py /data/trajectories.json /verifier/thresholds.json`. The runner writes
+`thresholds.json` from the `feedback_metrics.*.threshold` values in `task.yaml`, so
+`task.yaml` is the only place a study-gate threshold is set. The verifier prints one JSON
+result containing `public_passed`, `scientific_passed` and `metrics`.
+
+### Oscillator study gate versus contract tolerances
+
+The oscillator study gate (`tasks/oscillator/verifier.py`, both thresholds `1.0e-3` in
+`task.yaml`) is separate from the contract tolerances in `contract.yaml`
+(`state_relative_l2: 1.0e-5`, `energy_relative_drift: 1.0e-6`). They measure different
+things:
+
+- The contract tolerances are calibrated for the contract's own scientific case
+  (x0=0.7, v0=-0.35, omega=1.7, dt=1e-3, 15000 steps). They are checked by the M3 NPZ gates.
+- The study gate checks three coarser held-out cases. It uses the final-state error scaled
+  by `max(1, |x_ref|, |v_ref|)` and the maximum relative energy drift over the trajectory,
+  each maximised over the cases.
+
+Measured values for a correct velocity-Verlet solver and the `update-order` mutant:
+
+| Case (x0, v0, omega, dt, steps) | Correct state error | Correct energy drift | Mutant state error | Mutant energy drift |
+| --- | --- | --- | --- | --- |
+| 1.0, 0.0, 1.0, 0.01, 800 | 3.72e-5 | 2.50e-5 | 2.07e-2 | 4.16e-2 |
+| 0.3, -0.4, 1.7, 0.005, 1200 | 1.31e-5 | 1.12e-5 | 1.47e-2 | 4.59e-2 |
+| -0.8, 0.25, 0.7, 0.01, 900 | 8.56e-6 | 1.02e-5 | 9.24e-3 | 2.23e-2 |
+| Contract case: 0.7, -0.35, 1.7, 0.001, 15000 | 3.19e-6 | 6.65e-7 | n/a | n/a |
+
+A correct solver's energy drift on the study cases (up to 2.5e-5) is above the contract's
+1e-6 tolerance. Copying the contract tolerances into the study gate would therefore fail
+correct solvers. The 1e-3 gate leaves a margin of more than 25x over correct solvers and
+sits more than 9x below the mutant on every metric. The value 1e-3 was kept, not
+recalibrated, so that verdicts stay comparable with Study 1 and Study 2.
+`tests/unit/test_oscillator_verifier.py` asserts a margin of at least 10x for a correct
+solver and that the mutant exceeds both thresholds. `tests/unit/test_repair_experiment.py`
+pins both thresholds at 1e-3.
 
 ## Add a mutation
 
