@@ -14,9 +14,7 @@ class ExperimentConfig(BaseModel):
     description: str = ""
     task_suite: str | None = Field(
         default=None,
-        description=(
-            "Reserved for multi-task suite evaluation (#120); currently ignored by all runners."
-        ),
+        description="Ignored; name one task and mutant per config.",
     )
     model: str = Field(..., description="Model adapter identifier.")
     runner: str = "repair"

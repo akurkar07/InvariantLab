@@ -18,6 +18,7 @@ import sys
 import tempfile
 import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
@@ -37,13 +38,19 @@ from invariantlab.models import (
     build_adapter,
     resolve_model_id,
 )
+from invariantlab.mutations import discover_mutants
 from invariantlab.schema import (
     MutationDefinition,
     RunManifest,
+    TaskContract,
     TaskDefinition,
     load_mutation_definition,
+    load_task_contract,
     load_task_definition,
 )
+from invariantlab.tasks.workspace import build_agent_workspace
+from invariantlab.verification.execution import candidate_executor
+from invariantlab.verification.verify import verify_candidate
 
 # Feedback conditions; see docs/methodology.md "Evaluation protocol" > "Conditions".
 # "Hardened" in study docs means the verifier-feedback conditions metrics/interpreted.
@@ -61,6 +68,21 @@ _UNCOMPARED_MANIFEST_FIELDS = frozenset(
 )
 _CODE_MANIFEST_FIELDS = frozenset({"git_commit", "git_dirty", "package_version"})
 _SECRET_KEY_PATTERN = re.compile(r"api_?key|token|secret|password", re.IGNORECASE)
+PACKAGE_PROMPT_TEMPLATE = (
+    "You are repairing the numerical solver of an InvariantLab task package. The task\n"
+    "specification is reproduced below.\n\n"
+    "{specification}\n\n"
+    "The public tests in tests/public currently pass. Hidden scientific verification checks the\n"
+    "solver's output archive against trusted references, physical invariants, convergence order,\n"
+    "metamorphic relations and held-out robustness cases.\n"
+    "{condition_context}\n"
+    "Return a complete replacement src/solver.py. Keep the command-line interface and the output\n"
+    "archive described in the specification, and use only the standard library and NumPy.\n\n"
+    "Current src/solver.py:\n\n"
+    "```python\n"
+    "{source}\n"
+    "```\n"
+)
 
 
 class ArtifactIntegrityError(RuntimeError):
@@ -73,6 +95,99 @@ class InfrastructureError(RuntimeError):
 
 class CandidateTimeoutError(RuntimeError):
     """Raised when evaluated code exceeds the candidate timeout."""
+
+
+@dataclass(frozen=True)
+class RepairAssets:
+    interface: str
+    task_dir: Path
+    contract: TaskContract
+    mutation_dir: Path
+    mutation: MutationDefinition
+    mutation_source: str
+    prompt_template: str
+    specification: str
+    task: TaskDefinition | None
+
+
+@dataclass(frozen=True)
+class DockerExecutor:
+    image: str
+
+    def run_entrypoint(
+        self,
+        candidate_root: Path,
+        entrypoint: str,
+        input_path: Path,
+        output_path: Path,
+        timeout: float,
+    ) -> subprocess.CompletedProcess[str]:
+        args = [
+            f"/work/{entrypoint}",
+            "--input",
+            "/input/input.json",
+            "--output",
+            f"/output/{output_path.name}",
+        ]
+        try:
+            with tempfile.TemporaryDirectory(prefix="invariantlab-candidate-") as tmp:
+                root = Path(tmp)
+                work = root / "work"
+                input_dir = root / "input"
+                output_dir = root / "output"
+                source_dir = candidate_root / Path(entrypoint).parent
+                staged_source = work / Path(entrypoint).parent
+                staged_source.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(source_dir, staged_source)
+                input_dir.mkdir()
+                output_dir.mkdir()
+                os.chmod(output_dir, 0o777)
+                shutil.copy2(input_path, input_dir / "input.json")
+                completed = _run_container(
+                    self.image,
+                    [
+                        f"{work.resolve()}:/work:ro",
+                        f"{input_dir.resolve()}:/input:ro",
+                        f"{output_dir.resolve()}:/output:rw",
+                    ],
+                    args,
+                    timeout=timeout,
+                    workdir="/work",
+                )
+                staged_output = output_dir / output_path.name
+                if staged_output.exists():
+                    shutil.copy2(staged_output, output_path)
+                return completed
+        except CandidateTimeoutError as exc:
+            raise subprocess.TimeoutExpired(args, timeout) from exc
+
+    def run_public_tests(
+        self,
+        workspace: Path,
+        public_tests: str,
+        timeout: float,
+    ) -> subprocess.CompletedProcess[str]:
+        args = [
+            "-m",
+            "pytest",
+            public_tests,
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--rootdir=/work",
+        ]
+        try:
+            with tempfile.TemporaryDirectory(prefix="invariantlab-public-") as tmp:
+                view = build_agent_workspace(workspace, Path(tmp) / "public")
+                return _run_container(
+                    self.image,
+                    [f"{view.resolve()}:/work:ro"],
+                    args,
+                    timeout=timeout,
+                    workdir="/work",
+                )
+        except CandidateTimeoutError as exc:
+            raise subprocess.TimeoutExpired(args, timeout) from exc
 
 
 def _kill_container(name: str) -> None:
@@ -91,6 +206,7 @@ def _docker_command(
     name: str,
     mounts: list[str],
     args: list[str],
+    workdir: str | None = None,
 ) -> list[str]:
     command = [
         "docker",
@@ -112,6 +228,8 @@ def _docker_command(
     ]
     for mount in mounts:
         command += ["-v", mount]
+    if workdir is not None:
+        command += ["-w", workdir]
     command += [image, "python", *args]
     return command
 
@@ -120,6 +238,9 @@ def _run_container(
     image: str,
     mounts: list[str],
     args: list[str],
+    *,
+    timeout: float = CANDIDATE_TIMEOUT_SECONDS,
+    workdir: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run one locked-down container, mapping sandbox failures to typed errors."""
 
@@ -129,19 +250,17 @@ def _run_container(
     name = f"invariantlab-eval-{uuid.uuid4().hex[:12]}"
     try:
         completed = subprocess.run(
-            _docker_command(image, name, mounts, args),
+            _docker_command(image, name, mounts, args, workdir),
             capture_output=True,
             text=True,
-            timeout=CANDIDATE_TIMEOUT_SECONDS,
+            timeout=timeout,
             check=False,
         )
     except FileNotFoundError as exc:
         raise InfrastructureError(f"Docker could not be started: {exc}") from exc
     except subprocess.TimeoutExpired as exc:
         _kill_container(name)
-        raise CandidateTimeoutError(
-            f"Candidate evaluation timed out after {CANDIDATE_TIMEOUT_SECONDS} s"
-        ) from exc
+        raise CandidateTimeoutError(f"Candidate evaluation timed out after {timeout:g} s") from exc
 
     if completed.returncode == DOCKER_RUN_FAILURE_EXIT_CODE:
         detail = completed.stderr.strip() or completed.stdout.strip()
@@ -248,13 +367,9 @@ def _evaluate_source(
 def _condition_context(
     condition: str,
     baseline: dict[str, Any],
-    task: TaskDefinition,
+    task: TaskDefinition | None,
 ) -> str:
     """Return the condition-specific information shown to the model."""
-
-    metrics = baseline.get("metrics", {})
-    metric_specs = task.feedback_metrics
-    interpreted_feedback = task.interpreted_feedback
 
     if condition == "weak":
         return ""
@@ -265,6 +380,11 @@ def _condition_context(
             "- result rows were serialisable and the reporting pipeline completed normally\n"
         )
 
+    if task is None:
+        raise ValueError(f"Condition {condition!r} requires legacy task feedback metadata")
+    metrics = baseline.get("metrics", {})
+    metric_specs = task.feedback_metrics
+    interpreted_feedback = task.interpreted_feedback
     lines = ["\nAdditional verifier output from the current solver:"]
     for metric_name, spec in metric_specs.items():
         value = float(metrics[metric_name])
@@ -681,35 +801,178 @@ def _validate_experiment(experiment: ExperimentConfig) -> None:
 
 def _resolve_assets(
     experiment: ExperimentConfig,
-) -> tuple[Path, TaskDefinition, Path, MutationDefinition, str, str]:
+) -> RepairAssets:
     task_dir = Path(experiment.task) if experiment.task is not None else Path("tasks/oscillator")
+    contract_path = task_dir / "contract.yaml"
+    if not contract_path.is_file():
+        raise ValueError(f"Unknown task {experiment.task!r}: no contract.yaml in {task_dir}")
+    contract = load_task_contract(task_dir)
+
     mutation_value = experiment.mutation
     if mutation_value is None:
         raise ValueError("Repair experiments require a mutation")
-    mutation_dir = Path(mutation_value)
-    if not (mutation_dir / "mutation.yaml").exists():
-        mutation_dir = task_dir / "mutations" / Path(mutation_value).name
+    mutant_id = Path(mutation_value).name
+    requested_dir = Path(mutation_value)
+    mutation_dir = (
+        requested_dir
+        if (requested_dir / "mutation.yaml").is_file()
+        else task_dir / "mutations" / mutant_id
+    )
+    registered = discover_mutants(task_dir.parent, include_legacy=True)
 
-    task = load_task_definition(task_dir)
+    def unknown_mutant() -> ValueError:
+        ids = sorted(
+            mutant.definition.id
+            for mutant in registered
+            if mutant.task_dir.resolve() == task_dir.resolve()
+        )
+        return ValueError(
+            f"Unknown mutant {mutant_id!r} for task {experiment.task!r}; registered mutants: {ids}"
+        )
+
+    if not (mutation_dir / "mutation.yaml").is_file():
+        raise unknown_mutant()
     mutation = load_mutation_definition(mutation_dir)
-    if mutation.task_id != task.id:
-        raise ValueError(f"Mutation {mutation.id!r} targets {mutation.task_id!r}, not {task.id!r}")
+    if mutation.task_id != contract.id:
+        raise ValueError(
+            f"Mutation {mutation.id!r} targets {mutation.task_id!r}, not {contract.id!r}"
+        )
 
     mutation_source_path = mutation_dir / mutation.source
-    prompt_path = task_dir / task.prompt_template
     if not mutation_source_path.exists():
         raise FileNotFoundError(f"Mutation source not found: {mutation_source_path}")
+
+    if mutation.interface == "package":
+        package_mutants = [
+            mutant
+            for mutant in discover_mutants(task_dir.parent)
+            if mutant.task_dir.resolve() == task_dir.resolve()
+        ]
+        if not any(
+            mutant.mutation_dir.resolve() == mutation_dir.resolve() for mutant in package_mutants
+        ):
+            raise unknown_mutant()
+        unsupported = sorted(set(experiment.conditions) & {"metrics", "interpreted"})
+        if unsupported:
+            raise ValueError(
+                "Package mutants support only the weak and placebo conditions until "
+                f"gate-level feedback exists (#81); got {unsupported}"
+            )
+        with tempfile.TemporaryDirectory(prefix="invariantlab-repair-assets-") as tmp:
+            workspace = build_repair_workspace(
+                task_dir,
+                contract,
+                mutation_source_path,
+                Path(tmp) / "workspace",
+            )
+            specification = (workspace / "specification.md").read_text(encoding="utf-8")
+            mutation_source = (workspace / contract.entrypoint).read_text(encoding="utf-8")
+        return RepairAssets(
+            interface="package",
+            task_dir=task_dir,
+            contract=contract,
+            mutation_dir=mutation_dir,
+            mutation=mutation,
+            mutation_source=mutation_source,
+            prompt_template=PACKAGE_PROMPT_TEMPLATE,
+            specification=specification,
+            task=None,
+        )
+
+    task = load_task_definition(task_dir)
+    prompt_path = task_dir / task.prompt_template
     if not prompt_path.exists():
         raise FileNotFoundError(f"Task prompt template not found: {prompt_path}")
-
-    return (
-        task_dir,
-        task,
-        mutation_dir,
-        mutation,
-        mutation_source_path.read_text(encoding="utf-8"),
-        prompt_path.read_text(encoding="utf-8"),
+    return RepairAssets(
+        interface="legacy_study",
+        task_dir=task_dir,
+        contract=contract,
+        mutation_dir=mutation_dir,
+        mutation=mutation,
+        mutation_source=mutation_source_path.read_text(encoding="utf-8"),
+        prompt_template=prompt_path.read_text(encoding="utf-8"),
+        specification="",
+        task=task,
     )
+
+
+def build_repair_workspace(
+    task_dir: Path,
+    contract: TaskContract,
+    mutant_source_path: Path,
+    dest: Path,
+) -> Path:
+    workspace = build_agent_workspace(task_dir, dest)
+    (workspace / contract.entrypoint).write_text(
+        mutant_source_path.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    return workspace
+
+
+def render_package_prompt(
+    specification: str,
+    source: str,
+    condition_context: str = "",
+) -> str:
+    return PACKAGE_PROMPT_TEMPLATE.format(
+        specification=specification,
+        condition_context=condition_context,
+        source=source,
+    )
+
+
+def _render_prompt(assets: RepairAssets, condition_context: str) -> str:
+    if assets.interface == "package":
+        return render_package_prompt(
+            assets.specification,
+            assets.mutation_source,
+            condition_context,
+        )
+    return assets.prompt_template.format(
+        condition_context=condition_context,
+        source=assets.mutation_source,
+    )
+
+
+def _evaluate_package_source(
+    source: str,
+    assets: RepairAssets,
+    image: str,
+    attempt_id: str,
+) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="invariantlab-package-eval-") as tmp:
+        root = Path(tmp)
+        workspace = build_repair_workspace(
+            assets.task_dir,
+            assets.contract,
+            assets.mutation_dir / assets.mutation.source,
+            root / "candidate",
+        )
+        (workspace / assets.contract.entrypoint).write_text(source, encoding="utf-8")
+        with candidate_executor(DockerExecutor(image)):
+            result = verify_candidate(assets.task_dir, workspace, attempt_id, root / "verify")
+    dumped = result.model_dump(mode="json")
+    return {
+        "interface": "package",
+        "public_passed": dumped["public_passed"],
+        "scientific_passed": dumped["scientific_passed"],
+        "passed_all": dumped["passed_all"],
+        "gates": [
+            {
+                "id": f"{layer}/{gate['name']}",
+                "layer": layer,
+                "name": gate["name"],
+                "passed": gate["passed"],
+                "detail": gate["detail"],
+                "deviation": gate["deviation"],
+                "threshold": gate["threshold"],
+            }
+            for layer, gates in dumped["layers"].items()
+            for gate in gates
+        ],
+        "metrics": {},
+    }
 
 
 def _sha256_file(path: Path) -> str:
@@ -775,6 +1038,15 @@ def _resolve_image_digest(image: str) -> str:
                 check=False,
             )
             if pulled.returncode != 0:
+                local_id = subprocess.run(
+                    ["docker", "image", "inspect", "--format", "{{.Id}}", image],
+                    capture_output=True,
+                    text=True,
+                    timeout=DOCKER_KILL_TIMEOUT_SECONDS,
+                    check=False,
+                )
+                if local_id.returncode == 0 and local_id.stdout.strip().startswith("sha256:"):
+                    return local_id.stdout.strip()
                 detail = pulled.stderr.strip() or pulled.stdout.strip()
                 raise InfrastructureError(f"docker pull {image} failed: {detail}")
             inspected = _inspect_image_digest(image)
@@ -803,25 +1075,31 @@ def _model_manifest(config: ModelConfig) -> dict[str, Any]:
 def _build_manifest(
     config_path: Path,
     experiment: ExperimentConfig,
-    task_dir: Path,
-    task: TaskDefinition,
-    mutation_dir: Path,
-    mutation: MutationDefinition,
+    assets: RepairAssets,
     model_config: ModelConfig,
     image_override: str | None,
     image: str,
     image_digest: str,
 ) -> RunManifest:
     git_commit, git_dirty = _git_state()
-    artifacts = {
-        "task_yaml": task_dir / "task.yaml",
-        "contract_yaml": task_dir / task.contract,
-        "verifier": task_dir / task.verifier,
-        "candidate_runner": task_dir / task.candidate_runner,
-        "prompt_template": task_dir / task.prompt_template,
-        "mutation_yaml": mutation_dir / "mutation.yaml",
-        "mutation_source": mutation_dir / mutation.source,
-    }
+    if assets.interface == "package":
+        artifacts = {
+            "contract_yaml": assets.task_dir / "contract.yaml",
+            "specification": assets.task_dir / "specification.md",
+            "mutation_yaml": assets.mutation_dir / "mutation.yaml",
+            "mutation_source": assets.mutation_dir / assets.mutation.source,
+        }
+    else:
+        assert assets.task is not None
+        artifacts = {
+            "task_yaml": assets.task_dir / "task.yaml",
+            "contract_yaml": assets.task_dir / assets.task.contract,
+            "verifier": assets.task_dir / assets.task.verifier,
+            "candidate_runner": assets.task_dir / assets.task.candidate_runner,
+            "prompt_template": assets.task_dir / assets.task.prompt_template,
+            "mutation_yaml": assets.mutation_dir / "mutation.yaml",
+            "mutation_source": assets.mutation_dir / assets.mutation.source,
+        }
     model = _model_manifest(model_config)
     return RunManifest(
         run_id=uuid.uuid4().hex,
@@ -834,8 +1112,8 @@ def _build_manifest(
         package_version=_package_version(),
         python_version=sys.version.split()[0],
         platform=f"{platform.system()}-{platform.release()}-{platform.machine()}",
-        task_id=task.id,
-        mutation_id=mutation.id,
+        task_id=assets.contract.id,
+        mutation_id=assets.mutation.id,
         artifact_sha256={
             name: _sha256_file(path) for name, path in artifacts.items() if path.exists()
         },
@@ -893,14 +1171,8 @@ def run_repair_experiment(
 
     experiment = load_experiment_config(config_path)
     _validate_experiment(experiment)
-    (
-        task_dir,
-        task,
-        mutation_dir,
-        mutation,
-        mutation_source,
-        prompt_template,
-    ) = _resolve_assets(experiment)
+    assets = _resolve_assets(experiment)
+    mutation_source = assets.mutation_source
     model_config = load_model_config(Path(experiment.model))
     adapter = build_adapter(model_config)
     output = output_dir or Path("runs") / experiment.name
@@ -953,10 +1225,7 @@ def run_repair_experiment(
     manifest = _build_manifest(
         config_path,
         experiment,
-        task_dir,
-        task,
-        mutation_dir,
-        mutation,
+        assets,
         model_config,
         image_override,
         image,
@@ -985,7 +1254,11 @@ def run_repair_experiment(
         manifest_path.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
 
     try:
-        baseline = _evaluate_source(mutation_source, task_dir, task, image)
+        if assets.interface == "package":
+            baseline = _evaluate_package_source(mutation_source, assets, image, "baseline")
+        else:
+            assert assets.task is not None
+            baseline = _evaluate_source(mutation_source, assets.task_dir, assets.task, image)
     except InfrastructureError as exc:
         _write_run_status(
             output,
@@ -1022,11 +1295,8 @@ def run_repair_experiment(
             )
             return output
 
-        condition_context = _condition_context(condition, baseline, task)
-        prompt = prompt_template.format(
-            condition_context=condition_context,
-            source=mutation_source,
-        )
+        condition_context = _condition_context(condition, baseline, assets.task)
+        prompt = _render_prompt(assets, condition_context)
         started = time.perf_counter()
         try:
             model_response = adapter.complete(prompt)
@@ -1064,7 +1334,21 @@ def run_repair_experiment(
         timed_out = False
         try:
             repaired_source = _extract_python(response)
-            repaired = _evaluate_source(repaired_source, task_dir, task, image)
+            if assets.interface == "package":
+                repaired = _evaluate_package_source(
+                    repaired_source,
+                    assets,
+                    image,
+                    f"{condition}-{trial}",
+                )
+            else:
+                assert assets.task is not None
+                repaired = _evaluate_source(
+                    repaired_source,
+                    assets.task_dir,
+                    assets.task,
+                    image,
+                )
         except InfrastructureError as exc:
             _write_run_status(
                 output,
@@ -1081,6 +1365,8 @@ def run_repair_experiment(
         except (RuntimeError, ValueError) as exc:
             repaired_source = ""
             repaired = _failed_repair_result(exc)
+            if assets.interface == "package":
+                repaired.update({"interface": "package", "gates": []})
             candidate_error = str(exc)
 
         severity = _severity_ratios(baseline, repaired)
@@ -1093,8 +1379,8 @@ def run_repair_experiment(
             "experiment": experiment.name,
             "model": adapter.model_id,
             "seed": experiment.seed,
-            "task": task.id,
-            "mutation": mutation.id,
+            "task": assets.contract.id,
+            "mutation": assets.mutation.id,
             "condition": condition,
             "trial": trial,
             "schedule_index": schedule_index,

@@ -79,15 +79,15 @@ def test_repair_assets_are_resolved_from_experiment_config():
         seed=1729,
     )
 
-    task_dir, task, mutation_dir, mutation, source, prompt = _resolve_assets(experiment)
+    assets = _resolve_assets(experiment)
 
-    assert task_dir == Path("tasks/oscillator")
-    assert mutation_dir == Path("tasks/oscillator/mutations/update-order")
-    assert task.id == "oscillator_verlet"
-    assert mutation.id == "update-order"
-    assert "v = v_half + 0.5 * dt * a" in source
-    assert "{condition_context}" in prompt
-    assert "{source}" in prompt
+    assert assets.task_dir == Path("tasks/oscillator")
+    assert assets.mutation_dir == Path("tasks/oscillator/mutations/update-order")
+    assert assets.task is not None and assets.task.id == "oscillator_verlet"
+    assert assets.mutation.id == "update-order"
+    assert "v = v_half + 0.5 * dt * a" in assets.mutation_source
+    assert "{condition_context}" in assets.prompt_template
+    assert "{source}" in assets.prompt_template
 
 
 def test_path_based_config_audits_legacy_study_two_mutation_id():

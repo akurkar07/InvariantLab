@@ -59,6 +59,16 @@ are never repeated.
 The bundled Ollama model name is `qwen2.5-coder:7b-instruct`. Ollama currently distributes
 that 7B instruction model as a Q4_K_M build.
 
+## Package-task repair runs
+
+Package mutants are copied into an agent workspace with `build_agent_workspace` and graded
+with `invariantlab verify`; every candidate execution runs in Docker. Entrypoint stages mount
+only `src/` and the input/output directories, public-test stages mount a public-only workspace
+copy, and trusted grading runs on the host from the task directory. Build the required image
+with `docker build -t invariantlab/package-candidate:py3.12 -f docker/package-candidate.Dockerfile docker`.
+Package mutants support only `weak` and `placebo` conditions until gate-level feedback exists
+(#81). Legacy `legacy_study` configs (Study 1/2) continue to use the `task.yaml` verifier.
+
 ## vLLM
 
 InvariantLab also includes an OpenAI-compatible vLLM preset using Qwen's official 4-bit AWQ
@@ -135,8 +145,10 @@ as `extra.api_key_env` are recorded; secret values never are (secret-looking `ex
 written as `<redacted>`).
 
 The digest comes from `docker image inspect --format '{{index .RepoDigests 0}}' <image>`;
-the image is pulled first if it is not present locally. If Docker is unavailable or the pull
-fails, the run stops with `paused_infrastructure` before any model call.
+the image is pulled first if it is not present locally. A locally built image without a
+repository digest records its local image ID instead. If Docker is unavailable or the pull
+fails and no local image ID is available, the run stops with `paused_infrastructure` before
+any model call.
 
 On resume the runner recomputes the manifest and compares it with the stored one. Any
 difference in hashes, model config, seed, conditions, image or digest — or in the git commit,

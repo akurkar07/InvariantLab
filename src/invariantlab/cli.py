@@ -248,17 +248,26 @@ def run(
         )
 
         _validate_experiment(config)
-        _resolve_assets(config)
+        assets = _resolve_assets(config)
         from invariantlab.models import build_adapter
 
         build_adapter(model_config)
         if config.task_suite is not None:
             console.print(
-                "[yellow]Warning:[/yellow] task_suite is ignored until suite "
-                "evaluation (#120) lands."
+                "[yellow]Warning:[/yellow] task_suite is ignored; name one task and "
+                "mutant per config."
             )
         if dry_run:
-            console.print(f"[green]OK[/green] Experiment [bold]{config.name}[/bold] is valid.")
+            graded_by = (
+                "invariantlab verify (L0-L6)"
+                if assets.interface == "package"
+                else "legacy task.yaml verifier"
+            )
+            console.print(
+                f"[green]OK[/green] Experiment [bold]{config.name}[/bold] is valid "
+                f"({assets.interface} path: task {assets.contract.id}, "
+                f"mutant {assets.mutation.id}, graded by {graded_by})."
+            )
             return
 
         output_path = Path(output) if output is not None else None
