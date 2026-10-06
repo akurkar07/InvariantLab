@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import os
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 if TYPE_CHECKING:
@@ -27,6 +29,10 @@ class ModelRateLimitError(ModelRequestError):
 
 class ModelConnectionError(ModelRequestError):
     """Raised when a provider cannot be reached after retries."""
+
+
+class ReplayMissError(LookupError):
+    """Raised when a replayed prompt has no remaining recorded response."""
 
 
 SYSTEM_PROMPT = (
@@ -154,20 +160,21 @@ def _post_json(
 
 
 @dataclass
-class ReplayAdapter:
-    """Deterministic adapter for CI and end-to-end smoke testing."""
+class ReferenceStubAdapter:
+    """Fixed known-correct oscillator solver for smoke tests; ignores the prompt; not
+    a replay."""
 
-    model_id: str = "replay/oscillator-reference"
+    model_id: str = "reference_stub/oscillator-verlet"
 
     def generate(self, prompt: str) -> str:
         return self.complete(prompt).text
 
     def complete(self, prompt: str) -> ModelResponse:
         del prompt
-        return ModelResponse(text=_REPLAY_SOLUTION)
+        return ModelResponse(text=_REFERENCE_STUB_SOLUTION)
 
 
-_REPLAY_SOLUTION = """```python
+_REFERENCE_STUB_SOLUTION = """```python
 def solve_oscillator_verlet(x0, v0, omega, dt, n_steps):
     trajectory = [(0.0, float(x0), float(v0))]
     x = float(x0)
@@ -186,6 +193,94 @@ def solve_oscillator_verlet(x0, v0, omega, dt, n_steps):
 
     return trajectory
 ```"""
+
+
+@dataclass
+class ReplayAdapter:
+    """Re-serve responses recorded in a repair run's events.jsonl, keyed by prompt
+    SHA-256."""
+
+    model_id: str
+    responses: dict[str, list[ModelResponse]]
+    _served: dict[str, int] = field(default_factory=dict, init=False, repr=False)
+
+    @classmethod
+    def from_events(cls, events_path: Path, model_id: str = "") -> ReplayAdapter:
+        records: list[dict[str, Any]] = []
+        for line_number, line in enumerate(
+            events_path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Invalid JSON in replay events file {events_path} at line {line_number}"
+                ) from exc
+            if (
+                not isinstance(record, dict)
+                or not isinstance(record.get("prompt_sha256"), str)
+                or not isinstance(record.get("response"), str)
+            ):
+                raise ValueError(
+                    f"Replay event in {events_path} at line {line_number} must have "
+                    "string prompt_sha256 and response fields"
+                )
+            records.append(record)
+
+        if not records:
+            raise ValueError(f"Replay events file is empty: {events_path}")
+
+        records.sort(
+            key=lambda record: (
+                record.get("schedule_index", 0),
+                record.get("trial", 0),
+            )
+        )
+        grouped: dict[str, list[ModelResponse]] = {}
+        for record in records:
+            usage = record.get("usage")
+            if not isinstance(usage, dict):
+                usage = {}
+            grouped.setdefault(record["prompt_sha256"], []).append(
+                ModelResponse(
+                    text=record["response"],
+                    input_tokens=_optional_int(usage.get("input_tokens")),
+                    output_tokens=_optional_int(usage.get("output_tokens")),
+                    finish_reason=_optional_str(record.get("finish_reason")),
+                )
+            )
+
+        if model_id:
+            resolved_model_id = model_id
+        else:
+            models = [record.get("model") for record in records]
+            if not all(isinstance(model, str) for model in models) or len(
+                set(models)
+            ) != 1:
+                raise ValueError(
+                    "Replay events contain multiple or missing model values; "
+                    "declare an explicit model_id"
+                )
+            resolved_model_id = f"replay/{models[0]}"
+
+        return cls(model_id=resolved_model_id, responses=grouped)
+
+    def complete(self, prompt: str) -> ModelResponse:
+        key = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        responses = self.responses.get(key, [])
+        served = self._served.get(key, 0)
+        if served >= len(responses):
+            raise ReplayMissError(
+                f"No recorded response left for prompt sha256 {key} "
+                f"({len(responses)} recorded, {served} already served)"
+            )
+        self._served[key] = served + 1
+        return responses[served]
+
+    def generate(self, prompt: str) -> str:
+        return self.complete(prompt).text
 
 
 @dataclass
@@ -332,11 +427,29 @@ class OllamaAdapter:
         return self.complete(prompt).text
 
 
+def resolve_model_id(config: ModelConfig) -> str:
+    """Return the model id an adapter built from ``config`` will report."""
+
+    if config.adapter in {"replay", "reference_stub"}:
+        return build_adapter(config).model_id
+    return config.model_id
+
+
 def build_adapter(config: ModelConfig) -> ModelAdapter:
     """Construct an adapter from a validated ModelConfig."""
 
+    if config.adapter == "reference_stub":
+        return ReferenceStubAdapter(
+            model_id=config.model_id or "reference_stub/oscillator-verlet"
+        )
+
     if config.adapter == "replay":
-        return ReplayAdapter(model_id=config.model_id or "replay/oscillator-reference")
+        events_path = config.extra.get("events_path")
+        if not events_path:
+            raise ValueError("replay model configs must declare extra.events_path")
+        return ReplayAdapter.from_events(
+            Path(str(events_path)), model_id=config.model_id
+        )
 
     extra = config.extra
     if config.adapter == "ollama":

@@ -66,6 +66,19 @@ Study 2 record identifier.
 Create a YAML file under `configs/models/`; its `adapter` field selects the backend.
 See [Model adapters](model-adapters.md) for adapter ids, `extra` keys and examples.
 
+The `reference_stub` adapter returns a fixed, known-correct oscillator solver for smoke
+tests; it ignores the prompt and is not a model. The `replay` adapter re-serves responses
+recorded in a repair run's `events.jsonl`, matched by prompt SHA-256. Duplicate prompts
+are served in `schedule_index`/`trial` order; a missing or exhausted prompt raises
+`ReplayMissError`. If all recorded responses name the same model, `model_id` defaults to
+`replay/<recorded model>`.
+
+```yaml
+adapter: replay
+extra:
+  events_path: runs/<name>/events.jsonl
+```
+
 ## Add an experiment
 
 Bind the task, mutation and model in `configs/experiments/`:
