@@ -163,13 +163,21 @@ def _write_repair_config(tmp_path: Path, n_attempts: int = 2) -> Path:
 
 
 class FakeDocker:
-    """Stand-in for ``subprocess.run`` that scripts ``docker run`` outcomes."""
+    """Stand-in for ``subprocess.run`` that scripts two-stage ``docker run`` outcomes.
+
+    Each outcome covers one evaluation (candidate stage then verifier stage); the
+    first evaluation is the baseline. ``"timeout"`` and ``(125, stderr)`` apply to
+    the candidate stage; ``(code, stderr)`` is a candidate-stage exit after which
+    the verifier reports a failed verdict.
+    """
 
     def __init__(self, candidate_outcomes: list[object]):
         self.candidate_outcomes = list(candidate_outcomes)
         self.run_names: list[str] = []
+        self.candidate_stage_names: list[str] = []
         self.killed: list[str] = []
         self.baseline_outcome: object = BASELINE_RESULT
+        self._current: object = None
 
     def __call__(self, args, **kwargs):
         if args[:2] == ["docker", "kill"]:
@@ -178,16 +186,30 @@ class FakeDocker:
         assert args[:2] == ["docker", "run"]
         name = args[args.index("--name") + 1]
         self.run_names.append(name)
-        if len(self.run_names) == 1:
-            outcome = self.baseline_outcome
+        if "/work/candidate_runner.py" in args:
+            self.candidate_stage_names.append(name)
+            if len(self.candidate_stage_names) == 1:
+                self._current = self.baseline_outcome
+            else:
+                self._current = self.candidate_outcomes.pop(0)
+            if self._current == "timeout":
+                raise subprocess.TimeoutExpired(args, kwargs["timeout"])
+            if isinstance(self._current, tuple):
+                code, stderr = self._current
+                return subprocess.CompletedProcess(args, code, "", stderr)
+            return subprocess.CompletedProcess(args, 0, "", "")
+        assert "/verifier/verifier.py" in args
+        if isinstance(self._current, tuple):
+            verdict = {
+                "public": {},
+                "scientific": {},
+                "public_passed": False,
+                "scientific_passed": False,
+                "metrics": {"error": "missing short trajectory"},
+            }
         else:
-            outcome = self.candidate_outcomes.pop(0)
-        if outcome == "timeout":
-            raise subprocess.TimeoutExpired(args, kwargs["timeout"])
-        if isinstance(outcome, tuple):
-            code, stderr = outcome
-            return subprocess.CompletedProcess(args, code, "", stderr)
-        return subprocess.CompletedProcess(args, 0, json.dumps(outcome) + "\n", "")
+            verdict = self._current
+        return subprocess.CompletedProcess(args, 0, json.dumps(verdict) + "\n", "")
 
 
 def _install_fake_docker(monkeypatch, fake: FakeDocker) -> None:
@@ -222,7 +244,7 @@ def test_candidate_timeout_is_recorded_and_container_killed(tmp_path, monkeypatc
     assert "timed out" in timed_out["candidate_error"]
     assert events[1]["timeout"] is False
     assert events[1]["successful_repair"] is True
-    assert fake.killed == [fake.run_names[1]]
+    assert fake.killed == [fake.candidate_stage_names[1]]
     assert len(set(fake.run_names)) == len(fake.run_names)
     assert _status(output)["status"] == "complete"
 
@@ -283,7 +305,7 @@ def test_candidate_exit_failure_is_recorded_as_failed_repair(tmp_path, monkeypat
     assert failed["timeout"] is False
     assert failed["successful_repair"] is False
     assert failed["repaired"]["public_passed"] is False
-    assert "Candidate evaluation failed" in failed["candidate_error"]
+    assert failed["repaired"]["metrics"] == {"error": "missing short trajectory"}
     assert fake.killed == []
     assert _status(output)["status"] == "complete"
 

@@ -154,6 +154,7 @@ class TaskDefinition(BaseModel):
     family: TaskFamily
     contract: str = "contract.yaml"
     verifier: str
+    candidate_runner: str = "candidate_runner.py"
     prompt_template: str
     feedback_metrics: dict[str, FeedbackMetricSpec] = Field(default_factory=dict)
     interpreted_feedback: str = ""

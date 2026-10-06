@@ -2,6 +2,7 @@ id: oscillator_verlet
 family: oscillator
 contract: contract.yaml
 verifier: verifier.py
+candidate_runner: candidate_runner.py
 prompt_template: repair_prompt.txt
 feedback_metrics:
   max_state_relative_error:

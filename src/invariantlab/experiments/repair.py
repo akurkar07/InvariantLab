@@ -6,6 +6,7 @@ import contextlib
 import hashlib
 import json
 import math
+import os
 import random
 import re
 import shutil
@@ -63,8 +64,42 @@ def _kill_container(name: str) -> None:
         )
 
 
-def run_sandboxed_evaluation(work: Path, image: str) -> dict[str, Any]:
-    """Run ``/work/evaluate.py`` from ``work`` in a locked-down container."""
+def _docker_command(
+    image: str,
+    name: str,
+    mounts: list[str],
+    args: list[str],
+) -> list[str]:
+    command = [
+        "docker",
+        "run",
+        "--rm",
+        "--name",
+        name,
+        "--network",
+        "none",
+        "--memory",
+        "256m",
+        "--cpus",
+        "1",
+        "--pids-limit",
+        "64",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=16m",
+    ]
+    for mount in mounts:
+        command += ["-v", mount]
+    command += [image, "python", *args]
+    return command
+
+
+def _run_container(
+    image: str,
+    mounts: list[str],
+    args: list[str],
+) -> subprocess.CompletedProcess[str]:
+    """Run one locked-down container, mapping sandbox failures to typed errors."""
 
     if shutil.which("docker") is None:
         raise InfrastructureError(
@@ -74,29 +109,7 @@ def run_sandboxed_evaluation(work: Path, image: str) -> dict[str, Any]:
     name = f"invariantlab-eval-{uuid.uuid4().hex[:12]}"
     try:
         completed = subprocess.run(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "--name",
-                name,
-                "--network",
-                "none",
-                "--memory",
-                "256m",
-                "--cpus",
-                "1",
-                "--pids-limit",
-                "64",
-                "--read-only",
-                "--tmpfs",
-                "/tmp:rw,noexec,nosuid,size=16m",
-                "-v",
-                f"{work.resolve()}:/work:ro",
-                image,
-                "python",
-                "/work/evaluate.py",
-            ],
+            _docker_command(image, name, mounts, args),
             capture_output=True,
             text=True,
             timeout=CANDIDATE_TIMEOUT_SECONDS,
@@ -110,9 +123,14 @@ def run_sandboxed_evaluation(work: Path, image: str) -> dict[str, Any]:
             f"Candidate evaluation timed out after {CANDIDATE_TIMEOUT_SECONDS} s"
         ) from exc
 
-    detail = completed.stderr.strip() or completed.stdout.strip()
     if completed.returncode == DOCKER_RUN_FAILURE_EXIT_CODE:
+        detail = completed.stderr.strip() or completed.stdout.strip()
         raise InfrastructureError(f"docker run failed (exit 125): {detail}")
+    return completed
+
+
+def _parse_verdict(completed: subprocess.CompletedProcess[str]) -> dict[str, Any]:
+    detail = completed.stderr.strip() or completed.stdout.strip()
     if completed.returncode != 0:
         raise RuntimeError(f"Candidate evaluation failed: {detail}")
     lines = completed.stdout.strip().splitlines()
@@ -137,20 +155,59 @@ def _evaluate_source(
     task: TaskDefinition,
     image: str,
 ) -> dict[str, Any]:
-    """Evaluate candidate source with the verifier declared by the task."""
+    """Evaluate candidate source in two sandboxed stages.
+
+    Stage 1 runs the trusted candidate runner next to the candidate and writes raw
+    trajectories; its exit status and stdout are ignored. Stage 2 runs only the
+    verifier on that output, and the verdict is parsed from stage-2 stdout.
+    """
 
     verifier_path = task_dir / task.verifier
     if not verifier_path.exists():
         raise FileNotFoundError(f"Task verifier not found: {verifier_path}")
+    runner_path = task_dir / task.candidate_runner
+    if not runner_path.exists():
+        raise FileNotFoundError(f"Task candidate runner not found: {runner_path}")
 
     with tempfile.TemporaryDirectory(prefix="invariantlab-") as tmp:
         work = Path(tmp)
-        (work / "solver.py").write_text(source, encoding="utf-8")
-        (work / "evaluate.py").write_text(
+        candidate = work / "candidate"
+        output = work / "output"
+        verifier_dir = work / "verifier"
+        for directory in (candidate, output, verifier_dir):
+            directory.mkdir()
+        os.chmod(output, 0o777)
+        (candidate / "solver.py").write_text(source, encoding="utf-8")
+        (candidate / "candidate_runner.py").write_text(
+            runner_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        (verifier_dir / "verifier.py").write_text(
             verifier_path.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
-        return run_sandboxed_evaluation(work, image)
+
+        _run_container(
+            image,
+            [
+                f"{candidate.resolve()}:/work:ro",
+                f"{output.resolve()}:/output:rw",
+            ],
+            [
+                "/work/candidate_runner.py",
+                "/work/solver.py",
+                "/output/trajectories.json",
+            ],
+        )
+        completed = _run_container(
+            image,
+            [
+                f"{verifier_dir.resolve()}:/verifier:ro",
+                f"{output.resolve()}:/data:ro",
+            ],
+            ["/verifier/verifier.py", "/data/trajectories.json"],
+        )
+        return _parse_verdict(completed)
 
 
 def _legacy_feedback_metrics() -> dict[str, FeedbackMetricSpec]:
