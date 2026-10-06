@@ -1,0 +1,21 @@
+id: dirichlet-wrong-node
+task_id: wave_leapfrog
+family: boundary_error
+interface: package
+source: solver.py
+expected_effect: >-
+  The right Dirichlet condition is applied at the last interior node (index -2) instead of
+  the boundary node, which is never written and stays 0. Both reported boundary values are
+  still exactly zero and the output is finite, but the domain is effectively one cell short
+  and the pinned node reflects a spurious wave: the long cases have a state error of about
+  6e-3 and the coarse one-step startup case about 0.5.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle[slow-wave-nonunit-domain]
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle[fast-wave-nonunit-domain]
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_zero_velocity_startup_matches_non_special_standing_wave_oracle
+    message: "startup_relative_l2="
+  - test: tests/scientific/test_reference.py::test_different_wave_speeds_produce_distinct_correct_phases
+    message: "Not equal to tolerance"
+max_changed_lines: 2

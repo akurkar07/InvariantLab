@@ -1,0 +1,22 @@
+id: unstable-time-recurrence
+task_id: wave_leapfrog
+family: stability_error
+interface: package
+source: solver.py
+expected_effect: >-
+  The leapfrog recurrence adds the previous level instead of subtracting it
+  (u_next = 2u + u_prev + C^2 * delta2(u)), so the scheme loses its neutral stability: every
+  mode has an amplification factor of about 1 + sqrt(2) per step regardless of the CFL
+  number. The output grows to about 1e61 over the public 160-step case but stays finite with
+  exact Dirichlet boundaries, so the public suite passes; the scientific long cases grow to
+  about 1e153-1e191 (state error overflows to inf) and the one-step startup error is about 2.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle[slow-wave-nonunit-domain]
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle[fast-wave-nonunit-domain]
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_zero_velocity_startup_matches_non_special_standing_wave_oracle
+    message: "startup_relative_l2="
+  - test: tests/scientific/test_reference.py::test_different_wave_speeds_produce_distinct_correct_phases
+    message: "Not equal to tolerance"
+max_changed_lines: 2
