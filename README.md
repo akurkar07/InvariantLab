@@ -102,7 +102,8 @@ Neither study is evidence of a general feedback-condition effect.
 
 **Study 1 results:** [First Multi-Condition Study Results](docs/first-multi-condition-study-results.md)  
 **Study 2 protocol:** [Update-order feedback replication](docs/update-order-feedback-replication.md)  
-**Study 2 results:** [Two-Model Comparison](docs/study-two-model-comparison.md)
+**Study 2 results:** [Two-Model Comparison](docs/study-two-model-comparison.md)  
+**Research track:** [Studies 1-3 and the verification gap](docs/research-track.md)
 
 ## Design and methodology
 

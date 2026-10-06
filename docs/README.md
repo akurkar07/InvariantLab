@@ -9,5 +9,6 @@
 - [First Multi-Condition Study Results](first-multi-condition-study-results.md) — Study 1 results
 - [Update-Order Feedback Replication](update-order-feedback-replication.md) — Study 2 protocol
 - [Study 2: Two-Model Comparison](study-two-model-comparison.md) — Study 2 results
+- [Research Track](research-track.md) — How Studies 1-3 relate to the V1 verification-gap question; Study 3 preregistration rules
 
 The repository README gives the implementation status and a quickstart; [Methodology](methodology.md) holds the V1 design.
