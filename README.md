@@ -49,8 +49,14 @@ uv sync --extra dev
 # Top-level unit and acceptance tests
 uv run pytest tests -q
 
-# One task's public and scientific suites (run task suites per task directory)
-cd tasks/oscillator && uv run pytest tests -q && cd ../..
+# Run one task on its committed example input, then its public and scientific suites
+cd tasks/oscillator
+uv run python src/solver.py --input examples/input.json --output result.npz
+uv run pytest tests
+cd ../..
+
+# All four task suites (each runs from its own task directory)
+make test-tasks
 
 # Deterministic smoke run: no API key or model server, needs Docker
 uv run invariantlab run --experiment configs/experiments/first-model-oscillator.yaml
