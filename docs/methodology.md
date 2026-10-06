@@ -33,7 +33,7 @@ Task suites run per task directory: `cd tasks/<task> && uv run pytest tests`
 
 Public tests represent ordinary tests that an agent may see while implementing a task.
 
-Scientific tests act as an independent evaluator. They execute the candidate as a subprocess, load only the declared NPZ output, and compare it against trusted analytical or high-accuracy evidence. Candidate task code cannot import the trusted verifier.
+Scientific tests act as an independent evaluator. They execute the candidate as a subprocess, load only the declared NPZ output, and compare it against trusted analytical or high-accuracy evidence. Candidate task code cannot import the trusted verifier. This independence depends on workspace copying (agents get a copy without the scientific tests), not on process isolation; see [Verification: trust boundary](verification.md#trust-boundary).
 
 The useful distinction is therefore:
 
@@ -179,6 +179,8 @@ Agent-facing task code is deliberately separate from trusted verification code.
 Scientific tests consume serialized task output rather than calling candidate Python functions directly. Acceptance tests enforce that hidden scientific tests do not import candidate solver modules and that agent-facing code does not import trusted verification modules.
 
 This separation is intentional. The benchmark should not certify an implementation using the same numerical update code that it is evaluating.
+
+The workspace builders, what agents can and cannot see, and why `run_task` is not a sandbox are documented in [Verification: trust boundary](verification.md#trust-boundary).
 
 ## Contracts
 
