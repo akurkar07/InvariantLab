@@ -12,6 +12,8 @@ Every task contract names real paths beneath its own directory:
 tasks/<family>/
 ├── contract.yaml
 ├── specification.md
+├── examples/
+│   └── input.json
 ├── src/
 │   └── solver.py
 └── tests/
@@ -23,7 +25,11 @@ tasks/<family>/
 
 - `contract.yaml` declares the entrypoint, visible and hidden tests, output archive,
   budgets, dtype, seed, and task-specific tolerances.
-- `specification.md`, `src/`, and `tests/public/` are visible in the agent workspace.
+- `examples/input.json` is a small committed input in the envelope below with the
+  task's own `task_id`; it runs in well under 5 s, and a public test runs the
+  entrypoint on it so the documented command cannot rot.
+- `specification.md`, `examples/`, `src/`, and `tests/public/` are visible in the
+  agent workspace.
 - `tests/scientific/`, trusted oracle code, mutation manifests, and evaluator source
   are excluded from the agent mount and added only by the evaluator.
 - Every declared path is relative to the task root. Absolute paths, `..` traversal,
@@ -139,3 +145,31 @@ At minimum, a completed reference task must prove:
 The reusable six-layer verification pipeline, controlled mutants, model evaluation,
 and report generation are later milestones; they are not prerequisites for authoring
 an executable M2 task package.
+
+## Repair-study files
+
+The oscillator package also carries the files used by the repair studies. They sit
+beside the task package but are a separate, evaluator-side interface:
+
+```text
+tasks/oscillator/
+├── task.yaml           # evaluator metadata: verifier, prompt, feedback_metrics thresholds
+├── candidate_runner.py # stage 1: imports the candidate, writes trajectories.json
+├── verifier.py         # stage 2: scores trajectories against held-out cases
+├── repair_prompt.txt   # prompt template given to the model
+└── mutations/          # buggy solvers to be repaired (legacy update-order, sign-error)
+```
+
+- Repair candidates implement `solve_oscillator_verlet(x0, v0, omega, dt, n_steps)`
+  returning a trajectory list, not the `src/solver.py` NPZ protocol above. The
+  `update-order` and `sign-error` mutations therefore declare `interface: legacy_study`
+  in `mutation.yaml`; package mutants such as `non-conservative-damping` use the
+  `src/solver.py` protocol instead (see Experiment Authoring).
+- None of these files are part of the agent workspace (`build_agent_workspace`).
+  The repair runner places `candidate_runner.py` beside the candidate in stage 1
+  and mounts `verifier.py` only in stage 2.
+- The study gate thresholds in `task.yaml` are independent of the `contract.yaml`
+  tolerances.
+
+See [Experiment Authoring](experiment-authoring.md) for how tasks, mutations and
+models are combined into a repair experiment.

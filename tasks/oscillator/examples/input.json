@@ -1,0 +1,14 @@
+{
+  "task_id": "oscillator_verlet",
+  "parameters": {
+    "x0": 1.0,
+    "v0": 0.25,
+    "omega": 1.5,
+    "dt": 0.01,
+    "n_steps": 100
+  },
+  "numerics": {
+    "dtype": "float64",
+    "seed": 42
+  }
+}

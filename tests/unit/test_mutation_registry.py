@@ -11,6 +11,7 @@ from invariantlab.mutations import (
     MutationRegistryError,
     RegisteredMutant,
     discover_mutants,
+    validate_mutant,
 )
 
 
@@ -204,15 +205,33 @@ def test_legacy_mutants_are_opt_in(tmp_path: Path) -> None:
     ] == ["legacy", "package"]
 
 
-def test_real_task_mutants_are_legacy_only() -> None:
-    """The checked-in oscillator repair mutant remains available to legacy studies."""
+def test_real_task_legacy_mutants_are_opt_in() -> None:
+    """The checked-in oscillator repair mutants remain available to legacy studies."""
     repo_root = Path(__file__).resolve().parents[2]
     tasks_root = repo_root / "tasks"
 
-    assert discover_mutants(tasks_root) == []
-    mutants = discover_mutants(tasks_root, include_legacy=True)
-
-    assert [(mutant.task_dir.name, mutant.definition.id) for mutant in mutants] == [
-        ("oscillator", "sign-error"),
-        ("oscillator", "update-order"),
+    legacy = [
+        (mutant.task_dir.name, mutant.definition.id)
+        for mutant in discover_mutants(tasks_root, include_legacy=True)
+        if mutant.definition.interface == "legacy_study"
     ]
+
+    assert legacy == [("oscillator", "sign-error"), ("oscillator", "update-order")]
+
+
+def test_real_task_package_mutants_validate() -> None:
+    """Every curated package mutant passes validate_mutant against unmodified task suites."""
+    repo_root = Path(__file__).resolve().parents[2]
+    mutants = discover_mutants(repo_root / "tasks")
+
+    assert [
+        (mutant.task_dir.name, mutant.definition.id, mutant.definition.family.value)
+        for mutant in mutants
+    ] == [
+        ("oscillator", "non-conservative-damping", "non_conservative_update"),
+        ("wave1d", "sign-error-startup", "sign_error"),
+        ("wave1d", "update-order-overwrite", "update_order_error"),
+    ]
+    for mutant in mutants:
+        result = validate_mutant(mutant)
+        assert result.passed, (mutant.definition.id, result.reasons)
