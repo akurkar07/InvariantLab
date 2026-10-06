@@ -105,7 +105,7 @@ def _run_suite(copy_dir: Path, suite: str, timeout: float) -> _SuiteResult:
         f"--junitxml={xml_path}",
     ]
     with log_path.open("wb") as log_file:
-        if os.name == "nt":
+        if sys.platform == "win32":
             process = subprocess.Popen(
                 command,
                 cwd=copy_dir,
@@ -124,7 +124,7 @@ def _run_suite(copy_dir: Path, suite: str, timeout: float) -> _SuiteResult:
         try:
             returncode = process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            if os.name == "nt":
+            if sys.platform == "win32":
                 subprocess.run(
                     ["taskkill", "/F", "/T", "/PID", str(process.pid)],
                     capture_output=True,
@@ -132,7 +132,7 @@ def _run_suite(copy_dir: Path, suite: str, timeout: float) -> _SuiteResult:
                 )
             else:
                 with suppress(ProcessLookupError):
-                    os.killpg(process.pid, signal.SIGKILL)  # type: ignore[attr-defined]
+                    os.killpg(process.pid, signal.SIGKILL)
             process.wait()
             return _SuiteResult((), process.returncode, timed_out=True)
 
