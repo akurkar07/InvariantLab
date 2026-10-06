@@ -95,14 +95,40 @@ see `configs/models/api-example.yaml`.
 
 See [model execution](docs/local-models.md) for Ollama, vLLM and optional API endpoint setup.
 
+## Reporting a run
+
+Rebuild a repair run's tables from `events.jsonl` without a model or Docker; the command rechecks integrity and any stored `study-summary.json`, and fails on mismatch.
+
+```bash
+uv run invariantlab report \
+  --experiment tests/fixtures/runs/repair-mini/experiment.yaml \
+  --run-dir tests/fixtures/runs/repair-mini \
+  --output reports/repair-mini
+```
+
+The command writes:
+
+- `summary.json` — recomputed run summary, source-record count and events digest
+- `by_condition.csv` — aggregate repair outcomes by feedback condition
+- `samples.csv` — one row per canonical scheduled record
+
+Example `by_condition.csv`:
+
+```text
+task,mutation,model,condition,n,scientific_passes,scientific_pass_rate,wilson_low,wilson_high,scientific_regressions,median_worst_scientific_ratio,pass_rate_difference_vs_weak
+oscillator,update-order,fixture/replay-mini,weak,2,1,0.500000,0.094529,0.905471,1,1.250025,0.000000
+oscillator,update-order,fixture/replay-mini,metrics,2,2,1.000000,0.342372,1.000000,0,0.000050,0.500000
+```
+
 ## Repository layout
 
 ```text
 src/invariantlab/
-├── cli.py                       # validate-task, model-check, run, audit-run
+├── cli.py                       # validate-task, model-check, run, audit-run, report
 ├── config.py                    # model and experiment config loading
 ├── schema.py                    # task/output contract and experiment models
 ├── experiments/                 # repair, first-model and feedback-replication runners
+├── reporting/                   # rebuild run tables from events.jsonl
 ├── models/
 │   └── adapter.py               # replay, ollama and openai_compatible adapters
 ├── tasks/
@@ -239,11 +265,12 @@ It currently provides:
 - the oscillator repair experiment runner, which executes candidate repairs in Docker (`invariantlab run`)
 - `replay`, `ollama` and `openai_compatible` model adapters (`invariantlab model-check`)
 - raw run-evidence auditing (`invariantlab audit-run`)
+- rebuilding a repair run's summary and CSV tables from `events.jsonl` alone (`invariantlab report`)
 
 It does **not** provide yet:
 
 - verification layers 3-6 (invariants, convergence, metamorphic, robustness) as reusable gates
 - a mutation registry
-- reporting
+- HTML reports and plots
 - a dashboard
 - Hugging Face dataset export

@@ -338,7 +338,7 @@ def _mutation_record_id(experiment: ExperimentConfig) -> str | None:
     return Path(experiment.mutation).name
 
 
-def _audit_records(
+def audit_records(
     records: list[dict[str, Any]],
     schedule: list[CellKey],
     experiment: ExperimentConfig,
@@ -453,6 +453,9 @@ def _audit_records(
     return canonical, audit
 
 
+_audit_records = audit_records
+
+
 def _write_integrity_report(output: Path, audit: dict[str, Any]) -> None:
     (output / "artifact-integrity.json").write_text(
         json.dumps(audit, indent=2, sort_keys=True) + "\n",
@@ -490,7 +493,7 @@ def audit_repair_experiment(
         experiment.randomize_order,
     )
     records = _read_existing_events(run_dir / "events.jsonl")
-    canonical, audit = _audit_records(
+    canonical, audit = audit_records(
         records,
         schedule,
         experiment,
@@ -551,7 +554,7 @@ def _baseline_verification_gap(baseline: dict[str, Any]) -> int | None:
     )
 
 
-def _summary(
+def summarize_records(
     experiment: ExperimentConfig,
     model_id: str,
     baseline: dict[str, Any],
@@ -571,7 +574,7 @@ def _summary(
         experiment.seed,
         experiment.randomize_order,
     )
-    canonical, audit = _audit_records(records, schedule, experiment, model_id)
+    canonical, audit = audit_records(records, schedule, experiment, model_id)
     if not audit["integrity_ok"]:
         raise ArtifactIntegrityError(_integrity_error_message(audit))
     records = canonical
@@ -650,6 +653,9 @@ def _summary(
     }
 
 
+_summary = summarize_records
+
+
 def _write_summary(
     path: Path,
     experiment: ExperimentConfig,
@@ -659,7 +665,7 @@ def _write_summary(
 ) -> None:
     path.write_text(
         json.dumps(
-            _summary(experiment, model_id, baseline, records),
+            summarize_records(experiment, model_id, baseline, records),
             indent=2,
             sort_keys=True,
         )
@@ -763,7 +769,7 @@ def run_repair_experiment(
         experiment.seed,
         experiment.randomize_order,
     )
-    records, audit = _audit_records(
+    records, audit = audit_records(
         raw_records,
         schedule,
         experiment,
@@ -930,7 +936,7 @@ def run_repair_experiment(
         records.append(record)
         completed.add((condition, trial))
         new_attempts += 1
-        _, audit = _audit_records(
+        _, audit = audit_records(
             records,
             schedule,
             experiment,

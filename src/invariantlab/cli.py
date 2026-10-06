@@ -128,6 +128,28 @@ def audit_run(
 
 
 @app.command()
+def report(
+    experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
+    run_dir: str = typer.Option(..., "--run-dir", help="Existing run directory."),
+    output: str = typer.Option(..., "--output", help="Directory for rebuilt report files."),
+) -> None:
+    """Rebuild report tables from a repair run's events."""
+    from invariantlab.reporting import build_report
+
+    try:
+        result = build_report(Path(experiment), Path(run_dir), Path(output))
+        count = result["summary"]["source_records"]
+        console.print(
+            f"[green]✓[/green] Report rebuilt from {count} canonical records."
+        )
+        for name, path in result["paths"].items():
+            console.print(f"{name}: [bold]{path}[/bold]")
+    except Exception as e:
+        console.print(f"[red]✗[/red] Report failed: {e}")
+        raise typer.Exit(code=1) from e
+
+
+@app.command()
 def run(
     experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
     output: str | None = typer.Option(None, "--output", help="Optional run output directory."),
