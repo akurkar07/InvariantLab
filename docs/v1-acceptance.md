@@ -14,8 +14,12 @@ The checker runs pytest, keeps only `v1_acceptance`-marked tests, and reports
 each criterion as `passed`, `failed`, `skipped` or `missing`. It exits 0 only
 when all eight criteria are `passed`; skipped, xfailed, failed and missing
 criteria — as well as tests marked with unknown acceptance ids — all fail the
-gate. CI wiring for the checker is tracked in
-[#69](https://github.com/akurkar07/InvariantLab/issues/69).
+gate. The `V1 Acceptance` workflow (`.github/workflows/v1-acceptance.yml`, job
+`v1-acceptance`) runs the checker on every pull request to and push to `main`
+(plus manual dispatch) and uploads `v1-acceptance.json` as an artifact. Until
+V1-AC1..AC8 all pass, the job is `continue-on-error` (remove before #72); the
+maintainer should make the `v1-acceptance` check required in branch protection —
+agents cannot change repository settings.
 
 | ID | Criterion | Prerequisite milestones | Test issue | Pytest node id(s) |
 | --- | --- | --- | --- | --- |
@@ -25,7 +29,7 @@ gate. CI wiring for the checker is tracked in
 | V1-AC4 | repeated replay produces identical evaluator outcomes | M5 | [#66](https://github.com/akurkar07/InvariantLab/issues/66) | `tests/integration/test_v1_replay_determinism.py::test_repeated_replay_yields_identical_evaluator_outcomes`, `tests/integration/test_v1_replay_determinism.py::test_perturbed_replay_response_changes_evaluator_outcomes` |
 | V1-AC5 | report totals equal the number of enumerated sample records | M5, M6 | [#67](https://github.com/akurkar07/InvariantLab/issues/67) | `tests/acceptance/test_v1_report_reconstruction.py::test_report_totals_equal_enumerated_sample_records` |
 | V1-AC6 | result tables can be regenerated without API access | M6 | [#67](https://github.com/akurkar07/InvariantLab/issues/67) | `tests/acceptance/test_v1_report_reconstruction.py::test_report_tables_regenerate_offline_byte_for_byte` |
-| V1-AC7 | CI exercises task validation, a complete smoke run and report reconstruction | M6 | [#69](https://github.com/akurkar07/InvariantLab/issues/69) | _pending (#69)_ |
+| V1-AC7 | CI exercises task validation, a complete smoke run and report reconstruction | M6 | [#69](https://github.com/akurkar07/InvariantLab/issues/69) | `tests/acceptance/test_v1_ci_coverage.py` (whole module) |
 | V1-AC8 | the public dataset contains task metadata, trajectories, patches, measurements and provenance without hidden credentials | M6 | [#68](https://github.com/akurkar07/InvariantLab/issues/68) | `tests/acceptance/test_v1_dataset_export.py::test_exported_records_have_full_provenance`, `tests/acceptance/test_v1_dataset_export.py::test_exported_dataset_passes_credential_scan`, `tests/acceptance/test_v1_dataset_export.py::test_credential_scan_fails_on_injected_canary` |
 
 V1-AC4 requires a working Docker daemon and fails rather than skips when Docker is unavailable.
