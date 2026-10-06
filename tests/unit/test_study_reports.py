@@ -1,9 +1,9 @@
-"""Tests that published study intervals match the repair runner."""
+"""Tests that published study intervals match the runner's Wilson formula."""
 
 import re
 from pathlib import Path
 
-from invariantlab.experiments.repair import _wilson_interval
+from invariantlab.metrics import wilson_interval
 
 _COUNT = re.compile(r"^\**\s*(\d+)\s*/\s*(\d+)\s*\**$")
 _PROPORTION = re.compile(r"^\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]$")
@@ -110,7 +110,9 @@ def test_study_report_intervals_match_the_runner_formula():
     mismatches = []
 
     for report, line, successes, total, published_lo, published_hi in rows:
-        lo, hi = _wilson_interval(successes, total)
+        interval = wilson_interval(successes, total)
+        assert interval is not None, f"{report}:{line}: empty count"
+        lo, hi = interval
         if (report, line) in percent_rows:
             published = (published_lo, published_hi)
             expected = (round(100 * lo, 1), round(100 * hi, 1))
