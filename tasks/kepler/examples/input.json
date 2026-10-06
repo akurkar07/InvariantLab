@@ -1,0 +1,16 @@
+{
+  "task_id": "kepler_verlet",
+  "parameters": {
+    "rx": 1.5,
+    "ry": 0.2,
+    "vx": -0.1,
+    "vy": 0.9,
+    "mu": 2.0,
+    "dt": 0.02,
+    "n_steps": 120
+  },
+  "numerics": {
+    "dtype": "float64",
+    "seed": 1729
+  }
+}
