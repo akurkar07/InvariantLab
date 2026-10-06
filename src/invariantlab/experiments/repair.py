@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import random
 import re
 import shutil
@@ -47,6 +48,33 @@ def _extract_python(text: str) -> str:
     raise ValueError("Model response did not contain a Python source file")
 
 
+def _docker_command(
+    image: str,
+    mounts: list[str],
+    args: list[str],
+) -> list[str]:
+    command = [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--memory",
+        "256m",
+        "--cpus",
+        "1",
+        "--pids-limit",
+        "64",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=16m",
+    ]
+    for mount in mounts:
+        command += ["-v", mount]
+    command += [image, "python", *args]
+    return command
+
+
 def _evaluate_source(
     source: str,
     task_dir: Path,
@@ -61,37 +89,56 @@ def _evaluate_source(
     verifier_path = task_dir / task.verifier
     if not verifier_path.exists():
         raise FileNotFoundError(f"Task verifier not found: {verifier_path}")
+    runner_path = task_dir / task.candidate_runner
+    if not runner_path.exists():
+        raise FileNotFoundError(f"Task candidate runner not found: {runner_path}")
 
     with tempfile.TemporaryDirectory(prefix="invariantlab-") as tmp:
         work = Path(tmp)
-        (work / "solver.py").write_text(source, encoding="utf-8")
-        (work / "evaluate.py").write_text(
+        candidate = work / "candidate"
+        output = work / "output"
+        verifier_dir = work / "verifier"
+        for directory in (candidate, output, verifier_dir):
+            directory.mkdir()
+        os.chmod(output, 0o777)
+        (candidate / "solver.py").write_text(source, encoding="utf-8")
+        (candidate / "candidate_runner.py").write_text(
+            runner_path.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        (verifier_dir / "verifier.py").write_text(
             verifier_path.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
 
-        completed = subprocess.run(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "--network",
-                "none",
-                "--memory",
-                "256m",
-                "--cpus",
-                "1",
-                "--pids-limit",
-                "64",
-                "--read-only",
-                "--tmpfs",
-                "/tmp:rw,noexec,nosuid,size=16m",
-                "-v",
-                f"{work.resolve()}:/work:ro",
+        subprocess.run(
+            _docker_command(
                 image,
-                "python",
-                "/work/evaluate.py",
-            ],
+                [
+                    f"{candidate.resolve()}:/work:ro",
+                    f"{output.resolve()}:/output:rw",
+                ],
+                [
+                    "/work/candidate_runner.py",
+                    "/work/solver.py",
+                    "/output/trajectories.json",
+                ],
+            ),
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+
+        completed = subprocess.run(
+            _docker_command(
+                image,
+                [
+                    f"{verifier_dir.resolve()}:/verifier:ro",
+                    f"{output.resolve()}:/data:ro",
+                ],
+                ["/verifier/verifier.py", "/data/trajectories.json"],
+            ),
             capture_output=True,
             text=True,
             timeout=60,

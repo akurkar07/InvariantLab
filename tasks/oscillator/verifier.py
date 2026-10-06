@@ -1,11 +1,12 @@
-import importlib.util
 import json
 import math
+import sys
 
-spec = importlib.util.spec_from_file_location("candidate", "/work/solver.py")
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-solve = module.solve_oscillator_verlet
+CASES = [
+    (1.0, 0.0, 1.0, 0.01, 800),
+    (0.3, -0.4, 1.7, 0.005, 1200),
+    (-0.8, 0.25, 0.7, 0.01, 900),
+]
 
 
 def analytic(t, x0, v0, omega):
@@ -19,18 +20,56 @@ def energy(x, v, omega):
     return 0.5 * v * v + 0.5 * omega * omega * x * x
 
 
+def _is_real_number(value):
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def _validate_cases(cases):
+    if not isinstance(cases, list) or len(cases) != len(CASES):
+        raise RuntimeError(f"case trajectories must be a list of length {len(CASES)}")
+    for traj in cases:
+        if (
+            not isinstance(traj, list)
+            or not traj
+            or not all(
+                isinstance(row, list)
+                and len(row) == 3
+                and all(_is_real_number(value) for value in row)
+                for row in traj
+            )
+        ):
+            raise RuntimeError(
+                "each case trajectory must be a non-empty list of [t, x, v] rows of finite reals"
+            )
+
+
 public = {}
 scientific = {}
 
 try:
-    short = solve(1.0, 0.0, 1.0, 0.05, 2)
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, dict):
+        raise RuntimeError("trajectory payload must be a JSON object")
+    if "short" not in data:
+        raise RuntimeError(data.get("error", "missing short trajectory"))
+    if "cases" not in data:
+        raise RuntimeError(data.get("error", "missing case trajectories"))
+
+    short = data["short"]
+    _validate_cases(data["cases"])
+
     public["shape"] = (
         isinstance(short, list)
         and len(short) == 3
         and all(len(row) == 3 for row in short)
     )
     public["initial_state"] = public["shape"] and all(
-        abs(a - b) < 1e-12 for a, b in zip(short[0], (0.0, 1.0, 0.0))
+        abs(a - b) < 1e-12 for a, b in zip(short[0], (0.0, 1.0, 0.0), strict=True)
     )
     public["finite"] = public["shape"] and all(
         math.isfinite(float(value)) for row in short for value in row
@@ -39,15 +78,9 @@ try:
         public["shape"] and abs(float(short[1][1]) - math.cos(0.05)) < 0.01
     )
 
-    cases = [
-        (1.0, 0.0, 1.0, 0.01, 800),
-        (0.3, -0.4, 1.7, 0.005, 1200),
-        (-0.8, 0.25, 0.7, 0.01, 900),
-    ]
     max_state_error = 0.0
     max_energy_drift = 0.0
-    for x0, v0, omega, dt, n_steps in cases:
-        traj = solve(x0, v0, omega, dt, n_steps)
+    for traj, (x0, v0, omega, _dt, _n_steps) in zip(data["cases"], CASES, strict=True):
         t, x, v = map(float, traj[-1])
         x_ref, v_ref = analytic(t, x0, v0, omega)
         scale = max(1.0, abs(x_ref), abs(v_ref))
