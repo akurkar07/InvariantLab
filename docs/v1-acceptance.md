@@ -26,6 +26,6 @@ gate. CI wiring for the checker is tracked in
 | V1-AC5 | report totals equal the number of enumerated sample records | M5, M6 | [#67](https://github.com/akurkar07/InvariantLab/issues/67) | `tests/acceptance/test_v1_report_reconstruction.py::test_report_totals_equal_enumerated_sample_records` |
 | V1-AC6 | result tables can be regenerated without API access | M6 | [#67](https://github.com/akurkar07/InvariantLab/issues/67) | `tests/acceptance/test_v1_report_reconstruction.py::test_report_tables_regenerate_offline_byte_for_byte` |
 | V1-AC7 | CI exercises task validation, a complete smoke run and report reconstruction | M6 | [#69](https://github.com/akurkar07/InvariantLab/issues/69) | _pending (#69)_ |
-| V1-AC8 | the public dataset contains task metadata, trajectories, patches, measurements and provenance without hidden credentials | M6 | [#68](https://github.com/akurkar07/InvariantLab/issues/68) | _pending (#68)_ |
+| V1-AC8 | the public dataset contains task metadata, trajectories, patches, measurements and provenance without hidden credentials | M6 | [#68](https://github.com/akurkar07/InvariantLab/issues/68) | `tests/acceptance/test_v1_dataset_export.py::test_exported_records_have_full_provenance`, `tests/acceptance/test_v1_dataset_export.py::test_exported_dataset_passes_credential_scan`, `tests/acceptance/test_v1_dataset_export.py::test_credential_scan_fails_on_injected_canary` |
 
 V1-AC4 requires a working Docker daemon and fails rather than skips when Docker is unavailable.
