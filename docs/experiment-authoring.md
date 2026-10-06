@@ -118,6 +118,8 @@ Curated package mutants (each passes `validate_mutant`; checked by
 
 | Task | Mutant id | Family | Defect |
 |---|---|---|---|
+| heat1d | `discretisation-grid-spacing` | `discretisation_error` | `dx = length / nx` instead of `length / (nx - 1)` |
+| heat1d | `sixth-order-stencil-ftcs-limit` | `stability_error` | sixth-order Laplacian (true FTCS limit `r <= 45/136`) behind the unchanged second-order guard `r <= 0.5` |
 | kepler | `non-conservative-velocity-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 2e-9` (fails `energy_relative_drift`) |
 | kepler | `unit-error-au-rounding` | `unit_error` | `mu` scaled by `(1.495978707e11 / 1.496e11)^3` (IAU vs rounded AU round trip) |
 | oscillator | `early-termination` | `termination_defect` | stops at a 10000-step cap and fills the remaining rows with the last state |
@@ -131,7 +133,10 @@ Curated package mutants (each passes `validate_mutant`; checked by
 | wave1d | `update-order-overwrite` | `update_order_error` | `state = next_state; previous = state` overwrites the old level |
 
 The oscillator update-order (stale acceleration) and sign-error defects fail the unmodified
-oscillator public example (`abs=1e-4`), so those families are realised on wave1d. The legacy
+oscillator public example (`abs=1e-4`), so those families are realised on wave1d. Heat1d has
+no `boundary_error` mutant: with exact-zero boundaries required, any wall defect perturbs the
+near-wall node by O(dx), and the mildest probe (a frozen last interior node) misses the
+public `atol=2e-3` example by 2.6e-3, so `boundary_error` is left to wave1d (#91). The legacy
 `update-order` (Study 2 record id) and `sign-error` directories keep their defects and
 `interface: legacy_study` until #120.
 
