@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 import yaml
-from conftest import ENTRYPOINT, TASK_ROOT, make_input, write_input
+from conftest import TASK_ROOT, make_input
 
 from invariantlab.verification.analytical import wave_standing_trajectory
+from invariantlab.verification.execution import run_task
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-STATE_RELATIVE_L2 = 5.0e-6
 MODE_AMPLITUDE_ABSOLUTE_ERROR = 5.0e-6
 STARTUP_RELATIVE_L2 = 5.0e-3
 WAVE_CASES = (
@@ -24,51 +22,24 @@ WAVE_CASES = (
     pytest.param(401, 500, 1.15, 1.7, 0.319, id="fast-wave-nonunit-domain"),
 )
 CONTRACT = yaml.safe_load((TASK_ROOT / "contract.yaml").read_text(encoding="utf-8"))
-EXPECTED_ARCHIVE_NAMES = {array["name"] for array in CONTRACT["output"]["arrays"]}
-
-
-def _invoke(input_path: Path, output_path: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            sys.executable,
-            str(ENTRYPOINT.relative_to(TASK_ROOT)),
-            "--input",
-            str(input_path),
-            "--output",
-            str(output_path),
-        ],
-        cwd=TASK_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-
-def _candidate_state(
-    tmp_path: Path, nx: int, nt: int, c: float, length: float, t_final: float
-) -> tuple[np.ndarray, np.ndarray]:
-    input_path = write_input(tmp_path / "input.json", make_input(nx, nt, c, length, t_final))
-    output_path = tmp_path / "result.npz"
-    completed = _invoke(input_path, output_path)
-    assert completed.returncode == 0, completed.stderr
-    assert output_path.is_file()
-    with np.load(output_path) as archive:
-        assert set(archive.files) == EXPECTED_ARCHIVE_NAMES
-        x, state = archive["x"].copy(), archive["state"].copy()
-    assert x.shape == (nx,)
-    assert state.shape == (nx,)
-    assert x.dtype == np.dtype(np.float64)
-    assert state.dtype == np.dtype(np.float64)
-    assert np.isfinite(x).all()
-    assert np.isfinite(state).all()
-    return x, state
+STATE_RELATIVE_L2 = CONTRACT["numerics"]["tolerances"]["state_relative_l2"]
 
 
 @pytest.mark.parametrize(("nx", "nt", "c", "length", "t_final"), WAVE_CASES)
 def test_non_special_standing_wave_phase_and_amplitude_match_oracle(
     tmp_path: Path, nx: int, nt: int, c: float, length: float, t_final: float
 ) -> None:
-    x, state = _candidate_state(tmp_path, nx, nt, c, length, t_final)
+    run = run_task(
+        TASK_ROOT,
+        TASK_ROOT,
+        make_input(nx, nt, c, length, t_final)["parameters"],
+        tmp_path,
+    )
+    assert run.passed, (run.gates, run.stderr)
+    assert run.arrays is not None
+    x, state = run.arrays["x"], run.arrays["state"]
+    assert x.shape == (nx,)
+    assert state.shape == (nx,)
     expected = wave_standing_trajectory(x, t_final, c, length=length)
     phase = np.pi * c * t_final / length
     mode = np.sin(np.pi * x / length)
@@ -84,7 +55,17 @@ def test_non_special_standing_wave_phase_and_amplitude_match_oracle(
 
 def test_zero_velocity_startup_matches_non_special_standing_wave_oracle(tmp_path: Path) -> None:
     nx, nt, c, length, t_final = 5, 1, 0.75, 1.7, 0.51
-    x, state = _candidate_state(tmp_path, nx, nt, c, length, t_final)
+    run = run_task(
+        TASK_ROOT,
+        TASK_ROOT,
+        make_input(nx, nt, c, length, t_final)["parameters"],
+        tmp_path,
+    )
+    assert run.passed, (run.gates, run.stderr)
+    assert run.arrays is not None
+    x, state = run.arrays["x"], run.arrays["state"]
+    assert x.shape == (nx,)
+    assert state.shape == (nx,)
     expected = wave_standing_trajectory(x, t_final, c, length=length)
     phase = np.pi * c * t_final / length
     startup_relative_l2 = np.linalg.norm(state - expected) / np.linalg.norm(expected)
@@ -97,8 +78,22 @@ def test_zero_velocity_startup_matches_non_special_standing_wave_oracle(tmp_path
 
 def test_different_wave_speeds_produce_distinct_correct_phases(tmp_path: Path) -> None:
     slow, fast = WAVE_CASES[0].values, WAVE_CASES[1].values
-    slow_x, slow_state = _candidate_state(tmp_path / "slow", *slow)
-    fast_x, fast_state = _candidate_state(tmp_path / "fast", *fast)
+    slow_run = run_task(
+        TASK_ROOT, TASK_ROOT, make_input(*slow)["parameters"], tmp_path / "slow"
+    )
+    assert slow_run.passed, (slow_run.gates, slow_run.stderr)
+    assert slow_run.arrays is not None
+    slow_x, slow_state = slow_run.arrays["x"], slow_run.arrays["state"]
+    assert slow_x.shape == (slow[0],)
+    assert slow_state.shape == (slow[0],)
+    fast_run = run_task(
+        TASK_ROOT, TASK_ROOT, make_input(*fast)["parameters"], tmp_path / "fast"
+    )
+    assert fast_run.passed, (fast_run.gates, fast_run.stderr)
+    assert fast_run.arrays is not None
+    fast_x, fast_state = fast_run.arrays["x"], fast_run.arrays["state"]
+    assert fast_x.shape == (fast[0],)
+    assert fast_state.shape == (fast[0],)
     slow_expected = wave_standing_trajectory(slow_x, slow[4], slow[2], length=slow[3])
     fast_expected = wave_standing_trajectory(fast_x, fast[4], fast[2], length=fast[3])
     assert not np.isclose(
@@ -113,9 +108,14 @@ def test_different_wave_speeds_produce_distinct_correct_phases(tmp_path: Path) -
 
 
 def test_scientific_suite_rejects_unstable_cfl_at_process_boundary(tmp_path: Path) -> None:
-    input_path = write_input(tmp_path / "input.json", make_input(11, 1, 2.0, 1.0, 1.0))
-    output_path = tmp_path / "result.npz"
-    completed = _invoke(input_path, output_path)
-    assert completed.returncode != 0
-    assert "Courant" in completed.stderr
-    assert not output_path.exists()
+    run = run_task(
+        TASK_ROOT,
+        TASK_ROOT,
+        make_input(11, 1, 2.0, 1.0, 1.0)["parameters"],
+        tmp_path,
+    )
+    assert not run.passed
+    assert run.gates[0].name == "execution" and not run.gates[0].passed
+    assert run.returncode not in (0, None)
+    assert "Courant" in run.stderr
+    assert not (tmp_path / "result.npz").exists()
