@@ -2,12 +2,7 @@ name: Task Validation
 
 on:
   push:
-    branches: [main, develop]
-    paths:
-      - "tasks/**"
-      - "src/invariantlab/schema.py"
-      - "src/invariantlab/tasks/validation.py"
-      - "scripts/validate_task.py"
+    branches: [main]
   pull_request:
     paths:
       - "tasks/**"

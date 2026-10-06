@@ -6,6 +6,7 @@ import json
 import urllib.error
 import urllib.request
 from email.message import Message
+from pathlib import Path
 
 import pytest
 
@@ -21,6 +22,7 @@ from invariantlab.models import (
     ReplayAdapter,
     ReplayMissError,
     build_adapter,
+    resolve_model_id,
 )
 
 
@@ -578,3 +580,22 @@ def test_build_adapter_unknown_raises():
 
     with pytest.raises(ValueError, match="Unsupported model adapter"):
         build_adapter(config)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_resolve_model_id_matches_built_adapter():
+    assert (
+        resolve_model_id(ModelConfig(adapter="reference_stub"))
+        == "reference_stub/oscillator-verlet"
+    )
+
+    events_path = (
+        REPO_ROOT / "tests/fixtures/replay/oscillator-update-order/events.jsonl"
+    ).as_posix()
+    replay_config = ModelConfig(
+        adapter="replay", extra={"events_path": events_path}
+    )
+
+    assert resolve_model_id(replay_config) == "replay/fixture/scripted-oscillator"

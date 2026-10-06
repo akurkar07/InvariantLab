@@ -25,6 +25,7 @@ from invariantlab.models import (
     ModelRateLimitError,
     ModelRequestError,
     build_adapter,
+    resolve_model_id,
 )
 from invariantlab.schema import (
     FeedbackMetricSpec,
@@ -480,12 +481,11 @@ def audit_repair_experiment(
 ) -> dict[str, Any]:
     """Audit an existing repair run without modifying raw evidence."""
 
+    if not run_dir.is_dir():
+        raise FileNotFoundError(f"Run directory does not exist: {run_dir}")
     experiment = load_experiment_config(config_path)
     _validate_experiment(experiment)
     model_config = load_model_config(Path(experiment.model))
-    model_id = model_config.model_id
-    if model_config.adapter == "replay":
-        model_id = build_adapter(model_config).model_id
     schedule = _build_schedule(
         list(experiment.conditions),
         experiment.n_attempts,
@@ -497,7 +497,7 @@ def audit_repair_experiment(
         records,
         schedule,
         experiment,
-        model_id,
+        resolve_model_id(model_config),
     )
     _write_integrity_report(run_dir, audit)
 

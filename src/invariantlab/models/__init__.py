@@ -12,6 +12,7 @@ from invariantlab.models.adapter import (
     ReplayAdapter,
     ReplayMissError,
     build_adapter,
+    resolve_model_id,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "ReplayAdapter",
     "ReplayMissError",
     "build_adapter",
+    "resolve_model_id",
 ]

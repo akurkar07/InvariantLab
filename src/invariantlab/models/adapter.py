@@ -427,6 +427,14 @@ class OllamaAdapter:
         return self.complete(prompt).text
 
 
+def resolve_model_id(config: ModelConfig) -> str:
+    """Return the model id an adapter built from ``config`` will report."""
+
+    if config.adapter in {"replay", "reference_stub"}:
+        return build_adapter(config).model_id
+    return config.model_id
+
+
 def build_adapter(config: ModelConfig) -> ModelAdapter:
     """Construct an adapter from a validated ModelConfig."""
 
