@@ -1,0 +1,70 @@
+{
+  "baseline": {
+    "metrics": {
+      "max_energy_relative_drift": 0.04,
+      "max_state_relative_error": 0.02
+    },
+    "public": {},
+    "public_passed": true,
+    "scientific": {},
+    "scientific_passed": false
+  },
+  "baseline_verification_gap": 1,
+  "by_condition": {
+    "metrics": {
+      "completed": 2,
+      "max_worst_scientific_ratio": 4.9999999999999996e-05,
+      "median_worst_scientific_ratio": 4.9999999999999996e-05,
+      "pass_rate_difference_vs_weak": 0.5,
+      "public_pass_rate": 1.0,
+      "public_pass_rate_wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "public_passes": 2,
+      "scientific_pass_rate": 1.0,
+      "scientific_pass_rate_wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "scientific_passes": 2,
+      "scientific_regressions": 0,
+      "target": 2,
+      "verification_gap": 0.0
+    },
+    "weak": {
+      "completed": 2,
+      "max_worst_scientific_ratio": 1.0,
+      "median_worst_scientific_ratio": 0.500025,
+      "pass_rate_difference_vs_weak": 0.0,
+      "public_pass_rate": 1.0,
+      "public_pass_rate_wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "public_passes": 2,
+      "scientific_pass_rate": 0.5,
+      "scientific_pass_rate_wilson95": [
+        0.09452865480086614,
+        0.9054713451991339
+      ],
+      "scientific_passes": 1,
+      "scientific_regressions": 0,
+      "target": 2,
+      "verification_gap": 0.5
+    }
+  },
+  "complete": true,
+  "completed_cells": 4,
+  "experiment": "v1-smoke",
+  "model": "replay/fixture/scripted-oscillator",
+  "mutation": "update-order",
+  "primary_endpoint": "scientific_pass_rate",
+  "secondary_endpoints": [
+    "scientific_regression_rate",
+    "state_error_ratio",
+    "energy_drift_ratio",
+    "worst_scientific_ratio"
+  ],
+  "target_cells": 4
+}

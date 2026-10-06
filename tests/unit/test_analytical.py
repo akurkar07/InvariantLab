@@ -276,6 +276,15 @@ def test_leapfrog_matches_standing():
     assert max_error < 5e-3, f"Max error {max_error} too large"
 
 
+def test_leapfrog_matches_standing_for_domain_length_and_derived_courant():
+    """Regression for #12: L != 1 and a Courant number other than 0.5."""
+    c, length, t_final = 1.0, 2.0, 0.37
+    x, u_num = solve_wave_leapfrog(101, 148, c, length=length, t_final=t_final)
+    u_exact = wave_standing_trajectory(x, t_final, c, length=length)
+    relative_l2 = np.linalg.norm(u_num - u_exact) / np.linalg.norm(u_exact)
+    assert relative_l2 < 1e-3, f"Relative L2 error {relative_l2} too large"
+
+
 def test_leapfrog_uses_requested_final_time():
     _, short_run = solve_wave_leapfrog(101, 400, 1.0, t_final=0.2)
     _, long_run = solve_wave_leapfrog(101, 400, 1.0, t_final=0.3)

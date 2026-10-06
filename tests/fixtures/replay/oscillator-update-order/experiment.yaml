@@ -1,0 +1,12 @@
+name: replay-fixture-oscillator
+description: V1-AC4 replay determinism run; replays the weak-condition fixture responses through the real Docker evaluator.
+model: tests/fixtures/replay/oscillator-update-order/model.yaml
+runner: repair
+task: tasks/oscillator
+mutation: tasks/oscillator/mutations/update-order
+conditions:
+  - weak
+n_attempts: 2
+seed: 1729
+randomize_order: false
+container_image: mirror.gcr.io/library/python:3.12-slim
