@@ -143,7 +143,7 @@ def report(
             f"[green]✓[/green] Report rebuilt from {count} canonical records."
         )
         for name, path in result["paths"].items():
-            console.print(f"{name}: [bold]{path}[/bold]")
+            console.print(f"{name}: [bold]{path}[/bold]", soft_wrap=True)
     except Exception as e:
         console.print(f"[red]✗[/red] Report failed: {e}")
         raise typer.Exit(code=1) from e
