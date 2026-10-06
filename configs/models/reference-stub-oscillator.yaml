@@ -1,0 +1,4 @@
+adapter: reference_stub
+model_id: reference_stub/oscillator-verlet
+temperature: 0.0
+max_tokens: 4096

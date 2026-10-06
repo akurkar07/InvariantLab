@@ -63,31 +63,20 @@ Study 2 record identifier.
 
 ## Add a model
 
-Create a YAML file under `configs/models/`. Model backends are selected by the `adapter`
-field and built through `invariantlab.models.build_adapter`.
+Create a YAML file under `configs/models/`; its `adapter` field selects the backend.
+See [Model adapters](model-adapters.md) for adapter ids, `extra` keys and examples.
 
-For an OpenAI-compatible endpoint:
-
-```yaml
-adapter: openai_compatible
-model_id: provider/model
-temperature: 0.7
-max_tokens: 4096
-extra:
-  base_url: https://example.test/v1
-  api_key_env: EXAMPLE_API_KEY
-  max_retries: 5
-```
-
-For Ollama:
+The `reference_stub` adapter returns a fixed, known-correct oscillator solver for smoke
+tests; it ignores the prompt and is not a model. The `replay` adapter re-serves responses
+recorded in a repair run's `events.jsonl`, matched by prompt SHA-256. Duplicate prompts
+are served in `schedule_index`/`trial` order; a missing or exhausted prompt raises
+`ReplayMissError`. If all recorded responses name the same model, `model_id` defaults to
+`replay/<recorded model>`.
 
 ```yaml
-adapter: ollama
-model_id: qwen2.5-coder:7b-instruct
-temperature: 0.7
-max_tokens: 4096
+adapter: replay
 extra:
-  base_url: http://localhost:11434
+  events_path: runs/<name>/events.jsonl
 ```
 
 ## Add an experiment
