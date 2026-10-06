@@ -1,6 +1,6 @@
 # InvariantLab — Makefile
 
-.PHONY: help install install-dev lint format test test-unit test-acceptance test-tasks typecheck coverage clean validate-tasks
+.PHONY: help install install-dev lint format test test-unit test-acceptance test-tasks typecheck coverage clean validate-tasks reproduce
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -24,6 +24,9 @@ typecheck: ## Run mypy
 
 test: ## Run top-level tests
 	pytest tests/ -v
+
+reproduce: ## Replay smoke run + report reconstruction
+	uv run python scripts/reproduce_report.py --smoke
 
 test-unit: ## Run unit tests
 	pytest tests/unit/ -v
