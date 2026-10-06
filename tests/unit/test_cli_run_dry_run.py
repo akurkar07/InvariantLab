@@ -8,7 +8,13 @@ from invariantlab.schema import load_mutation_definition, load_task_definition
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNER = CliRunner()
-DEFAULT_MODEL = "adapter: replay\nmodel_id: replay/test\n"
+_EVENTS_PATH = (
+    REPO_ROOT / "tests/fixtures/replay/oscillator-update-order/events.jsonl"
+).as_posix()
+DEFAULT_MODEL = (
+    "adapter: replay\nmodel_id: replay/test\nextra:\n"
+    f'  events_path: "{_EVENTS_PATH}"\n'
+)
 DEFAULT_TASK = REPO_ROOT / "tasks/oscillator"
 DEFAULT_MUTATION = REPO_ROOT / "tasks/oscillator/mutations/update-order"
 
