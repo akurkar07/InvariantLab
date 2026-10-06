@@ -8,6 +8,8 @@ from git tags via hatch-vcs; see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-06
+
 First release candidate (V1). Nothing has been tagged yet. Numbers are pull requests on
 <https://github.com/akurkar07/InvariantLab>.
 
