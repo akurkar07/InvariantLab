@@ -1,0 +1,18 @@
+id: sixth-order-stencil-ftcs-limit
+task_id: heat_ftcs
+family: stability_error
+interface: package
+source: solver.py
+expected_effect: >-
+  The FTCS update uses a sixth-order seven-point Laplacian (odd reflection at the Dirichlet
+  walls) but keeps the second-order guard r <= 0.5. The highest grid mode now has
+  eigenvalue -1088/180, so forward Euler is only stable for r <= 45/136 (about 0.331).
+  Public cases (r of about 0.056) stay stable and more accurate than the reference (max abs
+  error about 6e-6), and the r=100 input is still rejected. The canonical scientific case
+  (r of about 0.339) still runs, but round-off in the high modes grows by about 1.05 per
+  step over 1800 steps, so the finite output reaches about 1e21 and the state relative L2
+  error is about 1.5e21.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_non_special_ftcs_case_matches_manufactured_solution_and_decays
+    message: "state_relative_l2="
+max_changed_lines: 9
