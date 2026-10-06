@@ -18,6 +18,7 @@ TRUSTED_PREFIXES = (
     "invariantlab.mutations",
     "tests.scientific",
 )
+pytestmark = pytest.mark.v1_acceptance("V1-AC3")
 
 
 def _is_trusted_module(module: str) -> bool:
