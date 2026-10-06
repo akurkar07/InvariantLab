@@ -50,9 +50,10 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   errors pause instead of crashing (#127); public pass rate and verification gap per
   condition (#123); `first_model` runner and dead config retired, `--dry-run` checks what a
   run needs (#144); `audit-run` resolves the model id like the runner (#130); ASCII CLI status
-  markers (#131). Docker-free runner integration test (#152), repeated replay yields
-  identical evaluator outcomes (V1-AC4, #156) and a real replay smoke run is reproduced in CI
-  (#167).
+  markers (#131). Package-task repair runs evaluate mutants through `invariantlab verify`
+  with candidate code isolated in Docker (#120). Docker-free runner integration test (#152),
+  repeated replay yields identical evaluator outcomes (V1-AC4, #156) and a real replay smoke
+  run is reproduced in CI (#167).
 - **Reports and export.** `invariantlab report` rebuilds summary and CSV tables from
   `events.jsonl` (#140), with an optional static `report.html` (#155); `invariantlab export-hf`
   writes a local Hugging Face-loadable dataset with per-record provenance and a credential scan

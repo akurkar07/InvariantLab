@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import subprocess
-import sys
 from typing import TYPE_CHECKING
 
 from invariantlab.schema import GateResult, VerificationResult, load_task_contract
 from invariantlab.tasks.workspace import build_evaluation_workspace
 from invariantlab.verification.analytical import kepler_circular_orbit
 from invariantlab.verification.convergence import check_convergence
-from invariantlab.verification.execution import run_task
+from invariantlab.verification.execution import current_executor, run_task
 from invariantlab.verification.invariants import check_invariants
 from invariantlab.verification.metamorphic import check_metamorphic
 from invariantlab.verification.oracles import check_oracle
@@ -54,25 +53,8 @@ def canonical_parameters(task_id: str) -> dict[str, object]:
 
 
 def _run_public_tests(workspace: Path, public_tests: str, timeout: float) -> GateResult:
-    command = [
-        sys.executable,
-        "-m",
-        "pytest",
-        public_tests,
-        "-q",
-        "-p",
-        "no:cacheprovider",
-        f"--rootdir={workspace}",
-    ]
     try:
-        completed = subprocess.run(
-            command,
-            cwd=workspace,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
+        completed = current_executor().run_public_tests(workspace, public_tests, timeout)
     except subprocess.TimeoutExpired:
         return GateResult(
             name="public_tests", passed=False, detail=f"timed out after {timeout:g} s"

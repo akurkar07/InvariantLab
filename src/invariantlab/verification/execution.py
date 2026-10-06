@@ -6,17 +6,108 @@ import json
 import subprocess
 import sys
 import zipfile
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 
 from invariantlab.schema import GateResult, load_task_contract
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 GATE_NAMES = ("execution", "output_present", "archive_schema", "finite")
+
+
+class CandidateExecutor(Protocol):
+    def run_entrypoint(
+        self,
+        candidate_root: Path,
+        entrypoint: str,
+        input_path: Path,
+        output_path: Path,
+        timeout: float,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+    def run_public_tests(
+        self,
+        workspace: Path,
+        public_tests: str,
+        timeout: float,
+    ) -> subprocess.CompletedProcess[str]: ...
+
+
+@dataclass(frozen=True)
+class LocalExecutor:
+    def run_entrypoint(
+        self,
+        candidate_root: Path,
+        entrypoint: str,
+        input_path: Path,
+        output_path: Path,
+        timeout: float,
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                entrypoint,
+                "--input",
+                str(input_path.resolve()),
+                "--output",
+                str(output_path.resolve()),
+            ],
+            cwd=candidate_root,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+
+    def run_public_tests(
+        self,
+        workspace: Path,
+        public_tests: str,
+        timeout: float,
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                public_tests,
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                f"--rootdir={workspace}",
+            ],
+            cwd=workspace,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+
+
+_DEFAULT_EXECUTOR = LocalExecutor()
+_EXECUTOR: ContextVar[CandidateExecutor] = ContextVar(
+    "candidate_executor", default=_DEFAULT_EXECUTOR
+)
+
+
+@contextmanager
+def candidate_executor(executor: CandidateExecutor) -> Iterator[None]:
+    token = _EXECUTOR.set(executor)
+    try:
+        yield
+    finally:
+        _EXECUTOR.reset(token)
+
+
+def current_executor() -> CandidateExecutor:
+    return _EXECUTOR.get()
 
 
 @dataclass(frozen=True)
@@ -82,20 +173,12 @@ def run_task(
 
     timeout = timeout_seconds or contract.budgets.wall_seconds
     try:
-        completed = subprocess.run(
-            [
-                sys.executable,
-                contract.entrypoint,
-                "--input",
-                str(input_path.resolve()),
-                "--output",
-                str(output_path.resolve()),
-            ],
-            cwd=candidate_root,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
+        completed = current_executor().run_entrypoint(
+            candidate_root,
+            contract.entrypoint,
+            input_path,
+            output_path,
+            timeout,
         )
     except subprocess.TimeoutExpired as error:
         stderr = error.stderr or ""

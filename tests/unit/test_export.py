@@ -132,7 +132,7 @@ def test_export_baseline_solver_source(tmp_path: Path) -> None:
     from invariantlab.experiments import repair
 
     experiment = load_experiment_config(EXPERIMENT)
-    _, _, _, _, mutation_source, _ = repair._resolve_assets(experiment)
+    mutation_source = repair._resolve_assets(experiment).mutation_source
 
     output_dir = tmp_path / "out"
     export_hf_dataset(EXPERIMENT, FIXTURE, output_dir)

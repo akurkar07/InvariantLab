@@ -25,13 +25,12 @@ that tracks it. The [CHANGELOG](../CHANGELOG.md) links this page from its
   execution, `invariantlab run` needs a working Docker daemon on the same machine, and the
   container limits are a resource and network boundary that has not been reviewed as a
   hardened security sandbox.
-- **Oscillator-only repair-study harness.** The repair runner evaluates repairs through the
-  legacy oscillator study harness (`tasks/oscillator/candidate_runner.py` + `verifier.py`),
-  so repair studies run on the oscillator only and the `update-order` / `sign-error` mutants
-  are `interface: legacy_study`. Evaluating candidates through the M2 task packages for any
-  registered mutant is tracked in
-  [#120](https://github.com/akurkar07/InvariantLab/issues/120); until then `task_suite` is
-  ignored.
+- **Legacy oscillator repair-study harness.** Package mutants (`interface: package`) are
+  graded through their M2 task package and `invariantlab verify` (L0-L6)
+  ([#120](https://github.com/akurkar07/InvariantLab/issues/120)). The oscillator
+  `update-order` / `sign-error` mutants are still `interface: legacy_study` and are graded
+  by the legacy oscillator study harness (`tasks/oscillator/candidate_runner.py` +
+  `verifier.py`). `task_suite` is still ignored.
 - **Mutant coverage.** Package mutants exist for `oscillator`, `kepler` and `wave1d`; `heat1d`
   has none yet. Covered families: `sign_error`, `update_order_error`,
   `non_conservative_update`, `unit_error`, `hard_coded_shortcut`, `precision_defect`,

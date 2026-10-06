@@ -181,6 +181,8 @@ evidence from the agent while it works; they do not isolate the evaluation itsel
 `invariantlab verify` on code you are willing to execute on that machine.
 
 The Docker sandbox (`--network none`, memory, CPU and pid limits, read-only root) belongs to
-the repair runner (`invariantlab run`). That runner grades oscillator repairs through the
-legacy `tasks/oscillator/verifier.py` harness and does not call `verify_candidate`; see
+the repair runner (`invariantlab run`). For package mutants (`interface: package`) that
+runner calls `verify_candidate` with a `DockerExecutor`, so the candidate entrypoint and public
+tests run in that container (#120); `interface: legacy_study` mutants are still graded by the
+legacy `tasks/oscillator/verifier.py` harness. See
 [Known Limitations](limitations.md#evaluation-harness).

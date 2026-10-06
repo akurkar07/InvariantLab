@@ -1,0 +1,6 @@
+adapter: replay
+model_id: replay/repair-package
+temperature: 0.0
+max_tokens: 4096
+extra:
+  events_path: tests/fixtures/replay/repair-package/events.jsonl
