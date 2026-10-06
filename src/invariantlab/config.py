@@ -12,9 +12,14 @@ class ExperimentConfig(BaseModel):
 
     name: str
     description: str = ""
-    task_suite: str = Field(..., description="Path to task suite config.")
+    task_suite: str | None = Field(
+        default=None,
+        description=(
+            "Reserved for multi-task suite evaluation (#120); currently ignored by all runners."
+        ),
+    )
     model: str = Field(..., description="Model adapter identifier.")
-    runner: str = "first_model"
+    runner: str = "repair"
     task: str | None = Field(
         default=None,
         description="Task directory used by config-driven repair runners.",

@@ -224,7 +224,7 @@ its status symbols.
 | `version` | Print the installed InvariantLab version. |
 | `validate-task --task-dir <dir>` | Validate one task contract and the files it declares. |
 | `model-check --model <config>` | Send one short prompt to the configured model and print the reply. |
-| `run --experiment <config> [--output <dir>] [--dry-run] [--max-new-attempts N]` | Run an experiment with the `first_model` or `repair` runner. Output goes to `runs/<experiment name>/` unless `--output` is given. |
+| `run --experiment <config> [--output <dir>] [--dry-run] [--max-new-attempts N]` | Run an experiment with the `repair` runner. Output goes to `runs/<experiment name>/` unless `--output` is given. |
 | `audit-run --experiment <config> --run-dir <dir> [--write-canonical]` | Audit a repair run's raw `events.jsonl` against the configured cell schedule. |
 
 ```bash
@@ -253,8 +253,7 @@ uv run invariantlab audit-run \
   --write-canonical
 ```
 
-`--max-new-attempts` is accepted only by the resumable `repair` runner; the `first_model`
-runner rejects it. Candidates run in the experiment's `container_image` (`python:3.12-slim`);
+`--max-new-attempts` is accepted only by the resumable `repair` runner. Candidates run in the experiment's `container_image` (`python:3.12-slim`);
 if Docker Hub rate-limits it, `mirror.gcr.io/library/python:3.12-slim` is equivalent.
 
 ### Planned CLI (not implemented)
@@ -273,16 +272,7 @@ or options:
 
 `invariantlab run` writes to `runs/<experiment name>/`, or to the `--output` directory.
 
-`first_model` runner (`configs/experiments/first-model-oscillator*.yaml`):
-
-| File | Meaning |
-|---|---|
-| `events.jsonl` | One JSON record: prompt hash, raw model response, extracted candidate source, latency, and public/scientific results before and after repair. |
-| `baseline_solver.py` | The broken oscillator solver the model was asked to repair. |
-| `candidate_solver.py` | The Python solver extracted from the model response. |
-| `summary.json` | Baseline and repaired public/scientific pass flags, verification gap before repair, and the repaired metrics. |
-
-`repair` runner (experiment configs with `runner: repair`, e.g. the Study 2 configs):
+`repair` runner (experiment configs with `runner: repair`, e.g. `configs/experiments/first-model-oscillator*.yaml` and the Study 2 configs):
 
 | File | Meaning |
 |---|---|
@@ -292,10 +282,11 @@ or options:
 | `run-status.json` | Run state (`complete`, `batch_complete`, `paused_*`, ...) with completed and target cell counts and the stop reason. |
 | `artifact-integrity.json` | Audit of the raw records against the scheduled cells (duplicates, out-of-schedule, metadata mismatches, malformed records). Also written by `audit-run`. |
 | `events.canonical.jsonl` | Written only by `audit-run --write-canonical`: the first valid record per scheduled cell. Raw `events.jsonl` is never modified. |
+| `manifest.json` | Run provenance written at the start of a run: code revision, task/mutation/verifier hashes, model config, seed and resolved container image digest. |
+| `checksums.sha256` | `sha256sum`-format checksums over every run file; written once the run completes. |
 
-Planned, not written yet: a run `manifest.json` with pinned image digest and provenance,
-`environment.json`, `checksums.sha256`, per-suite test-result files and a `reports/<id>/`
-tree (the manifest is tracked in #80).
+Planned, not written yet: `environment.json`, per-suite test-result files and a
+`reports/<id>/` tree.
 
 ## Repository layout
 
@@ -306,7 +297,7 @@ src/invariantlab/
 ├── cli.py                       # validate-task, model-check, run, audit-run
 ├── config.py                    # model and experiment config loading
 ├── schema.py                    # task/output contract and experiment models
-├── experiments/                 # repair, first-model and feedback-replication runners
+├── experiments/                 # repair and feedback-replication runners
 ├── models/
 │   └── adapter.py               # reference_stub, replay, ollama and openai_compatible adapters
 ├── tasks/
@@ -318,7 +309,7 @@ src/invariantlab/
 
 .github/workflows/          # CI: tests.yml (lint, typecheck, tests), task-validation.yml
 configs/
-├── experiments/            # first-model smoke/live, Study 2 repair configs, v1-smoke (placeholder)
+├── experiments/            # first-model smoke/live, Study 2 repair configs
 ├── models/                 # replay, Ollama, vLLM, Cohere and API-example model configs
 └── task-suites/            # v1-smoke.yaml: the four task dirs (no runner reads suites yet)
 docs/                       # task/experiment authoring, local models, Study 1/2 protocol and results
@@ -329,7 +320,7 @@ src/invariantlab/
 ├── config.py               # experiment, task-suite and model config loading
 ├── schema.py               # task contract, task/mutation definitions and result models
 ├── metrics.py              # pass rates, Wilson intervals and verification gap
-├── experiments/            # first_model.py, repair.py (Docker runner and audit), feedback_replication.py (Study 2 wrapper)
+├── experiments/            # repair.py (Docker runner and audit), feedback_replication.py (Study 2 wrapper)
 ├── models/
 │   └── adapter.py          # reference_stub, replay, ollama and openai_compatible adapters
 ├── tasks/
@@ -346,8 +337,7 @@ tests/
 └── acceptance/             # trust-boundary and repository acceptance checks
 ```
 
-Placeholders: `configs/experiments/v1-smoke.yaml` has a placeholder image digest (the runner
-falls back to `python:3.12-slim`), and `tasks/*/.gitkeep` are empty markers. There are no stub
+Placeholders: `tasks/*/.gitkeep` are empty markers. There are no stub
 Python packages: the former `mutations/`, `reporting/` and `dashboard/` packages, the
 `verification/{invariants,convergence,metamorphic,robustness}.py` stubs and the empty
 `tests/property/` and `tests/integration/` directories were removed on `develop` (#44) and are

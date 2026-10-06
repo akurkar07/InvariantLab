@@ -707,6 +707,11 @@ def _validate_experiment(experiment: ExperimentConfig) -> None:
         raise ValueError(f"Unknown feedback conditions: {sorted(unknown)}")
     if len(set(experiment.conditions)) != len(experiment.conditions):
         raise ValueError("Feedback conditions must not contain duplicates")
+    if "placeholder" in experiment.container_image:
+        raise ValueError(
+            f"container_image {experiment.container_image!r} is a placeholder; "
+            "set a real image tag or digest"
+        )
 
 
 def _resolve_assets(

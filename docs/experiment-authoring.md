@@ -85,7 +85,6 @@ Bind the task, mutation and model in `configs/experiments/`:
 
 ```yaml
 name: oscillator-update-order
-task_suite: configs/task-suites/v1-smoke.yaml
 model: configs/models/ollama-qwen2.5-coder-7b.yaml
 runner: repair
 task: tasks/oscillator
@@ -148,6 +147,12 @@ Per condition (`by_condition.<condition>`):
 
 ## Legacy compatibility
 
-`first_model.py` remains available for the original one-shot smoke experiment.
 `feedback_replication.py` remains import-compatible but delegates execution and auditing to
-the generic repair runner.
+the generic repair runner. The `first_model` runner has been removed; the original Study 1
+defect and its mapping to the repair runner are documented in
+[First Model Experiment](first-model-experiment.md).
+
+`task_suite` is optional and currently ignored by all runners. A dry run warns when it is
+present; multi-task suite evaluation is reserved for #120. Dry runs validate task and
+mutation paths and their referenced files, construct the configured model adapter without
+making a request, and reject placeholder container images.
