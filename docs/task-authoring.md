@@ -157,12 +157,14 @@ tasks/oscillator/
 ├── candidate_runner.py # stage 1: imports the candidate, writes trajectories.json
 ├── verifier.py         # stage 2: scores trajectories against held-out cases
 ├── repair_prompt.txt   # prompt template given to the model
-└── mutations/          # buggy solvers (update-order, sign-error) to be repaired
+└── mutations/          # buggy solvers to be repaired (legacy update-order, sign-error)
 ```
 
 - Repair candidates implement `solve_oscillator_verlet(x0, v0, omega, dt, n_steps)`
   returning a trajectory list, not the `src/solver.py` NPZ protocol above. The
-  mutations therefore declare `interface: legacy_study` in `mutation.yaml`.
+  `update-order` and `sign-error` mutations therefore declare `interface: legacy_study`
+  in `mutation.yaml`; package mutants such as `non-conservative-damping` use the
+  `src/solver.py` protocol instead (see Experiment Authoring).
 - None of these files are part of the agent workspace (`build_agent_workspace`).
   The repair runner places `candidate_runner.py` beside the candidate in stage 1
   and mounts `verifier.py` only in stage 2.
