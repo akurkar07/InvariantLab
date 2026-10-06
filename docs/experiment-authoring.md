@@ -124,6 +124,39 @@ The generic runner evaluates the configured mutant as the baseline, builds condi
 prompts from task metadata, executes model repairs, invokes the task verifier, and writes the
 same resumable evidence and integrity artifacts used by Study 2.
 
+## Summary fields
+
+The repair runner writes `study-summary.json` after every completed attempt. Rates are
+computed by `invariantlab.metrics` over the canonical records (one per scheduled cell).
+Each rate's denominator is the number of completed canonical cells in that condition;
+failed, erroring and timed-out candidates count as non-passing and stay in the
+denominator. Rates, gaps and intervals are `null` for a condition with no completed cells.
+
+Top level:
+
+| Field | Definition |
+| --- | --- |
+| `primary_endpoint` | Always `scientific_pass_rate`. |
+| `baseline` | Verifier output for the unrepaired mutant. |
+| `baseline_verification_gap` | `int(baseline.public_passed) - int(baseline.scientific_passed)`; 1 for a mutant that passes public tests but fails scientific ones. |
+| `target_cells` / `completed_cells` / `complete` | Scheduled cells, completed canonical cells, and whether they are equal. |
+
+Per condition (`by_condition.<condition>`):
+
+| Field | Definition |
+| --- | --- |
+| `completed` / `target` | Completed canonical cells and `n_attempts`. |
+| `public_passes` | Candidates whose `repaired.public_passed` is true. |
+| `public_pass_rate` | `P_public = public_passes / completed`. |
+| `public_pass_rate_wilson95` | Wilson score interval (z = 1.96) for `P_public`. |
+| `scientific_passes` | Candidates whose scientific checks pass (`successful_repair`). |
+| `scientific_pass_rate` | `P_science = scientific_passes / completed`. |
+| `scientific_pass_rate_wilson95` | Wilson score interval (z = 1.96) for `P_science`. |
+| `verification_gap` | `G = P_public - P_science`. |
+| `scientific_regressions` | Candidates whose worst scientific ratio exceeds 1 (worse than the mutant). |
+| `median_worst_scientific_ratio` / `max_worst_scientific_ratio` | Median and maximum of the per-candidate worst scientific error ratio versus the mutant. |
+| `pass_rate_difference_vs_weak` | `scientific_pass_rate` minus the `weak` condition's rate (present when a `weak` condition exists). |
+
 ## Legacy compatibility
 
 `first_model.py` remains available for the original one-shot smoke experiment.

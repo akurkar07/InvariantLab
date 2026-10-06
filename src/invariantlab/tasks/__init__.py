@@ -1,7 +1,8 @@
-"""Task contract loading and reference implementations.
+"""Trusted task-contract discovery API.
 
-V1 families: oscillator, kepler 2-body, heat 1d, wave 1d.
-TODO: implement reference solvers in M2.
+Executable agent-facing task packages live under the repository-level ``tasks/``
+directory. Trusted reference solvers and scientific verification remain under
+``invariantlab.verification``; this package only exposes contract loading.
 """
 
 from __future__ import annotations
