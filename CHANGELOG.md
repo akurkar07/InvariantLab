@@ -13,7 +13,9 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
 
 ### Added
 
-- Tag-triggered release workflow with metadata consistency checks.
+- **Release workflow.** Tag-triggered `.github/workflows/release.yml` (with a `workflow_dispatch`
+  dry run) and `scripts/check_release_metadata.py`, which checks the tag against `CITATION.cff`,
+  `CHANGELOG.md` and the development-status classifier (#180).
 - **Task packages.** Four self-contained tasks behind one subprocess/NPZ boundary, each with
   `contract.yaml`, `specification.md`, `src/solver.py`, committed example inputs and public
   and scientific test suites: `oscillator` (#23), `kepler` (#25, with the independent DOP853
