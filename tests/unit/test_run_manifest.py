@@ -55,8 +55,7 @@ def _write_config(tmp_path: Path, image: str = "python:3.12-slim") -> Path:
                 f"model: {(REPO_ROOT / 'configs/models/reference-stub-oscillator.yaml').as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
-                "mutation: "
-                f"{(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
+                f"mutation: {(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
                 "conditions: [weak, metrics]",
                 "n_attempts: 1",
                 "seed: 1729",
@@ -108,9 +107,9 @@ def test_manifest_records_provenance_before_first_model_call(tmp_path, run_env):
     assert manifest["task_id"] == "oscillator_verlet"
     assert manifest["mutation_id"] == "update-order"
     verifier = REPO_ROOT / "tasks/oscillator/verifier.py"
-    assert manifest["artifact_sha256"]["verifier"] == hashlib.sha256(
-        verifier.read_bytes()
-    ).hexdigest()
+    assert (
+        manifest["artifact_sha256"]["verifier"] == hashlib.sha256(verifier.read_bytes()).hexdigest()
+    )
     assert {
         "task_yaml",
         "contract_yaml",
@@ -249,9 +248,7 @@ def test_placeholder_images_are_rejected(tmp_path, run_env):
 @pytest.mark.parametrize("extra_args", [["--dry-run"], []])
 def test_cli_run_rejects_placeholder_images(tmp_path, extra_args):
     placeholder = _write_config(tmp_path, image="python:3.12-slim@sha256:placeholder")
-    result = CliRunner().invoke(
-        app, ["run", "--experiment", str(placeholder), *extra_args]
-    )
+    result = CliRunner().invoke(app, ["run", "--experiment", str(placeholder), *extra_args])
     assert result.exit_code == 1
     assert "placeholder" in result.output
 
@@ -274,11 +271,7 @@ def test_checksums_cover_every_run_file_on_complete(tmp_path, run_env):
     for line in lines:
         digest, name = line.split("  ", 1)
         listed[name] = digest
-    files = {
-        path.relative_to(output).as_posix()
-        for path in output.rglob("*")
-        if path.is_file()
-    }
+    files = {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()}
     assert set(listed) == files - {"checksums.sha256"}
     assert {"manifest.json", "events.jsonl", "run-status.json"} <= set(listed)
     for name, digest in listed.items():

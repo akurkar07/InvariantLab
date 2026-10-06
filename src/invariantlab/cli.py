@@ -60,8 +60,7 @@ def model_check(
         config = load_model_config(Path(model))
         adapter = build_adapter(config)
         response = adapter.generate(
-            "Connectivity check. Return a tiny Python file containing "
-            "def ping(): return 'ok'."
+            "Connectivity check. Return a tiny Python file containing def ping(): return 'ok'."
         )
         preview = response.replace("\n", " ")[:160]
         console.print(
@@ -115,13 +114,8 @@ def audit_run(
             )
 
         if write_canonical:
-            console.print(
-                "Canonical projection: "
-                f"[bold]{audit['canonical_events_path']}[/bold]"
-            )
-        console.print(
-            f"Integrity report: [bold]{Path(run_dir) / 'artifact-integrity.json'}[/bold]"
-        )
+            console.print(f"Canonical projection: [bold]{audit['canonical_events_path']}[/bold]")
+        console.print(f"Integrity report: [bold]{Path(run_dir) / 'artifact-integrity.json'}[/bold]")
     except Exception as e:
         console.print(f"[red]FAIL[/red] Audit failed: {e}")
         raise typer.Exit(code=1) from e
@@ -132,9 +126,7 @@ def report(
     experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
     run_dir: str = typer.Option(..., "--run-dir", help="Existing run directory."),
     output: str = typer.Option(..., "--output", help="Directory for rebuilt report files."),
-    html: bool = typer.Option(
-        False, "--html", help="Also write a static report.html."
-    ),
+    html: bool = typer.Option(False, "--html", help="Also write a static report.html."),
 ) -> None:
     """Rebuild report tables from a repair run's events."""
     from invariantlab.reporting import build_report
@@ -142,9 +134,7 @@ def report(
     try:
         result = build_report(Path(experiment), Path(run_dir), Path(output), html=html)
         count = result["summary"]["source_records"]
-        console.print(
-            f"[green]OK[/green] Report rebuilt from {count} canonical records."
-        )
+        console.print(f"[green]OK[/green] Report rebuilt from {count} canonical records.")
         for name, path in result["paths"].items():
             console.print(f"{name}: [bold]{path}[/bold]", soft_wrap=True)
     except Exception as e:
@@ -257,8 +247,7 @@ def run(
                 f"[bold]{completed}/{target}[/bold] cells ({state}){suffix}"
             )
             console.print(
-                "Resume by running the same command. "
-                f"Evidence: [bold]{result_dir}[/bold]"
+                f"Resume by running the same command. Evidence: [bold]{result_dir}[/bold]"
             )
     except Exception as e:
         console.print(f"[red]FAIL[/red] Run failed: {e}")

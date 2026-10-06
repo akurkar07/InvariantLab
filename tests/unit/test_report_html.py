@@ -92,9 +92,7 @@ def test_html_contains_samples_and_condition_values_match_csv_and_summary(
     condition_csv = _read_csv(output_dir / "by_condition.csv")
     summary = json.loads((output_dir / "summary.json").read_text(encoding="utf-8"))
 
-    expected_ids = {
-        f"sample-{row['condition']}-{row['trial']}" for row in samples
-    }
+    expected_ids = {f"sample-{row['condition']}-{row['trial']}" for row in samples}
     assert len(parser.sample_ids) == len(samples)
     assert parser.sample_ids == expected_ids
 
@@ -104,9 +102,7 @@ def test_html_contains_samples_and_condition_values_match_csv_and_summary(
         "scientific_pass_rate": lambda stats: f"{stats['scientific_pass_rate']:.6f}",
         "wilson_low": lambda stats: f"{stats['scientific_pass_rate_wilson95'][0]:.6f}",
         "wilson_high": lambda stats: f"{stats['scientific_pass_rate_wilson95'][1]:.6f}",
-        "scientific_regressions": lambda stats: str(
-            int(stats["scientific_regressions"])
-        ),
+        "scientific_regressions": lambda stats: str(int(stats["scientific_regressions"])),
         "pass_rate_difference_vs_weak": lambda stats: (
             f"{stats['pass_rate_difference_vs_weak']:.6f}"
         ),
@@ -120,19 +116,14 @@ def test_html_contains_samples_and_condition_values_match_csv_and_summary(
             assert parsed_row[field] == expected_value(stats)
         assert parsed_row["condition"] == csv_row["condition"]
         assert parser.condition_links[condition] == {
-            anchor
-            for anchor in expected_ids
-            if anchor.startswith(f"sample-{condition}-")
+            anchor for anchor in expected_ids if anchor.startswith(f"sample-{condition}-")
         }
 
 
 def test_html_escapes_untrusted_candidate_content(tmp_path: Path) -> None:
     run_dir = _copy_run(tmp_path)
     events_path = run_dir / "events.jsonl"
-    records = [
-        json.loads(line)
-        for line in events_path.read_text(encoding="utf-8").splitlines()
-    ]
+    records = [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines()]
     records[0]["candidate_source"] = "<script>alert('x')</script>\n"
     records[0]["candidate_error"] = "<b>boom</b>"
     with events_path.open("w", encoding="utf-8", newline="") as handle:

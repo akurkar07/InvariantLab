@@ -123,7 +123,7 @@ def test_circular_orbit_angular_momentum():
 def test_circular_orbit_period():
     """After one period, circular orbit returns to the same state."""
     mu, r0 = 1.0, 1.0
-    omega = math.sqrt(mu / r0 ** 3)
+    omega = math.sqrt(mu / r0**3)
     period = 2 * math.pi / omega
     state_0 = kepler_circular_orbit(0.0, mu, r0)
     state_t = kepler_circular_orbit(period, mu, r0)
@@ -202,9 +202,7 @@ def test_ftcs_matches_manufactured_for_domain_length(length):
 
 @pytest.mark.parametrize("length", [1.3, 2.0])
 def test_crank_nicolson_matches_manufactured_for_domain_length(length):
-    x, u_num = solve_heat_crank_nicolson(
-        101, 500, alpha=0.1, length=length, t_final=0.1
-    )
+    x, u_num = solve_heat_crank_nicolson(101, 500, alpha=0.1, length=length, t_final=0.1)
     u_exact = heat_trajectory(x, 0.1, 0.1, length=length)
     relative_l2_error = np.linalg.norm(u_num - u_exact) / np.linalg.norm(u_exact)
     assert relative_l2_error < 1e-3
@@ -274,6 +272,15 @@ def test_leapfrog_matches_standing():
     u_exact = wave_standing_trajectory(x, t_final, c, length=wave_length)
     max_error = np.max(np.abs(u_num - u_exact))
     assert max_error < 5e-3, f"Max error {max_error} too large"
+
+
+def test_leapfrog_matches_standing_for_domain_length_and_derived_courant():
+    """Regression for #12: L != 1 and a Courant number other than 0.5."""
+    c, length, t_final = 1.0, 2.0, 0.37
+    x, u_num = solve_wave_leapfrog(101, 148, c, length=length, t_final=t_final)
+    u_exact = wave_standing_trajectory(x, t_final, c, length=length)
+    relative_l2 = np.linalg.norm(u_num - u_exact) / np.linalg.norm(u_exact)
+    assert relative_l2 < 1e-3, f"Relative L2 error {relative_l2} too large"
 
 
 def test_leapfrog_uses_requested_final_time():

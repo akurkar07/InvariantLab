@@ -50,12 +50,10 @@ def render_html_report(
             "pass_rate_difference_vs_weak",
         )
         cells = "".join(
-            f'<td data-field="{_escaped(field)}">{_escaped(row[field])}</td>'
-            for field in fields
+            f'<td data-field="{_escaped(field)}">{_escaped(row[field])}</td>' for field in fields
         )
         condition_rows.append(
-            f'<tr data-condition="{_escaped(condition)}">{cells}'
-            f"<td>{condition_links}</td></tr>"
+            f'<tr data-condition="{_escaped(condition)}">{cells}<td>{condition_links}</td></tr>'
         )
 
     sample_sections: list[str] = []
@@ -127,7 +125,7 @@ def render_html_report(
         f"<dt>Scientific</dt><dd>{_pass_status(baseline.get('scientific_passed'))}</dd>"
         f"<dt>Source</dt><dd>{_escaped(baseline_source_label)}</dd>"
         "</dl></section>\n"
-        '<section><h2>Results by condition</h2><table>'
+        "<section><h2>Results by condition</h2><table>"
         "<thead><tr><th>Condition</th><th>Scientific passes</th><th>Total (n)</th>"
         "<th>Pass rate</th><th>Wilson 95% low</th><th>Wilson 95% high</th>"
         "<th>Regressions</th><th>Median worst ratio</th><th>Difference vs weak</th>"

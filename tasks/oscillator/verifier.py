@@ -21,11 +21,7 @@ def energy(x, v, omega):
 
 
 def _is_real_number(value):
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-    )
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 def _validate_cases(cases):
@@ -69,9 +65,7 @@ try:
     _validate_cases(data["cases"])
 
     public["shape"] = (
-        isinstance(short, list)
-        and len(short) == 3
-        and all(len(row) == 3 for row in short)
+        isinstance(short, list) and len(short) == 3 and all(len(row) == 3 for row in short)
     )
     public["initial_state"] = public["shape"] and all(
         abs(a - b) < 1e-12 for a, b in zip(short[0], (0.0, 1.0, 0.0), strict=True)
@@ -79,9 +73,7 @@ try:
     public["finite"] = public["shape"] and all(
         math.isfinite(float(value)) for row in short for value in row
     )
-    public["one_step_sanity"] = (
-        public["shape"] and abs(float(short[1][1]) - math.cos(0.05)) < 0.01
-    )
+    public["one_step_sanity"] = public["shape"] and abs(float(short[1][1]) - math.cos(0.05)) < 0.01
 
     max_state_error = 0.0
     max_energy_drift = 0.0
@@ -95,8 +87,7 @@ try:
         )
         e0 = energy(float(traj[0][1]), float(traj[0][2]), omega)
         drift = max(
-            abs(energy(float(row[1]), float(row[2]), omega) - e0)
-            / max(abs(e0), 1e-15)
+            abs(energy(float(row[1]), float(row[2]), omega) - e0) / max(abs(e0), 1e-15)
             for row in traj
         )
         max_energy_drift = max(max_energy_drift, drift)
