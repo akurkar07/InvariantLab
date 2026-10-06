@@ -19,6 +19,21 @@ Exit codes:
 - `1` — at least one validation error; each error is printed to stderr.
 - `2` — invalid command line (for example, missing `--task-dir`).
 
+## `validate_mutants.py`
+
+Validates every registered task mutant against its reference implementation and declared
+behavior. The optional `--task` argument limits validation to one task directory.
+
+```bash
+uv run python scripts/validate_mutants.py --task-dir tasks/ [--task <name>]
+```
+
+Exit codes:
+
+- `0` — every mutant and reference passed.
+- `1` — any validation failure, registry error, missing task directory, or zero mutants.
+- `2` — invalid command line.
+
 ## `check_v1_acceptance.py`
 
 Fail-closed release gate for the V1 acceptance criteria. It runs pytest, keeps only tests

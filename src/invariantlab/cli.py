@@ -14,6 +14,15 @@ app = typer.Typer(
 console = Console()
 
 
+def _require_source_checkout() -> None:
+    for name in ("tasks", "configs"):
+        if not Path(name).is_dir():
+            console.print(
+                f"[red]FAIL[/red] run InvariantLab from a source checkout ({name}/ not found)"
+            )
+            raise typer.Exit(code=1)
+
+
 @app.command()
 def version() -> None:
     """Print the current InvariantLab version."""
@@ -212,6 +221,8 @@ def run(
     ),
 ) -> None:
     """Run an evaluation experiment."""
+    _require_source_checkout()
+
     from dotenv import load_dotenv
 
     load_dotenv()
