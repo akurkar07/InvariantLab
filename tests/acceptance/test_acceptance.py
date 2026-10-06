@@ -1,8 +1,11 @@
 """Acceptance tests for InvariantLab."""
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 from invariantlab.schema import load_task_contract
 from invariantlab.tasks.validation import validate_task_artifacts
@@ -58,3 +61,45 @@ def test_wave_contract_does_not_advertise_unsupported_energy_drift() -> None:
 
     assert [array.name for array in contract.output.arrays] == ["x", "state"]
     assert "energy_relative_drift" not in contract.numerics.tolerances
+
+
+@pytest.mark.parametrize(
+    ("removed", "expected_error"),
+    [
+        ("kepler/src/solver.py", "field 'entrypoint' does not exist"),
+        ("heat1d/contract.yaml", "task 'heat1d': field 'contract.yaml' does not exist"),
+    ],
+)
+def test_validate_task_script_fails_closed_on_incomplete_packages(
+    tmp_path: Path, removed: str, expected_error: str
+) -> None:
+    """Removing a declared artifact from a copy of tasks/ makes validation exit non-zero."""
+    tasks_copy = tmp_path / "tasks"
+    shutil.copytree("tasks", tasks_copy)
+    (tasks_copy / removed).unlink()
+
+    result = subprocess.run(
+        [sys.executable, "scripts/validate_task.py", "--task-dir", str(tasks_copy)],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert expected_error in result.stderr
+    assert "valid." not in result.stdout
+
+
+def test_validate_task_cli_fails_when_entrypoint_is_missing(tmp_path: Path) -> None:
+    """`invariantlab validate-task` checks artifacts, not only the contract schema."""
+    kepler_copy = tmp_path / "kepler"
+    shutil.copytree("tasks/kepler", kepler_copy)
+    (kepler_copy / "src" / "solver.py").unlink()
+
+    result = subprocess.run(
+        [sys.executable, "-m", "invariantlab.cli", "validate-task", "--task-dir", str(kepler_copy)],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "field 'entrypoint' does not exist" in result.stdout
