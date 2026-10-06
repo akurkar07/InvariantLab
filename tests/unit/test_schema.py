@@ -9,7 +9,6 @@ import yaml
 from pydantic import ValidationError
 
 from invariantlab.schema import (
-    ExperimentDefinition,
     MutationDefinition,
     MutationFamily,
     TaskContract,
@@ -161,18 +160,9 @@ def test_generic_task_mutation_experiment_types() -> None:
         source="solver.py",
         expected_effect="stale acceleration in the second velocity half-step",
     )
-    experiment = ExperimentDefinition(
-        task="tasks/oscillator",
-        mutation="tasks/oscillator/mutations/update-order",
-        model="configs/models/replay-first-model.yaml",
-        conditions=["weak", "metrics"],
-        n_attempts=2,
-        seed=1729,
-    )
 
     assert task.id == "oscillator_verlet"
     assert mutation.task_id == task.id
-    assert experiment.conditions == ["weak", "metrics"]
 
 
 def test_package_mutation_requires_expected_failures() -> None:

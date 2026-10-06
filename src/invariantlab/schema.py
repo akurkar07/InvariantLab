@@ -221,55 +221,35 @@ class MutationDefinition(ContractModel):
         return self
 
 
-class ExperimentDefinition(BaseModel):
-    """Generic task, mutation, model and condition binding."""
-
-    task: str
-    mutation: str
-    model: str
-    conditions: list[str] = Field(default_factory=list)
-    n_attempts: int = Field(default=1, ge=1)
-    seed: int = Field(default=42, ge=0)
-    randomize_order: bool = False
-    container_image: str = "python:3.12-slim"
-
-
-# ── Verification Results ─────────────────────────────────────────────────────
-
-
-class GateResult(BaseModel):
-    """Result of a single verification gate."""
-
-    name: str
-    passed: bool
-    deviation: float | None = None
-    threshold: float | None = None
-    detail: str = ""
-
-
-class VerificationResult(BaseModel):
-    """Complete verification result for one attempt."""
-
-    task_id: str
-    attempt_id: str
-    passed_all: bool
-    public_passed: bool
-    scientific_passed: bool
-    layers: dict[str, list[GateResult]] = Field(default_factory=dict)
-
-
 # ── Run Manifest ─────────────────────────────────────────────────────────────
 
 
 class RunManifest(BaseModel):
-    """Immutable record of one evaluation run."""
+    """Provenance record written at the start of a repair run."""
 
     run_id: str
     experiment: str
-    model: str
+    created_at: str
+    config_path: str
+    config_sha256: str
+    git_commit: str | None
+    git_dirty: bool | None
+    package_version: str | None
+    python_version: str
+    platform: str
+    task_id: str
+    mutation_id: str
+    artifact_sha256: dict[str, str]
+    model: dict[str, Any]
+    model_sha256: str
     seed: int
+    conditions: list[str]
+    n_attempts: int
+    randomize_order: bool
+    configured_image: str
+    image_override: str | None
     container_image: str
-    task_results: list[VerificationResult] = Field(default_factory=list)
+    image_digest: str
 
 
 # ── Loading ──────────────────────────────────────────────────────────────────

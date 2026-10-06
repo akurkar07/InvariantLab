@@ -1,0 +1,6 @@
+id: sign-error
+task_id: oscillator_verlet
+family: sign_error
+interface: legacy_study
+source: solver.py
+expected_effect: restoring force has the wrong sign, so the trajectory grows exponentially instead of oscillating

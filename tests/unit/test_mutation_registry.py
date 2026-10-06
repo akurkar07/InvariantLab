@@ -222,5 +222,6 @@ def test_real_task_mutants_are_legacy_only() -> None:
     mutants = discover_mutants(tasks_root, include_legacy=True)
 
     assert [(mutant.task_dir.name, mutant.definition.id) for mutant in mutants] == [
-        ("oscillator", "update-order")
+        ("oscillator", "sign-error"),
+        ("oscillator", "update-order"),
     ]

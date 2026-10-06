@@ -1,0 +1,5 @@
+adapter: replay
+temperature: 0.0
+max_tokens: 4096
+extra:
+  events_path: tests/fixtures/replay/oscillator-update-order/events.jsonl

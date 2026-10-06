@@ -9,7 +9,7 @@ from rich.console import Console
 app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
-    help="InvariantLab — physics-grounded evaluation for numerical software.",
+    help="InvariantLab - physics-grounded evaluation for numerical software.",
 )
 console = Console()
 
@@ -38,13 +38,13 @@ def validate_task(
         errors = validate_task_artifacts(task_dir, contract)
         if errors:
             for error in errors:
-                console.print(f"[red]✗[/red] {error}")
+                console.print(f"[red]FAIL[/red] {error}")
             raise typer.Exit(code=1)
-        console.print(f"[green]✓[/green] Task [bold]{contract.id}[/bold] is valid.")
+        console.print(f"[green]OK[/green] Task [bold]{contract.id}[/bold] is valid.")
     except typer.Exit:
         raise
     except Exception as error:
-        console.print(f"[red]✗[/red] Validation failed: {error}")
+        console.print(f"[red]FAIL[/red] Validation failed: {error}")
         raise typer.Exit(code=1) from error
 
 
@@ -65,10 +65,10 @@ def model_check(
         )
         preview = response.replace("\n", " ")[:160]
         console.print(
-            f"[green]✓[/green] Model [bold]{adapter.model_id}[/bold] responded: {preview}"
+            f"[green]OK[/green] Model [bold]{adapter.model_id}[/bold] responded: {preview}"
         )
     except Exception as e:
-        console.print(f"[red]✗[/red] Model check failed: {e}")
+        console.print(f"[red]FAIL[/red] Model check failed: {e}")
         raise typer.Exit(code=1) from e
 
 
@@ -100,9 +100,9 @@ def audit_run(
         )
 
         if audit["integrity_ok"]:
-            console.print("[green]✓[/green] Raw artifact integrity is valid.")
+            console.print("[green]OK[/green] Raw artifact integrity is valid.")
         else:
-            console.print("[red]✗[/red] Raw artifact integrity is invalid.")
+            console.print("[red]FAIL[/red] Raw artifact integrity is invalid.")
             console.print(
                 "Duplicates: "
                 f"{audit['duplicate_records']} | "
@@ -123,7 +123,7 @@ def audit_run(
             f"Integrity report: [bold]{Path(run_dir) / 'artifact-integrity.json'}[/bold]"
         )
     except Exception as e:
-        console.print(f"[red]✗[/red] Audit failed: {e}")
+        console.print(f"[red]FAIL[/red] Audit failed: {e}")
         raise typer.Exit(code=1) from e
 
 
@@ -137,33 +137,54 @@ def run(
         "--max-new-attempts",
         help="Stop cleanly after this many new cells; rerun to resume.",
     ),
+    image: str | None = typer.Option(
+        None,
+        "--image",
+        help="Override the configured container image (recorded in manifest.json).",
+    ),
+    allow_code_change: bool = typer.Option(
+        False,
+        "--allow-code-change",
+        help="Resume even if the git commit or package version differs from manifest.json.",
+    ),
 ) -> None:
     """Run an evaluation experiment."""
     from dotenv import load_dotenv
 
     load_dotenv()
-    from invariantlab.config import load_experiment_config, load_model_config
+    from invariantlab.config import (
+        load_experiment_config,
+        load_model_config,
+        validate_container_image,
+    )
 
     config_path = Path(experiment)
     try:
         config = load_experiment_config(config_path)
-        load_model_config(Path(config.model))
+        model_config = load_model_config(Path(config.model))
+        if image is not None:
+            validate_container_image(image)
         if max_new_attempts is not None and max_new_attempts < 1:
             raise ValueError("--max-new-attempts must be at least 1")
-        if config.runner == "repair":
-            if config.task is None or config.mutation is None:
-                raise ValueError("Repair experiments require task and mutation paths")
-            from invariantlab.schema import (
-                load_mutation_definition,
-                load_task_definition,
-            )
+        if config.runner not in {"repair", "feedback_replication"}:
+            raise ValueError(f"Unsupported experiment runner: {config.runner}")
+        from invariantlab.experiments.repair import (
+            _resolve_assets,
+            _validate_experiment,
+        )
 
-            task = load_task_definition(Path(config.task))
-            mutation = load_mutation_definition(Path(config.mutation))
-            if mutation.task_id != task.id:
-                raise ValueError("Configured mutation does not target the configured task")
+        _validate_experiment(config)
+        _resolve_assets(config)
+        from invariantlab.models import build_adapter
+
+        build_adapter(model_config)
+        if config.task_suite is not None:
+            console.print(
+                "[yellow]Warning:[/yellow] task_suite is ignored until suite "
+                "evaluation (#120) lands."
+            )
         if dry_run:
-            console.print(f"[green]✓[/green] Experiment [bold]{config.name}[/bold] is valid.")
+            console.print(f"[green]OK[/green] Experiment [bold]{config.name}[/bold] is valid.")
             return
 
         output_path = Path(output) if output is not None else None
@@ -174,6 +195,8 @@ def run(
                 config_path,
                 output_path,
                 max_new_attempts=max_new_attempts,
+                image=image,
+                allow_code_change=allow_code_change,
             )
         elif config.runner == "feedback_replication":
             from invariantlab.experiments import run_feedback_replication
@@ -182,21 +205,15 @@ def run(
                 config_path,
                 output_path,
                 max_new_attempts=max_new_attempts,
+                image=image,
+                allow_code_change=allow_code_change,
             )
-        elif config.runner == "first_model":
-            if max_new_attempts is not None:
-                raise ValueError(
-                    "--max-new-attempts is only supported by resumable experiment runners"
-                )
-            from invariantlab.experiments import run_first_model_experiment
-
-            result_dir = run_first_model_experiment(config_path, output_path)
         else:
             raise ValueError(f"Unsupported experiment runner: {config.runner}")
 
         status_path = result_dir / "run-status.json"
         if not status_path.exists():
-            console.print(f"[green]✓[/green] Run complete: [bold]{result_dir}[/bold]")
+            console.print(f"[green]OK[/green] Run complete: [bold]{result_dir}[/bold]")
             return
 
         status = json.loads(status_path.read_text(encoding="utf-8"))
@@ -206,12 +223,12 @@ def run(
         reason = str(status.get("reason", ""))
         if state == "complete":
             console.print(
-                f"[green]✓[/green] Run complete: [bold]{completed}/{target}[/bold] cells"
+                f"[green]OK[/green] Run complete: [bold]{completed}/{target}[/bold] cells"
             )
         else:
-            suffix = f" — {reason}" if reason else ""
+            suffix = f" - {reason}" if reason else ""
             console.print(
-                f"[yellow]•[/yellow] Run stopped safely at "
+                f"[yellow]STOPPED[/yellow] Run stopped safely at "
                 f"[bold]{completed}/{target}[/bold] cells ({state}){suffix}"
             )
             console.print(
@@ -219,7 +236,7 @@ def run(
                 f"Evidence: [bold]{result_dir}[/bold]"
             )
     except Exception as e:
-        console.print(f"[red]✗[/red] Run failed: {e}")
+        console.print(f"[red]FAIL[/red] Run failed: {e}")
         raise typer.Exit(code=1) from e
 
 
