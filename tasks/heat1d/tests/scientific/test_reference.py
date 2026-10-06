@@ -10,6 +10,8 @@ import numpy as np
 import yaml
 from conftest import ENTRYPOINT, TASK_ROOT, make_input, write_input
 
+from invariantlab.verification.analytical import heat_trajectory
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -17,10 +19,6 @@ ALPHA, LENGTH, NX, NT, T_FINAL = 0.17, 1.3, 161, 1_800, 0.237
 STATE_RELATIVE_L2 = 1.0e-5
 CONTRACT = yaml.safe_load((TASK_ROOT / "contract.yaml").read_text(encoding="utf-8"))
 EXPECTED_ARCHIVE_NAMES = {array["name"] for array in CONTRACT["output"]["arrays"]}
-
-
-def _manufactured_solution(x: np.ndarray, alpha: float, length: float, time: float) -> np.ndarray:
-    return np.sin(np.pi * x / length) * np.exp(-alpha * (np.pi / length) ** 2 * time)
 
 
 def _invoke(input_path: Path, output_path: Path) -> subprocess.CompletedProcess[str]:
@@ -60,9 +58,9 @@ def _candidate_solution(tmp_path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 def test_non_special_ftcs_case_matches_manufactured_solution_and_decays(tmp_path: Path) -> None:
     x, state = _candidate_solution(tmp_path)
-    expected = _manufactured_solution(x, ALPHA, LENGTH, T_FINAL)
+    expected = heat_trajectory(x, T_FINAL, ALPHA, length=LENGTH)
     expected[[0, -1]] = 0.0
-    initial = _manufactured_solution(x, ALPHA, LENGTH, 0.0)
+    initial = heat_trajectory(x, 0.0, ALPHA, length=LENGTH)
     initial[[0, -1]] = 0.0
     state_relative_l2 = np.linalg.norm(state - expected) / np.linalg.norm(expected)
     assert state_relative_l2 < STATE_RELATIVE_L2, f"state_relative_l2={state_relative_l2:.3e}"

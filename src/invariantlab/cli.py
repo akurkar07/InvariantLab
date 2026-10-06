@@ -137,31 +137,52 @@ def run(
         "--max-new-attempts",
         help="Stop cleanly after this many new cells; rerun to resume.",
     ),
+    image: str | None = typer.Option(
+        None,
+        "--image",
+        help="Override the configured container image (recorded in manifest.json).",
+    ),
+    allow_code_change: bool = typer.Option(
+        False,
+        "--allow-code-change",
+        help="Resume even if the git commit or package version differs from manifest.json.",
+    ),
 ) -> None:
     """Run an evaluation experiment."""
     from dotenv import load_dotenv
 
     load_dotenv()
-    from invariantlab.config import load_experiment_config, load_model_config
+    from invariantlab.config import (
+        load_experiment_config,
+        load_model_config,
+        validate_container_image,
+    )
 
     config_path = Path(experiment)
     try:
         config = load_experiment_config(config_path)
-        load_model_config(Path(config.model))
+        model_config = load_model_config(Path(config.model))
+        if image is not None:
+            validate_container_image(image)
         if max_new_attempts is not None and max_new_attempts < 1:
             raise ValueError("--max-new-attempts must be at least 1")
-        if config.runner == "repair":
-            if config.task is None or config.mutation is None:
-                raise ValueError("Repair experiments require task and mutation paths")
-            from invariantlab.schema import (
-                load_mutation_definition,
-                load_task_definition,
-            )
+        if config.runner not in {"repair", "feedback_replication"}:
+            raise ValueError(f"Unsupported experiment runner: {config.runner}")
+        from invariantlab.experiments.repair import (
+            _resolve_assets,
+            _validate_experiment,
+        )
 
-            task = load_task_definition(Path(config.task))
-            mutation = load_mutation_definition(Path(config.mutation))
-            if mutation.task_id != task.id:
-                raise ValueError("Configured mutation does not target the configured task")
+        _validate_experiment(config)
+        _resolve_assets(config)
+        from invariantlab.models import build_adapter
+
+        build_adapter(model_config)
+        if config.task_suite is not None:
+            console.print(
+                "[yellow]Warning:[/yellow] task_suite is ignored until suite "
+                "evaluation (#120) lands."
+            )
         if dry_run:
             console.print(f"[green]OK[/green] Experiment [bold]{config.name}[/bold] is valid.")
             return
@@ -174,6 +195,8 @@ def run(
                 config_path,
                 output_path,
                 max_new_attempts=max_new_attempts,
+                image=image,
+                allow_code_change=allow_code_change,
             )
         elif config.runner == "feedback_replication":
             from invariantlab.experiments import run_feedback_replication
@@ -182,15 +205,9 @@ def run(
                 config_path,
                 output_path,
                 max_new_attempts=max_new_attempts,
+                image=image,
+                allow_code_change=allow_code_change,
             )
-        elif config.runner == "first_model":
-            if max_new_attempts is not None:
-                raise ValueError(
-                    "--max-new-attempts is only supported by resumable experiment runners"
-                )
-            from invariantlab.experiments import run_first_model_experiment
-
-            result_dir = run_first_model_experiment(config_path, output_path)
         else:
             raise ValueError(f"Unsupported experiment runner: {config.runner}")
 

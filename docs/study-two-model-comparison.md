@@ -52,7 +52,7 @@ This is a **null result** — there was no observable verifier-feedback effect f
 
 2. **The task is at ceiling.** Both 7B models find and fix this particular update-order defect reliably regardless of prompt condition. This makes the defect a poor discriminator for detecting feedback effects.
 
-3. **Study 1's regression remains unexplained.** The single regression observed in the exploratory Cohere study (1/18 in metrics) could be:
+3. **Study 1's regression remains unexplained.** The single regression observed in the exploratory Cohere study (1/18, under Study 1's *Hardened* condition, which showed scientific error metrics and predates the `metrics`/`interpreted` split; see the [README evaluation protocol](../README.md#conditions)) could be:
    - Sampling noise (n=3 per cell is very small)
    - Model-specific to weaker models
    - A genuine effect that requires a harder task to observe
