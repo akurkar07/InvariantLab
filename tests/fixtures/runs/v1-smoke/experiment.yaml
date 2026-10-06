@@ -1,0 +1,13 @@
+name: v1-smoke
+description: V1 acceptance smoke run (replay adapter) for report reconstruction.
+model: tests/fixtures/runs/v1-smoke/model.yaml
+runner: repair
+task: tasks/oscillator
+mutation: tasks/oscillator/mutations/update-order
+conditions:
+  - weak
+  - metrics
+n_attempts: 2
+seed: 1729
+randomize_order: false
+container_image: python:3.12-slim

@@ -1,0 +1,18 @@
+{
+  "canonical_cells": 4,
+  "canonical_events_path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\tmpc44g4q6r\\run\\events.canonical.jsonl",
+  "canonical_selection": "first valid record per scheduled cell in raw file order",
+  "complete": true,
+  "duplicate_keys": [],
+  "duplicate_records": 0,
+  "expected_cells": 4,
+  "integrity_ok": true,
+  "malformed_records": [],
+  "metadata_mismatches": [],
+  "missing_cells": [],
+  "observed_unique_cells": 4,
+  "raw_overshoot": 0,
+  "raw_records": 4,
+  "unexpected_records": [],
+  "unique_overshoot": 0
+}
