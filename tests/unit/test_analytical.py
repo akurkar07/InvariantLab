@@ -218,7 +218,8 @@ def test_heat_manufactured_references_support_domain_length():
         0.0,
         abs_tol=1e-15,
     )
-    assert heat_decay_rate(alpha, length=length) == alpha * (math.pi / length) ** 2
+    assert math.isclose(heat_decay_rate(alpha, length=length), alpha * (math.pi / length) ** 2)
+    assert heat_decay_rate(alpha) == alpha * math.pi * math.pi
     np.testing.assert_allclose(
         heat_trajectory(x, t, alpha, length=length),
         [heat_manufactured_solution(float(xi), t, alpha, length=length) for xi in x],

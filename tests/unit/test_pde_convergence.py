@@ -128,9 +128,9 @@ def test_ftcs_has_first_order_temporal_convergence() -> None:
 @pytest.mark.parametrize("length", [1.0, 2.0])
 def test_ftcs_has_second_order_cfl_coupled_spatial_convergence(length: float) -> None:
     # Coupled dt = 0.4*dx**2/alpha keeps FTCS stable (r=0.4), making its
-    # L=2 case equivalent with alpha scaled by L**2.
     # O(dt) temporal error O(dx**2). Measured errors: 7.1110593e-5,
-    # 1.7762056e-5, 4.4395407e-6; orders 2.001266, 2.000316.
+    # 1.7762056e-5, 4.4395407e-6; orders 2.001266, 2.000316. L=2 scales alpha
+    # by L**2.
     alpha, horizon = 0.1 * length**2, 0.1
     configurations = ((41, 40), (81, 160), (161, 640))
     refinements: list[_Refinement] = []

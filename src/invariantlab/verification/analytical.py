@@ -189,9 +189,7 @@ def heat_trajectory(
 def heat_decay_rate(alpha: float, length: float = 1.0) -> float:
     """Decay rate lambda = alpha (pi/L)^2 for the manufactured solution."""
     k = math.pi / length
-    if length == 1.0:
-        return alpha * math.pi * math.pi
-    return alpha * k**2
+    return alpha * k * k
 
 
 # -- 1-D Wave Equation --------------------------------------------------------
