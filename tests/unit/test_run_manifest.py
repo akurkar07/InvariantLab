@@ -52,7 +52,7 @@ def _write_config(tmp_path: Path, image: str = "python:3.12-slim") -> Path:
             [
                 "name: manifest-test",
                 f"task_suite: {(REPO_ROOT / 'configs/task-suites/v1-smoke.yaml').as_posix()}",
-                f"model: {(REPO_ROOT / 'configs/models/replay-first-model.yaml').as_posix()}",
+                f"model: {(REPO_ROOT / 'configs/models/reference-stub-oscillator.yaml').as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
                 "mutation: "
@@ -119,8 +119,8 @@ def test_manifest_records_provenance_before_first_model_call(tmp_path, run_env):
         "mutation_source",
     } <= set(manifest["artifact_sha256"])
     assert manifest["model"] == {
-        "adapter": "replay",
-        "model_id": "replay/oscillator-reference",
+        "adapter": "reference_stub",
+        "model_id": "reference_stub/oscillator-verlet",
         "temperature": 0.0,
         "max_tokens": 4096,
         "extra": {},
