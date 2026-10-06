@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from invariantlab.schema import TaskContract
 
+REQUIRED_V1_TASKS = ("oscillator", "kepler", "heat1d", "wave1d")
+
 _ARTIFACTS = (
     ("entrypoint", "file"),
     ("public_tests", "directory"),
