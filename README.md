@@ -29,7 +29,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Verification layer 4: convergence studies | Implemented (`check_convergence` gate) | `src/invariantlab/verification/convergence.py` | [#114](https://github.com/akurkar07/InvariantLab/issues/114) |
 | Verification layer 5: metamorphic tests | Implemented (`check_metamorphic` gate) | `src/invariantlab/verification/metamorphic.py` | [#115](https://github.com/akurkar07/InvariantLab/issues/115) |
 | Verification layer 6: held-out robustness cases | Partial (oscillator study verifier only) | `tasks/oscillator/verifier.py` | [#116](https://github.com/akurkar07/InvariantLab/issues/116) |
-| Defect injection / mutants | Partial (registry; two oscillator mutants) | `src/invariantlab/mutations/`, `tasks/oscillator/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
+| Defect injection / mutants | Partial (registry; three validated package mutants, two legacy oscillator study mutants) | `src/invariantlab/mutations/`, `tasks/*/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Reporting / dashboard / HF export | Partial (`report`, static `report.html`, local HF export via `export-hf`) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
@@ -49,8 +49,14 @@ uv sync --extra dev
 # Top-level unit and acceptance tests
 uv run pytest tests -q
 
-# One task's public and scientific suites (run task suites per task directory)
-cd tasks/oscillator && uv run pytest tests -q && cd ../..
+# Run one task on its committed example input, then its public and scientific suites
+cd tasks/oscillator
+uv run python src/solver.py --input examples/input.json --output result.npz
+uv run pytest tests
+cd ../..
+
+# All four task suites (each runs from its own task directory)
+make test-tasks
 
 # Deterministic smoke run: no API key or model server, needs Docker
 uv run invariantlab run --experiment configs/experiments/first-model-oscillator.yaml
@@ -60,6 +66,10 @@ Expected outcome of the smoke run: the baseline `sign-error` mutant passes the p
 and fails the scientific checks; the single repair, a fixed known-correct solver returned by
 the `reference_stub` adapter, passes both. Results go to `runs/first-model-oscillator/`. If
 Docker Hub rate-limits `python:3.12-slim`, add `--image mirror.gcr.io/library/python:3.12-slim`.
+
+CI's "Reproduce Smoke Run" workflow runs `uv run python scripts/reproduce_report.py --smoke`
+(`make reproduce`), which runs `configs/experiments/replay-smoke.yaml` in Docker, rebuilds the
+report and fails on any drift from `tests/fixtures/expected/replay-smoke-summary.json`.
 
 To run against a local model with Ollama, see [Model execution](docs/local-models.md).
 
@@ -102,7 +112,8 @@ Neither study is evidence of a general feedback-condition effect.
 
 **Study 1 results:** [First Multi-Condition Study Results](docs/first-multi-condition-study-results.md)  
 **Study 2 protocol:** [Update-order feedback replication](docs/update-order-feedback-replication.md)  
-**Study 2 results:** [Two-Model Comparison](docs/study-two-model-comparison.md)
+**Study 2 results:** [Two-Model Comparison](docs/study-two-model-comparison.md)  
+**Research track:** [Studies 1-3 and the verification gap](docs/research-track.md)
 
 ## Design and methodology
 

@@ -1,0 +1,49 @@
+{
+  "baseline": {
+    "public_passed": true,
+    "scientific_passed": false
+  },
+  "by_condition": {
+    "interpreted": {
+      "completed": 2,
+      "pass_rate_difference_vs_weak": 0.0,
+      "public_pass_rate": 1.0,
+      "public_pass_rate_wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "public_passes": 2,
+      "scientific_pass_rate": 1.0,
+      "scientific_pass_rate_wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "scientific_passes": 2,
+      "scientific_regressions": 0,
+      "target": 2,
+      "verification_gap": 0.0
+    },
+    "weak": {
+      "completed": 2,
+      "pass_rate_difference_vs_weak": 0.0,
+      "public_pass_rate": 1.0,
+      "public_pass_rate_wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "public_passes": 2,
+      "scientific_pass_rate": 1.0,
+      "scientific_pass_rate_wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "scientific_passes": 2,
+      "scientific_regressions": 0,
+      "target": 2,
+      "verification_gap": 0.0
+    }
+  },
+  "completed_cells": 4,
+  "source_records": 4,
+  "target_cells": 4
+}

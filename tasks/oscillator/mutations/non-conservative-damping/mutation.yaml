@@ -1,0 +1,15 @@
+id: non-conservative-damping
+task_id: oscillator_verlet
+family: non_conservative_update
+interface: package
+source: solver.py
+expected_effect: >-
+  The closing velocity half-step is scaled by (1 - 1e-6), adding artificial damping of about
+  1e-6 per step. The 50-step public example stays within 1e-4, but over the 15000-step
+  scientific horizon energy drifts by about 1.5e-2 and the state error is about 4e-3.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_state_matches_analytical_solution
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_energy_drift_is_bounded_over_horizon
+    message: "energy_relative_drift="
+max_changed_lines: 2
