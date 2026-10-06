@@ -11,12 +11,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from itertools import pairwise
 
 import numpy as np
 import pytest
 
 from invariantlab.verification.analytical import heat_trajectory, wave_standing_trajectory
+from invariantlab.verification.convergence import observed_orders
 from invariantlab.verification.solvers import (
     solve_heat_crank_nicolson,
     solve_heat_ftcs,
@@ -45,16 +45,8 @@ def _uniform_grid(nx: int, length: float = 1.0) -> np.ndarray:
     return np.linspace(0.0, length, nx, dtype=np.float64)
 
 
-def _observed_orders(refinements: list[_Refinement]) -> list[float]:
-    """Return p = log(E_h / E_h_over_2) / log(2) for adjacent refinements."""
-    return [
-        math.log(coarse.error / fine.error) / math.log(2.0)
-        for coarse, fine in pairwise(refinements)
-    ]
-
-
 def _assert_orders_in_band(refinements: list[_Refinement], lower: float, upper: float) -> None:
-    orders = _observed_orders(refinements)
+    orders = observed_orders([refinement.error for refinement in refinements])
     details = ", ".join(
         f"dx={refinement.dx:.6g}, dt={refinement.dt:.6g}, "
         f"error={refinement.error:.6e}, order={order:.6f}"

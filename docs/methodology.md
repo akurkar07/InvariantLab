@@ -170,6 +170,8 @@ Current evidence includes:
 - second-order Crank-Nicolson temporal and spatial convergence
 - second-order leapfrog convergence under fixed CFL
 
+The Layer 4 gate `check_convergence` in `src/invariantlab/verification/convergence.py` re-runs candidates through the CLI/NPZ boundary on a fixed 3-level plan per task and grades the observed order against the second-order band; the first-order FTCS temporal study is evidence only and is not graded.
+
 ## Trust boundary
 
 Agent-facing task code is deliberately separate from trusted verification code.
