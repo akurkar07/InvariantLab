@@ -19,6 +19,7 @@ TRUSTED_PREFIXES = (
     "invariantlab.mutations",
     "tests.scientific",
 )
+pytestmark = pytest.mark.v1_acceptance("V1-AC3")
 
 
 def _forbidden_imports(source: str) -> list[tuple[int, str]]:

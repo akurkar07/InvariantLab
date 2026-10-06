@@ -1,0 +1,5 @@
+task,mutation,model,condition,trial,schedule_index,successful_repair,scientific_regression,worst_scientific_ratio,candidate_error
+oscillator_verlet,update-order,replay/fixture/scripted-oscillator,weak,1,1,false,false,1.000000,
+oscillator_verlet,update-order,replay/fixture/scripted-oscillator,weak,2,2,true,false,0.000050,
+oscillator_verlet,update-order,replay/fixture/scripted-oscillator,metrics,1,3,true,false,0.000050,
+oscillator_verlet,update-order,replay/fixture/scripted-oscillator,metrics,2,4,true,false,0.000050,
