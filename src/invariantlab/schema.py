@@ -234,6 +234,17 @@ class GateResult(BaseModel):
     detail: str = ""
 
 
+class VerificationResult(BaseModel):
+    """Layered verification result for one candidate attempt."""
+
+    task_id: str
+    attempt_id: str
+    passed_all: bool
+    public_passed: bool
+    scientific_passed: bool
+    layers: dict[str, list[GateResult]] = Field(default_factory=dict)
+
+
 # ── Run Manifest ─────────────────────────────────────────────────────────────
 
 

@@ -29,6 +29,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Verification layer 4: convergence studies | Implemented (`check_convergence` gate) | `src/invariantlab/verification/convergence.py` | [#114](https://github.com/akurkar07/InvariantLab/issues/114) |
 | Verification layer 5: metamorphic tests | Implemented (`check_metamorphic` gate) | `src/invariantlab/verification/metamorphic.py` | [#115](https://github.com/akurkar07/InvariantLab/issues/115) |
 | Verification layer 6: held-out robustness cases | Implemented (`check_robustness` gate) | `src/invariantlab/verification/robustness.py` | [#116](https://github.com/akurkar07/InvariantLab/issues/116) |
+| Layered verification entrypoint | Implemented (`verify_candidate`, `invariantlab verify`) | `src/invariantlab/verification/verify.py` | [#117](https://github.com/akurkar07/InvariantLab/issues/117) |
 | Defect injection / mutants | Partial (registry; three validated package mutants, two legacy oscillator study mutants) | `src/invariantlab/mutations/`, `tasks/*/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
@@ -225,7 +226,7 @@ Generated from `git ls-files`; every path below exists on `main`.
 
 ```text
 src/invariantlab/
-├── cli.py                       # validate-task, model-check, run, audit-run, report, export-hf
+├── cli.py                       # validate-task, model-check, verify, run, audit-run, report, export-hf
 ├── config.py                    # model and experiment config loading
 ├── schema.py                    # task/output contract and experiment models
 ├── experiments/                 # repair and feedback-replication runners
@@ -242,6 +243,7 @@ src/invariantlab/
     ├── convergence.py           # Layer 4 observed-order convergence gate
     ├── metamorphic.py           # Layer 5 metamorphic-relation gates
     ├── robustness.py            # Layer 6 held-out robustness cases
+    ├── verify.py                # verify_candidate: Layers 0-6 -> VerificationResult
     └── solvers.py               # trusted numerical references used by tests
 
 .github/workflows/          # CI: tests.yml (lint, typecheck, tests), task-validation.yml
