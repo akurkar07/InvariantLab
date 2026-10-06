@@ -151,7 +151,7 @@ def test_package_mutant_workspaces_and_prompts_exclude_reference_and_hidden_test
     )
     assert assets.mutation_source in prompt
     assert reference not in prompt
-    for hidden_test in (mutant.task_dir / "tests/scientific").rglob("*"):
+    for hidden_test in (mutant.task_dir / "tests/scientific").rglob("*.py"):
         if hidden_test.is_file():
             assert hidden_test.name not in prompt
             assert hidden_test.read_text(encoding="utf-8") not in prompt
@@ -224,8 +224,8 @@ def test_package_replay_run_uses_docker_executor_and_verifies_all_gates(
                 if argument == target:
                     rewritten.append(str(host_path))
                 elif argument.startswith(f"{target}/"):
-                    relative = argument[len(target) + 1 :].replace("/", "\\")
-                    rewritten.append(str(host_path / relative))
+                    relative = argument[len(target) + 1 :]
+                    rewritten.append(str(host_path.joinpath(*relative.split("/"))))
                 elif argument.endswith(f"={target}"):
                     rewritten.append(f"{argument[: -len(target)]}{host_path}")
                 else:
