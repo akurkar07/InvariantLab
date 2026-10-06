@@ -10,9 +10,32 @@ import pytest
 import yaml
 
 from invariantlab.tasks.workspace import build_agent_workspace, build_evaluation_workspace
+from invariantlab.verification.analytical import kepler_circular_orbit
+from invariantlab.verification.execution import run_task
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TASK_NAMES = ("oscillator", "kepler", "heat1d", "wave1d")
+
+
+def _parameters(task_name: str) -> dict[str, object]:
+    if task_name == "oscillator":
+        return {"x0": 0.7, "v0": -0.35, "omega": 1.7, "dt": 1e-3, "n_steps": 15_000}
+    if task_name == "kepler":
+        orbit = kepler_circular_orbit(0.0, 2.5, 1.7, 0.37)
+        return {
+            "rx": orbit[0],
+            "ry": orbit[1],
+            "vx": orbit[3],
+            "vy": orbit[4],
+            "mu": 2.5,
+            "dt": 0.004,
+            "n_steps": 1_080,
+        }
+    if task_name == "heat1d":
+        return {"nx": 161, "nt": 1_800, "alpha": 0.17, "length": 1.3, "t_final": 0.237}
+    if task_name == "wave1d":
+        return {"nx": 401, "nt": 400, "c": 0.65, "length": 1.3, "t_final": 0.39}
+    raise AssertionError(f"unknown trusted task: {task_name}")
 
 
 def _run_pytest(cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -98,6 +121,28 @@ def test_untampered_evaluation_workspace_tests_pass(task_name: str, tmp_path: Pa
     )
 
     _run_pytest(evaluation_workspace)
+
+
+@pytest.mark.parametrize("task_name", TASK_NAMES)
+def test_evaluation_workspace_runs_under_execution_gate(
+    task_name: str, tmp_path: Path
+) -> None:
+    task_root = REPO_ROOT / "tasks" / task_name
+    agent_workspace = build_agent_workspace(task_root, tmp_path / "agent")
+    evaluation_workspace = build_evaluation_workspace(
+        task_root, agent_workspace, tmp_path / "evaluation"
+    )
+
+    run = run_task(
+        evaluation_workspace,
+        evaluation_workspace,
+        _parameters(task_name),
+        tmp_path / "work",
+    )
+
+    assert run.passed, (run.gates, run.stderr)
+    assert run.returncode == 0
+    assert run.arrays is not None
 
 
 @pytest.mark.parametrize("builder", ["agent", "evaluation"])
