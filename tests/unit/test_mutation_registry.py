@@ -230,6 +230,9 @@ def test_real_task_package_mutants_validate() -> None:
     ] == [
         ("heat1d", "discretisation-grid-spacing", "discretisation_error"),
         ("heat1d", "stability-two-dimensional-limit", "stability_error"),
+        ("oscillator", "early-termination", "termination_defect"),
+        ("oscillator", "float32-position", "precision_defect"),
+        ("oscillator", "hard-coded-fixture-shortcut", "hard_coded_shortcut"),
         ("oscillator", "non-conservative-damping", "non_conservative_update"),
         ("wave1d", "sign-error-startup", "sign_error"),
         ("wave1d", "update-order-overwrite", "update_order_error"),
