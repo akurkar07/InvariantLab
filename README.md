@@ -95,40 +95,131 @@ see `configs/models/api-example.yaml`.
 
 See [model execution](docs/local-models.md) for Ollama, vLLM and optional API endpoint setup.
 
+## Command-line interface
+
+Install with `uv sync --extra dev`, then run every command as `uv run invariantlab ...`.
+On Windows, set `PYTHONIOENCODING=utf-8` first; otherwise the CLI can crash while printing
+its status symbols.
+
+| Command | Purpose |
+|---|---|
+| `version` | Print the installed InvariantLab version. |
+| `validate-task --task-dir <dir>` | Validate one task contract and the files it declares. |
+| `model-check --model <config>` | Send one short prompt to the configured model and print the reply. |
+| `run --experiment <config> [--output <dir>] [--dry-run] [--max-new-attempts N]` | Run an experiment with the `first_model` or `repair` runner. Output goes to `runs/<experiment name>/` unless `--output` is given. |
+| `audit-run --experiment <config> --run-dir <dir> [--write-canonical]` | Audit a repair run's raw `events.jsonl` against the configured cell schedule. |
+
+```bash
+# Validate one task package
+uv run invariantlab validate-task --task-dir tasks/oscillator
+
+# Check a model config (replay needs no server; default.yaml needs a running Ollama)
+uv run invariantlab model-check --model configs/models/replay-first-model.yaml
+uv run invariantlab model-check --model configs/models/default.yaml
+
+# Validate an experiment config without calling a model or Docker
+uv run invariantlab run --experiment configs/experiments/first-model-oscillator.yaml --dry-run
+
+# Deterministic replay smoke run (needs Docker, no model server)
+uv run invariantlab run --experiment configs/experiments/first-model-oscillator.yaml
+
+# Resumable repair study in batches of 20 cells (needs Docker and Ollama); rerun to continue
+uv run invariantlab run \
+  --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
+  --max-new-attempts 20
+
+# Audit a repair run and write the canonical projection
+uv run invariantlab audit-run \
+  --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
+  --run-dir runs/update-order-feedback-replication-ollama-qwen25-7b \
+  --write-canonical
+```
+
+`--max-new-attempts` is accepted only by the resumable `repair` runner; the `first_model`
+runner rejects it. Candidates run in the experiment's `container_image` (`python:3.12-slim`);
+if Docker Hub rate-limits it, `mirror.gcr.io/library/python:3.12-slim` is equivalent.
+
+### Planned CLI (not implemented)
+
+These interfaces are planned and do not exist yet; the CLI rejects them as unknown commands
+or options:
+
+- `invariantlab tasks validate --suite <suite>`: validate a whole task suite. Today use
+  `validate-task` per task or `python scripts/validate_task.py --task-dir tasks/`.
+- `invariantlab run --suite <suite> --condition <condition>`: suite-by-condition runs. Today
+  conditions are set in the experiment config's `conditions` list.
+- `invariantlab report`: report generation from run directories.
+- `invariantlab export hf`: Hugging Face dataset export.
+
+## Reproducible outputs
+
+`invariantlab run` writes to `runs/<experiment name>/`, or to the `--output` directory.
+
+`first_model` runner (`configs/experiments/first-model-oscillator*.yaml`):
+
+| File | Meaning |
+|---|---|
+| `events.jsonl` | One JSON record: prompt hash, raw model response, extracted candidate source, latency, and public/scientific results before and after repair. |
+| `baseline_solver.py` | The broken oscillator solver the model was asked to repair. |
+| `candidate_solver.py` | The Python solver extracted from the model response. |
+| `summary.json` | Baseline and repaired public/scientific pass flags, verification gap before repair, and the repaired metrics. |
+
+`repair` runner (experiment configs with `runner: repair`, e.g. the Study 2 configs):
+
+| File | Meaning |
+|---|---|
+| `events.jsonl` | Append-only raw records, one per attempted cell; reruns resume from it. |
+| `baseline_solver.py` | The mutated solver from the configured mutation. |
+| `study-summary.json` | Per-condition public and scientific pass rates with Wilson 95% intervals, verification gap and regressions; rewritten after every attempt. |
+| `run-status.json` | Run state (`complete`, `batch_complete`, `paused_*`, ...) with completed and target cell counts and the stop reason. |
+| `artifact-integrity.json` | Audit of the raw records against the scheduled cells (duplicates, out-of-schedule, metadata mismatches, malformed records). Also written by `audit-run`. |
+| `events.canonical.jsonl` | Written only by `audit-run --write-canonical`: the first valid record per scheduled cell. Raw `events.jsonl` is never modified. |
+
+Planned, not written yet: a run `manifest.json` with pinned image digest and provenance,
+`environment.json`, `checksums.sha256`, per-suite test-result files and a `reports/<id>/`
+tree (the manifest is tracked in #80).
+
 ## Repository layout
 
+Generated from `git ls-files`; every path below exists on `main`.
+
 ```text
-src/invariantlab/
-├── cli.py                       # validate-task, model-check, run, audit-run
-├── config.py                    # model and experiment config loading
-├── schema.py                    # task/output contract and experiment models
-├── experiments/                 # repair, first-model and feedback-replication runners
-├── models/
-│   └── adapter.py               # replay, ollama and openai_compatible adapters
-├── tasks/
-│   └── validation.py            # package and path validation
-└── verification/
-    ├── analytical.py            # exact solutions and physical quantities
-    ├── kepler_oracle.py         # independent DOP853 Kepler oracle
-    └── solvers.py               # trusted numerical references used by tests
-
+.github/workflows/          # CI: tests.yml (lint, typecheck, tests), task-validation.yml
 configs/
-├── experiments/                 # experiment configs (Study 1/2, smoke)
-└── models/                      # model configs (local-first default)
-
-tasks/
-├── oscillator/
-├── kepler/
-├── heat1d/
-└── wave1d/
-
-tests/
-├── unit/                        # oracle, solver and convergence evidence
-└── acceptance/                  # trust-boundary and repository acceptance checks
-
+├── experiments/            # first-model smoke/live, Study 2 repair configs, v1-smoke (placeholder)
+├── models/                 # replay, Ollama, vLLM, Cohere and API-example model configs
+└── task-suites/            # v1-smoke.yaml: the four task dirs (no runner reads suites yet)
+docs/                       # task/experiment authoring, local models, Study 1/2 protocol and results
 scripts/
-└── validate_task.py             # validates the four committed V1 packages
+└── validate_task.py        # validates the four committed V1 task packages
+src/invariantlab/
+├── cli.py                  # version, validate-task, model-check, run, audit-run
+├── config.py               # experiment, task-suite and model config loading
+├── schema.py               # task contract, task/mutation definitions and result models
+├── metrics.py              # pass rates, Wilson intervals and verification gap
+├── experiments/            # first_model.py, repair.py (Docker runner and audit), feedback_replication.py (Study 2 wrapper)
+├── models/
+│   └── adapter.py          # replay, ollama and openai_compatible adapters
+├── tasks/
+│   └── validation.py       # package and path validation
+└── verification/           # analytical.py, kepler_oracle.py, solvers.py: trusted references
+tasks/
+├── oscillator/             # task package plus repair assets: task.yaml, candidate_runner.py,
+│                           #   verifier.py, repair_prompt.txt, mutations/update-order/
+├── kepler/                 # contract.yaml, specification.md, src/solver.py, tests/
+├── heat1d/                 # same layout as kepler/
+└── wave1d/                 # same layout as kepler/
+tests/
+├── unit/                   # oracles, solvers, convergence, schema, adapters, runners, metrics, study reports
+└── acceptance/             # trust-boundary and repository acceptance checks
 ```
+
+Placeholders: `configs/experiments/v1-smoke.yaml` has a placeholder image digest (the runner
+falls back to `python:3.12-slim`), and `tasks/*/.gitkeep` are empty markers. There are no stub
+Python packages: the former `mutations/`, `reporting/` and `dashboard/` packages, the
+`verification/{invariants,convergence,metamorphic,robustness}.py` stubs and the empty
+`tests/property/` and `tests/integration/` directories were removed on `develop` (#44) and are
+gone from `main` since the develop/main merge.
 
 ## Scientific evidence
 
@@ -226,6 +317,19 @@ python src/solver.py --input input.json --output result.npz
 ```
 
 Task-local public and scientific suites can be run with pytest from the repository root.
+
+## V1 acceptance criteria
+
+V1 ships only when every acceptance criterion below is proved by at least one automated test; the criteria-to-tests map and the fail-closed release-gate checker live in [docs/v1-acceptance.md](docs/v1-acceptance.md) (`uv run python scripts/check_v1_acceptance.py --report v1.json`).
+
+- **V1-AC1** all reference implementations pass every scientific gate;
+- **V1-AC2** every controlled mutant passes its designated weak profile and fails its expected scientific gate;
+- **V1-AC3** independent oracle and agent-facing code paths share no numerical update implementation;
+- **V1-AC4** repeated replay produces identical evaluator outcomes;
+- **V1-AC5** report totals equal the number of enumerated sample records;
+- **V1-AC6** result tables can be regenerated without API access;
+- **V1-AC7** CI exercises task validation, a complete smoke run and report reconstruction;
+- **V1-AC8** the public dataset contains task metadata, trajectories, patches, measurements and provenance without hidden credentials.
 
 ## Current scope
 
