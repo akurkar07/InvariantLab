@@ -15,6 +15,7 @@ from invariantlab.experiments.feedback_replication import (
     _summary,
     _write_run_status,
 )
+from invariantlab.schema import load_task_definition
 
 BASELINE = {
     "metrics": {
@@ -43,8 +44,9 @@ def test_schedule_randomisation_changes_grouped_order():
 
 
 def test_feedback_conditions_are_distinct():
+    task = load_task_definition("tasks/oscillator")
     contexts = {
-        condition: _condition_context(condition, BASELINE)
+        condition: _condition_context(condition, BASELINE, task)
         for condition in CONDITIONS
     }
 
