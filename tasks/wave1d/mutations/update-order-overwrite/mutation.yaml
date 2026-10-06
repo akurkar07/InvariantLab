@@ -1,0 +1,17 @@
+id: update-order-overwrite
+task_id: wave_leapfrog
+family: update_order_error
+interface: package
+source: solver.py
+expected_effect: >-
+  The leapfrog rotation is written as two sequential assignments (state = next_state, then
+  previous = state), so previous is overwritten with the new level instead of keeping the
+  old one. Each step becomes u_next = u + C^2 * delta2(u), which damps the standing mode
+  instead of oscillating. Output stays finite with exact Dirichlet boundaries, but the
+  scientific cases have a state error of about 0.2-0.3.
+expected_failures:
+  - test: tests/scientific/test_reference.py::test_non_special_standing_wave_phase_and_amplitude_match_oracle
+    message: "state_relative_l2="
+  - test: tests/scientific/test_reference.py::test_different_wave_speeds_produce_distinct_correct_phases
+    message: "Not equal to tolerance"
+max_changed_lines: 3
