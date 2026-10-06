@@ -34,7 +34,7 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   scientific gate (#158); the curated mutants `oscillator/non-conservative-damping`,
   `wave1d/sign-error-startup` and `wave1d/update-order-overwrite`, plus the legacy
   oscillator `update-order` and `sign-error` study mutants (#165); the oscillator
-  `hard-coded-fixture-shortcut`, `float32-position` and `early-termination` mutants (#89).
+  `hard-coded-fixture-shortcut`, `float32-position` and `early-termination` mutants (#175).
 - **Repair runner and replay.** Generic task/mutation/repair experiment runner with Docker
   sandboxed evaluation (#53) and resilient, resumable provider runs (#46); local-first model
   configs (#55). The `replay` adapter replays recorded responses by prompt hash and the fixed
