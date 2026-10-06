@@ -13,6 +13,7 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
 
 ### Added
 
+- Tag-triggered release workflow with metadata consistency checks.
 - **Task packages.** Four self-contained tasks behind one subprocess/NPZ boundary, each with
   `contract.yaml`, `specification.md`, `src/solver.py`, committed example inputs and public
   and scientific test suites: `oscillator` (#23), `kepler` (#25, with the independent DOP853
