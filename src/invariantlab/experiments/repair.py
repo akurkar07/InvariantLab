@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from invariantlab.config import ExperimentConfig, load_experiment_config, load_model_config
+from invariantlab.metrics import pass_rate, verification_gap, wilson_interval
 from invariantlab.models import (
     ModelConnectionError,
     ModelRateLimitError,
@@ -216,29 +217,6 @@ def _severity_ratios(
         "energy_drift_ratio": energy_ratio,
         "worst_scientific_ratio": max(finite) if finite else None,
     }
-
-
-def _wilson_interval(
-    successes: int,
-    total: int,
-    z: float = 1.96,
-) -> tuple[float, float]:
-    """Return a Wilson score interval for a binomial proportion."""
-
-    if total == 0:
-        return (0.0, 0.0)
-    proportion = successes / total
-    denominator = 1.0 + (z * z / total)
-    centre = (proportion + z * z / (2.0 * total)) / denominator
-    margin = (
-        z
-        * math.sqrt(
-            (proportion * (1.0 - proportion) / total)
-            + (z * z / (4.0 * total * total))
-        )
-        / denominator
-    )
-    return (max(0.0, centre - margin), min(1.0, centre + margin))
 
 
 def _read_existing_events(path: Path) -> list[dict[str, Any]]:
@@ -462,12 +440,28 @@ def _failed_repair_result(error: Exception) -> dict[str, Any]:
     }
 
 
+def _baseline_verification_gap(baseline: dict[str, Any]) -> int | None:
+    if "public_passed" not in baseline or "scientific_passed" not in baseline:
+        return None
+    return int(bool(baseline["public_passed"])) - int(
+        bool(baseline["scientific_passed"])
+    )
+
+
 def _summary(
     experiment: ExperimentConfig,
     model_id: str,
     baseline: dict[str, Any],
     records: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """Aggregate canonical records into per-condition metrics.
+
+    Every rate uses the number of completed canonical cells in the condition as its
+    denominator; failed, erroring and timed-out candidates count as non-passing.
+    ``verification_gap`` is ``public_pass_rate - scientific_pass_rate``. Rates, gaps
+    and Wilson 95% intervals are None for a condition with no completed cells.
+    """
+
     schedule = _build_schedule(
         list(experiment.conditions),
         experiment.n_attempts,
@@ -485,6 +479,10 @@ def _summary(
     for condition in experiment.conditions:
         subset = [record for record in records if record["condition"] == condition]
         passed = sum(bool(record["successful_repair"]) for record in subset)
+        public_passed = sum(
+            bool(record.get("repaired", {}).get("public_passed", False))
+            for record in subset
+        )
         total = len(subset)
         regressions = sum(
             bool(record["scientific_regression"]) for record in subset
@@ -494,14 +492,24 @@ def _summary(
             for record in subset
             if record["severity"]["worst_scientific_ratio"] is not None
         ]
-        low, high = _wilson_interval(passed, total)
-        rate = passed / total if total else None
+        rate = pass_rate(passed, total)
+        public_rate = pass_rate(public_passed, total)
+        scientific_interval = wilson_interval(passed, total)
+        public_interval = wilson_interval(public_passed, total)
         by_condition[condition] = {
             "completed": total,
             "target": experiment.n_attempts,
             "scientific_passes": passed,
             "scientific_pass_rate": rate,
-            "scientific_pass_rate_wilson95": [low, high],
+            "scientific_pass_rate_wilson95": (
+                list(scientific_interval) if scientific_interval else None
+            ),
+            "public_passes": public_passed,
+            "public_pass_rate": public_rate,
+            "public_pass_rate_wilson95": (
+                list(public_interval) if public_interval else None
+            ),
+            "verification_gap": verification_gap(public_rate, rate),
             "scientific_regressions": regressions,
             "median_worst_scientific_ratio": (
                 statistics.median(ratios) if ratios else None
@@ -531,6 +539,7 @@ def _summary(
             "worst_scientific_ratio",
         ],
         "baseline": baseline,
+        "baseline_verification_gap": _baseline_verification_gap(baseline),
         "target_cells": target_total,
         "completed_cells": len(records),
         "complete": len(records) == target_total,
