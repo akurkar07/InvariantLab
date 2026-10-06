@@ -48,6 +48,35 @@ def validate_task(
         raise typer.Exit(code=1) from error
 
 
+@app.command()
+def verify(
+    task: str = typer.Option(..., "--task", help="Path to the trusted task directory."),
+    candidate: str = typer.Option(..., "--candidate", help="Candidate workspace with src/."),
+    output: str = typer.Option(..., "--output", help="Path for the VerificationResult JSON."),
+    attempt_id: str = typer.Option("local", "--attempt-id", help="Attempt identifier."),
+) -> None:
+    """Run Layers 0-6 on a candidate and write a VerificationResult JSON."""
+    import tempfile
+
+    from invariantlab.verification.verify import verify_candidate
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="invariantlab-verify-") as work_dir:
+            result = verify_candidate(Path(task), Path(candidate), attempt_id, Path(work_dir))
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+    except Exception as e:
+        console.print(f"[red]FAIL[/red] Verification failed to run: {e}")
+        raise typer.Exit(code=1) from e
+    verdict = "[green]PASSED[/green]" if result.passed_all else "[yellow]NOT PASSED[/yellow]"
+    console.print(
+        f"{verdict} {result.task_id}: public={result.public_passed} "
+        f"scientific={result.scientific_passed} -> {output_path}",
+        soft_wrap=True,
+    )
+
+
 @app.command("model-check")
 def model_check(
     model: str = typer.Option(..., "--model", help="Path to model config."),
