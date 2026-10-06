@@ -1,0 +1,31 @@
+name: V1 Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: v1-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  #69: V1-AC1 (#63) and V1-AC2 (#64) have no marked tests yet, so the gate is expected to fail; remove continue-on-error before the v1.0.0 release PR (#72).
+  v1-acceptance:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen --extra dev --extra export
+      - run: uv run python scripts/check_v1_acceptance.py --report v1-acceptance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v1-acceptance
+          path: v1-acceptance.json
+          if-no-files-found: warn
