@@ -10,7 +10,9 @@ import pytest
 from typer.testing import CliRunner
 
 from invariantlab.cli import app
+from invariantlab.config import load_model_config
 from invariantlab.experiments.repair import ArtifactIntegrityError
+from invariantlab.models import resolve_model_id
 from invariantlab.reporting import ReportError, build_report
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -173,6 +175,40 @@ def test_disagreeing_stored_summary_fails(tmp_path: Path) -> None:
 
     with pytest.raises(ReportError, match=r"weak\.scientific_passes"):
         build_report(EXPERIMENT, run_dir, tmp_path / "out")
+
+
+def test_report_resolves_model_id_like_runner(tmp_path: Path) -> None:
+    """Report tables use the adapter-resolved model id, not the raw config field."""
+    output_dir = tmp_path / "out"
+    build_report(EXPERIMENT, FIXTURE, output_dir)
+
+    expected = resolve_model_id(load_model_config(FIXTURE / "model.yaml"))
+    assert expected == "fixture/replay-mini"
+    with (output_dir / "by_condition.csv").open(
+        encoding="utf-8", newline=""
+    ) as handle:
+        assert [row["model"] for row in csv.DictReader(handle)] == [
+            expected,
+            expected,
+        ]
+
+
+def test_report_rejects_replay_model_without_events_path(tmp_path: Path) -> None:
+    """A replay model config that the runner cannot build is rejected."""
+    model = tmp_path / "model.yaml"
+    model.write_text(
+        "adapter: replay\nmodel_id: fixture/replay-mini\n", encoding="utf-8"
+    )
+    experiment = tmp_path / "experiment.yaml"
+    experiment.write_text(
+        EXPERIMENT.read_text(encoding="utf-8").replace(
+            "tests/fixtures/runs/repair-mini/model.yaml", model.as_posix()
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="events_path"):
+        build_report(experiment, FIXTURE, tmp_path / "out")
 
 
 def test_report_cli_success_and_integrity_failure(tmp_path: Path) -> None:

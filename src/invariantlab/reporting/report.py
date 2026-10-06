@@ -11,6 +11,7 @@ from typing import Any
 from invariantlab.config import load_experiment_config, load_model_config
 from invariantlab.experiments import repair
 from invariantlab.experiments.repair import ArtifactIntegrityError
+from invariantlab.models import resolve_model_id
 
 
 class ReportError(RuntimeError):
@@ -69,7 +70,7 @@ def build_report(
 
     experiment = load_experiment_config(experiment_config)
     repair._validate_experiment(experiment)
-    model_id = load_model_config(Path(experiment.model)).model_id
+    model_id = resolve_model_id(load_model_config(Path(experiment.model)))
 
     events_path = run_dir / "events.jsonl"
     if not events_path.exists():
