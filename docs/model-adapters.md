@@ -1,8 +1,8 @@
 # Model adapters
 
-InvariantLab currently implements three model adapters: `replay`, `ollama` and
-`openai_compatible`. Model configurations select an adapter by ID; backends are not loaded
-through optional provider SDKs.
+InvariantLab currently implements four model adapters: `reference_stub`, `replay`,
+`ollama` and `openai_compatible`. Model configurations select an adapter by ID; backends are
+not loaded through optional provider SDKs.
 
 ## Interface
 
@@ -20,7 +20,7 @@ The adapters share `SYSTEM_PROMPT`. Build one from a validated `ModelConfig` wit
 | Field | Default | Purpose |
 | --- | --- | --- |
 | `adapter` | Required | Adapter identifier. |
-| `model_id` | `""` | Provider's model name; replay uses `replay/oscillator-reference` when empty. |
+| `model_id` | `""` | Provider's model name; `reference_stub` uses `reference_stub/oscillator-verlet` when empty and `replay` uses `replay/<recorded model>` from the events file. |
 | `temperature` | `0.0` | Sampling temperature for network adapters. |
 | `max_tokens` | `32000` | Maximum generated tokens for network adapters. |
 | `extra` | `{}` | Adapter-specific endpoint and request settings. |
@@ -29,7 +29,8 @@ The adapters share `SYSTEM_PROMPT`. Build one from a validated `ModelConfig` wit
 
 | Adapter ID | Request endpoint | Response usage fields |
 | --- | --- | --- |
-| `replay` | None; returns a fixed reference solver. | No usage fields. |
+| `reference_stub` | None; returns a fixed known-correct oscillator solver, ignoring the prompt. | No usage fields. |
+| `replay` | None; re-serves responses recorded in an `events.jsonl` file, keyed by prompt SHA-256. | Recorded `usage` token counts and `finish_reason`. |
 | `ollama` | `{base_url}/api/chat` (default base URL `http://localhost:11434`). | `prompt_eval_count` → input tokens, `eval_count` → output tokens, `done_reason` → finish reason. |
 | `openai_compatible` | `{base_url}/chat/completions`; `base_url` is required and any trailing slash is removed. | `usage.prompt_tokens` → input tokens, `usage.completion_tokens` → output tokens, `choices[0].finish_reason` → finish reason. |
 
@@ -38,8 +39,14 @@ Missing or non-integer usage counts and non-string finish reasons are returned a
 
 ### Adapter-specific `extra` keys
 
-`replay` accepts no adapter-specific keys. An empty `model_id` selects
-`replay/oscillator-reference`.
+`reference_stub` accepts no adapter-specific keys.
+
+`replay` requires `extra.events_path`: the path to an `events.jsonl` file whose records
+carry string `prompt_sha256` and `response` fields. An empty `model_id` selects
+`replay/<recorded model>`, where `<recorded model>` is the `model` field shared by every
+record; if the records carry multiple or missing `model` values, an explicit `model_id` is
+required. Responses are served in `(schedule_index, trial)` order for each prompt hash;
+exhausting them raises `ReplayMissError`.
 
 `ollama` defaults:
 

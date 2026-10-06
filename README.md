@@ -91,7 +91,7 @@ Running the same command again continues from the existing `events.jsonl`.
 
 ### Model backends
 
-Implemented adapter IDs are `replay`, `ollama` and `openai_compatible`. vLLM, OpenRouter and
+Implemented adapter IDs are `reference_stub`, `replay`, `ollama` and `openai_compatible`. vLLM, OpenRouter and
 other hosted APIs use `openai_compatible`; Anthropic and Hugging Face `transformers` are not
 native adapters. Use an OpenAI-compatible endpoint for Anthropic models, or serve Hugging Face
 weights with vLLM or TGI and point `openai_compatible` at that server.
@@ -223,7 +223,7 @@ src/invariantlab/
 ├── metrics.py              # pass rates, Wilson intervals and verification gap
 ├── experiments/            # first_model.py, repair.py (Docker runner and audit), feedback_replication.py (Study 2 wrapper)
 ├── models/
-│   └── adapter.py          # replay, ollama and openai_compatible adapters
+│   └── adapter.py          # reference_stub, replay, ollama and openai_compatible adapters
 ├── tasks/
 │   └── validation.py       # package and path validation
 └── verification/           # analytical.py, kepler_oracle.py, solvers.py: trusted references
