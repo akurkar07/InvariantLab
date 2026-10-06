@@ -31,9 +31,7 @@ class TaskRun:
         return len(self.gates) == len(GATE_NAMES) and all(gate.passed for gate in self.gates)
 
 
-def _failed_run(
-    failed_gate: str, detail: str, returncode: int | None, stderr: str
-) -> TaskRun:
+def _failed_run(failed_gate: str, detail: str, returncode: int | None, stderr: str) -> TaskRun:
     failed_index = GATE_NAMES.index(failed_gate)
     gates = [
         GateResult(

@@ -8,13 +8,8 @@ from invariantlab.schema import load_mutation_definition, load_task_definition
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNER = CliRunner()
-_EVENTS_PATH = (
-    REPO_ROOT / "tests/fixtures/replay/oscillator-update-order/events.jsonl"
-).as_posix()
-DEFAULT_MODEL = (
-    "adapter: replay\nmodel_id: replay/test\nextra:\n"
-    f'  events_path: "{_EVENTS_PATH}"\n'
-)
+_EVENTS_PATH = (REPO_ROOT / "tests/fixtures/replay/oscillator-update-order/events.jsonl").as_posix()
+DEFAULT_MODEL = f'adapter: replay\nmodel_id: replay/test\nextra:\n  events_path: "{_EVENTS_PATH}"\n'
 DEFAULT_TASK = REPO_ROOT / "tasks/oscillator"
 DEFAULT_MUTATION = REPO_ROOT / "tasks/oscillator/mutations/update-order"
 
@@ -81,11 +76,7 @@ def test_unsupported_model_adapter_fails_dry_run(tmp_path):
 def test_openai_compatible_model_requires_base_url(tmp_path):
     config_path = _write_experiment(
         tmp_path,
-        model_content=(
-            "adapter: openai_compatible\n"
-            "model_id: test\n"
-            "extra: {}\n"
-        ),
+        model_content=("adapter: openai_compatible\nmodel_id: test\nextra: {}\n"),
     )
 
     result = _dry_run(config_path)

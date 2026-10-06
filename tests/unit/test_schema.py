@@ -67,12 +67,21 @@ def test_load_task_contract_preserves_output_declaration(tmp_path: Path) -> None
 @pytest.mark.parametrize(
     "output",
     [
-        {"path": "result.npz", "arrays": [{"name": "state", "shape": [[None]], "dtype": "float64"}]},
+        {
+            "path": "result.npz",
+            "arrays": [{"name": "state", "shape": [[None]], "dtype": "float64"}],
+        },
         {"path": "result.npz", "arrays": [{"name": "state", "shape": [None], "dtype": "float32"}]},
         {"path": "result.npz", "arrays": [{"name": "", "shape": [None], "dtype": "float64"}]},
         {"path": "result.npz", "arrays": [{"name": "state", "shape": [0], "dtype": "float64"}]},
-        {"path": "result.npz", "arrays": [{"name": " state ", "shape": [None], "dtype": "float64"}]},
-        {"path": " result.npz ", "arrays": [{"name": "state", "shape": [None], "dtype": "float64"}]},
+        {
+            "path": "result.npz",
+            "arrays": [{"name": " state ", "shape": [None], "dtype": "float64"}],
+        },
+        {
+            "path": " result.npz ",
+            "arrays": [{"name": "state", "shape": [None], "dtype": "float64"}],
+        },
         {"path": ".", "arrays": [{"name": "state", "shape": [None], "dtype": "float64"}]},
         {"path": "result.txt", "arrays": [{"name": "state", "shape": [None], "dtype": "float64"}]},
         {"path": "result.npz", "arrays": []},
@@ -142,7 +151,9 @@ def test_real_contracts_preserve_exact_output_declarations(
     contract = load_task_contract(Path("tasks") / task_name)
 
     assert contract.output.path == "result.npz"
-    assert [(array.name, array.shape, array.dtype) for array in contract.output.arrays] == expected_arrays
+    assert [
+        (array.name, array.shape, array.dtype) for array in contract.output.arrays
+    ] == expected_arrays
 
 
 def test_generic_task_mutation_experiment_types() -> None:
@@ -184,7 +195,9 @@ def test_mutation_rejects_invalid_expected_failure_regex() -> None:
             task_id="fixture_task",
             family=MutationFamily.SIGN_ERROR,
             expected_effect="wrong force direction",
-            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "["}],
+            expected_failures=[
+                {"test": "tests/scientific/test_reference.py::test_x", "message": "["}
+            ],
         )
 
 
@@ -196,7 +209,9 @@ def test_mutation_rejects_zero_max_changed_lines() -> None:
             task_id="fixture_task",
             family=MutationFamily.SIGN_ERROR,
             expected_effect="wrong force direction",
-            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+            expected_failures=[
+                {"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}
+            ],
             max_changed_lines=0,
         )
 
@@ -209,7 +224,9 @@ def test_mutation_rejects_empty_expected_effect() -> None:
             task_id="fixture_task",
             family=MutationFamily.SIGN_ERROR,
             expected_effect="  ",
-            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+            expected_failures=[
+                {"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}
+            ],
         )
 
 
@@ -221,7 +238,9 @@ def test_mutation_rejects_unknown_fields() -> None:
             task_id="fixture_task",
             family=MutationFamily.SIGN_ERROR,
             expected_effect="wrong force direction",
-            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+            expected_failures=[
+                {"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}
+            ],
             unexpected="value",
         )
 
@@ -233,7 +252,9 @@ def test_mutation_manifest_defaults() -> None:
         task_id="fixture_task",
         family=MutationFamily.SIGN_ERROR,
         expected_effect="wrong force direction",
-        expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+        expected_failures=[
+            {"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}
+        ],
     )
 
     assert mutation.source == "solver.py"

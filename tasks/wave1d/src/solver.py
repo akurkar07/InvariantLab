@@ -72,9 +72,7 @@ def _validate_parameters(
             f"derived Courant number must be positive and finite; got {derived_courant}"
         )
     if abs(derived_courant) > 1.0:
-        raise ValueError(
-            f"Courant number must satisfy |c*dt/dx| <= 1; got {derived_courant}"
-        )
+        raise ValueError(f"Courant number must satisfy |c*dt/dx| <= 1; got {derived_courant}")
     if courant is not None:
         declared_courant = _finite("courant", courant)
         if not math.isclose(declared_courant, derived_courant, rel_tol=1e-12, abs_tol=0.0):
@@ -94,18 +92,14 @@ def solve(
     courant: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Solve u_tt = c²u_xx using the corrected zero-velocity leapfrog scheme."""
-    nx, nt, c, length, _t_final, courant = _validate_parameters(
-        nx, nt, c, length, t_final, courant
-    )
+    nx, nt, c, length, _t_final, courant = _validate_parameters(nx, nt, c, length, t_final, courant)
     x = np.linspace(0.0, length, nx, dtype=np.float64)
     state = np.sin(np.pi * x / length)
     state[[0, -1]] = 0.0
 
     # u(-dt) = u(0) + 0.5 * C² * delta2(u(0)) for zero initial velocity.
     previous = state.copy()
-    previous[1:-1] += 0.5 * courant**2 * (
-        state[2:] - 2.0 * state[1:-1] + state[:-2]
-    )
+    previous[1:-1] += 0.5 * courant**2 * (state[2:] - 2.0 * state[1:-1] + state[:-2])
     previous[[0, -1]] = 0.0
 
     for _ in range(nt):

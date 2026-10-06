@@ -45,9 +45,7 @@ class RegisteredMutant:
     source_path: Path
 
 
-def discover_mutants(
-    tasks_root: Path, *, include_legacy: bool = False
-) -> list[RegisteredMutant]:
+def discover_mutants(tasks_root: Path, *, include_legacy: bool = False) -> list[RegisteredMutant]:
     """Discover and validate every mutant manifest beneath a task collection."""
     problems: list[str] = []
     registered: list[RegisteredMutant] = []
@@ -127,9 +125,7 @@ def discover_mutants(
                         f"{expected_failure.test!r} does not exist inside the task"
                     )
 
-            if source_path is not None and (
-                definition.interface == "package" or include_legacy
-            ):
+            if source_path is not None and (definition.interface == "package" or include_legacy):
                 registered.append(
                     RegisteredMutant(
                         task_dir=task_dir,

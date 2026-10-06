@@ -89,9 +89,7 @@ def test_summary_reports_public_rate_and_verification_gap():
     assert weak["scientific_pass_rate"] == 0.25
     assert weak["verification_gap"] == pytest.approx(0.5)
     assert weak["public_pass_rate_wilson95"] == list(wilson_interval(3, 4) or ())
-    assert weak["scientific_pass_rate_wilson95"] == list(
-        wilson_interval(1, 4) or ()
-    )
+    assert weak["scientific_pass_rate_wilson95"] == list(wilson_interval(1, 4) or ())
 
     assert metrics["public_pass_rate"] == 1.0
     assert metrics["scientific_pass_rate"] == 0.75

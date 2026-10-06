@@ -1,0 +1,3 @@
+task,mutation,model,condition,n,scientific_passes,scientific_pass_rate,wilson_low,wilson_high,scientific_regressions,median_worst_scientific_ratio,pass_rate_difference_vs_weak
+oscillator_verlet,update-order,replay/fixture/scripted-oscillator,weak,2,1,0.500000,0.094529,0.905471,0,0.500025,0.000000
+oscillator_verlet,update-order,replay/fixture/scripted-oscillator,metrics,2,2,1.000000,0.342372,1.000000,0,0.000050,0.500000
