@@ -34,7 +34,8 @@ that tracks it. The [CHANGELOG](../CHANGELOG.md) links this page from its
   ignored.
 - **Mutant coverage.** Package mutants exist for `oscillator`, `kepler` and `wave1d`; `heat1d`
   has none yet. Covered families: `sign_error`, `update_order_error`,
-  `non_conservative_update` and `unit_error`.
+  `non_conservative_update`, `unit_error`, `hard_coded_shortcut`, `precision_defect`,
+  `termination_defect`, `discretisation_error`, `boundary_error` and `stability_error`.
 - **Reporting.** The static `report.html` is the V1 dashboard: no plots, interactive
   filtering or served dashboard.
 

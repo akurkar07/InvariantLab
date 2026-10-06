@@ -120,14 +120,24 @@ Curated package mutants (each passes `validate_mutant`; checked by
 |---|---|---|---|
 | kepler | `non-conservative-velocity-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 2e-9` (fails `energy_relative_drift`) |
 | kepler | `unit-error-au-rounding` | `unit_error` | `mu` scaled by `(1.495978707e11 / 1.496e11)^3` (IAU vs rounded AU round trip) |
+| oscillator | `early-termination` | `termination_defect` | stops at a 10000-step cap and fills the remaining rows with the last state |
+| oscillator | `float32-position` | `precision_defect` | each position update rounded through `np.float32` |
+| oscillator | `hard-coded-fixture-shortcut` | `hard_coded_shortcut` | exact force for `n_steps <= 50` (public fixture sizes), force scaled by `1.001` otherwise |
 | oscillator | `non-conservative-damping` | `non_conservative_update` | closing velocity half-step scaled by `1 - 1e-6` |
+| wave1d | `courant-not-squared` | `discretisation_error` | second difference scaled by `C` instead of `C²` |
+| wave1d | `dirichlet-wrong-node` | `boundary_error` | right Dirichlet condition applied at node `-2` instead of `-1` |
 | wave1d | `sign-error-startup` | `sign_error` | ghost level `u(-dt)` built with `-0.5 * C²` instead of `+` |
+| wave1d | `unstable-time-recurrence` | `stability_error` | leapfrog adds `u_prev` instead of subtracting it (amplification about `1 + √2` per step) |
 | wave1d | `update-order-overwrite` | `update_order_error` | `state = next_state; previous = state` overwrites the old level |
 
 The oscillator update-order (stale acceleration) and sign-error defects fail the unmodified
 oscillator public example (`abs=1e-4`), so those families are realised on wave1d. The legacy
 `update-order` (Study 2 record id) and `sign-error` directories keep their defects and
 `interface: legacy_study` until #120.
+
+The wave1d public and scientific suites reject unstable CFL with the same input (`C = 20`),
+so a partly loosened CFL guard fails no scientific test; the wave1d `stability_error` mutant
+is a scheme-level instability instead.
 
 ## Add a model
 

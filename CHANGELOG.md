@@ -13,6 +13,9 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
 
 ### Added
 
+- **Release workflow.** Tag-triggered `.github/workflows/release.yml` (with a `workflow_dispatch`
+  dry run) and `scripts/check_release_metadata.py`, which checks the tag against `CITATION.cff`,
+  `CHANGELOG.md` and the development-status classifier (#180).
 - **Task packages.** Four self-contained tasks behind one subprocess/NPZ boundary, each with
   `contract.yaml`, `specification.md`, `src/solver.py`, committed example inputs and public
   and scientific test suites: `oscillator` (#23), `kepler` (#25, with the independent DOP853
@@ -33,8 +36,11 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   #139); validation that each package mutant passes the public tests and fails its declared
   scientific gate (#158); the curated mutants `oscillator/non-conservative-damping`,
   `wave1d/sign-error-startup` and `wave1d/update-order-overwrite`, plus the legacy
-  oscillator `update-order` and `sign-error` study mutants (#165); Kepler
-  `unit-error-au-rounding` and `non-conservative-velocity-damping` (#172).
+  oscillator `update-order` and `sign-error` study mutants (#165); the oscillator
+  `hard-coded-fixture-shortcut`, `float32-position` and `early-termination` mutants (#175);
+  wave1d `courant-not-squared`, `dirichlet-wrong-node` and `unstable-time-recurrence`
+  mutants (#179); Kepler `unit-error-au-rounding` and `non-conservative-velocity-damping`
+  (#172).
 - **Repair runner and replay.** Generic task/mutation/repair experiment runner with Docker
   sandboxed evaluation (#53) and resilient, resumable provider runs (#46); local-first model
   configs (#55). The `replay` adapter replays recorded responses by prompt hash and the fixed
