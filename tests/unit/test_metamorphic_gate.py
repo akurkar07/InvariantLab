@@ -73,14 +73,10 @@ def test_metamorphic_gate_is_deterministic(tmp_path: Path, task_name: str) -> No
     first = check_metamorphic(task_dir, task_dir, parameters, tmp_path / "first")
     second = check_metamorphic(task_dir, task_dir, parameters, tmp_path / "second")
 
-    assert [gate.model_dump() for gate in first] == [
-        gate.model_dump() for gate in second
-    ]
+    assert [gate.model_dump() for gate in first] == [gate.model_dump() for gate in second]
 
 
-def _candidate_with_replacement(
-    tmp_path: Path, task_name: str, old: str, new: str
-) -> Path:
+def _candidate_with_replacement(tmp_path: Path, task_name: str, old: str, new: str) -> Path:
     source_path = TASKS_ROOT / task_name / "src" / "solver.py"
     source = source_path.read_text(encoding="utf-8")
     assert source.count(old) == 1
@@ -100,8 +96,7 @@ def _candidate_with_replacement(
             "        v_half = v - 0.5 * dt * omega2 * x\n"
             "        x = x + dt * v_half\n"
             "        v = v_half - 0.5 * dt * omega2 * x",
-            "        v = v - dt * omega2 * x\n"
-            "        x = x + dt * v",
+            "        v = v - dt * omega2 * x\n        x = x + dt * v",
         ),
         (
             "heat1d",
@@ -126,9 +121,7 @@ def test_broken_relation_fails_with_nonzero_residual(
     task_dir = TASKS_ROOT / task_name
     candidate_root = _candidate_with_replacement(tmp_path, task_name, old, new)
 
-    gates = check_metamorphic(
-        task_dir, candidate_root, _parameters(task_name), tmp_path / "work"
-    )
+    gates = check_metamorphic(task_dir, candidate_root, _parameters(task_name), tmp_path / "work")
 
     assert len(gates) == 1
     gate = gates[0]
@@ -162,13 +155,11 @@ def test_transformed_layer0_failure_is_reported(tmp_path: Path) -> None:
         "heat1d",
         '    """Integrate u_t = alpha*u_xx with stable FTCS and zero Dirichlet boundaries."""',
         '    """Integrate u_t = alpha*u_xx with stable FTCS and zero Dirichlet boundaries."""\n'
-        '    if length > 2.0:\n'
+        "    if length > 2.0:\n"
         '        raise ValueError("boom")',
     )
 
-    gates = check_metamorphic(
-        task_dir, candidate_root, _parameters("heat1d"), tmp_path / "work"
-    )
+    gates = check_metamorphic(task_dir, candidate_root, _parameters("heat1d"), tmp_path / "work")
 
     assert len(gates) == 1
     assert not gates[0].passed

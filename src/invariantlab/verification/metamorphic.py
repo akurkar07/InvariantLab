@@ -52,9 +52,7 @@ def _rotate(state: np.ndarray, theta: float) -> np.ndarray:
     return rotated
 
 
-def _gate(
-    name: str, residual_name: str, residual: float, threshold: float
-) -> GateResult:
+def _gate(name: str, residual_name: str, residual: float, threshold: float) -> GateResult:
     passed = residual <= threshold
     return GateResult(
         name=name,
