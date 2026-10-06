@@ -39,7 +39,6 @@ def test_pass_rate_and_gap_are_hand_computed():
 def _experiment() -> ExperimentConfig:
     return ExperimentConfig(
         name="metrics-test",
-        task_suite="configs/task-suites/v1-smoke.yaml",
         model="configs/models/replay.yaml",
         runner="repair",
         mutation="update-order",

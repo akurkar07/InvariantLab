@@ -94,7 +94,6 @@ def test_run_status_records_resumable_progress(tmp_path):
 def _integrity_experiment() -> ExperimentConfig:
     return ExperimentConfig(
         name="integrity-test",
-        task_suite="configs/task-suites/v1-smoke.yaml",
         model="configs/models/replay.yaml",
         runner="feedback_replication",
         mutation="update-order",

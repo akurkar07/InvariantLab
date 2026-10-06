@@ -88,6 +88,7 @@ Example:
 id: update-order
 task_id: oscillator_verlet
 family: update_order_error
+interface: legacy_study
 source: solver.py
 expected_effect: stale acceleration in the second velocity half-step
 ```
@@ -96,33 +97,28 @@ The mutation identifier is written to run records. The directory path is only co
 so moving from the legacy `mutation: update-order` field to a path does not change the
 Study 2 record identifier.
 
+Package mutants use `interface: package`, declare `expected_failures` entries with a
+scientific pytest node id in `test` and an output regex in `message`, and may set
+`max_changed_lines` (default 10). `invariantlab.mutations.discover_mutants` validates
+the manifests and returns registered mutants; it raises `MutationRegistryError` with
+all discovered problems when any declaration is invalid.
+
 ## Add a model
 
-Create a YAML file under `configs/models/`. Model backends are selected by the `adapter`
-field and built through `invariantlab.models.build_adapter`.
+Create a YAML file under `configs/models/`; its `adapter` field selects the backend.
+See [Model adapters](model-adapters.md) for adapter ids, `extra` keys and examples.
 
-For an OpenAI-compatible endpoint:
-
-```yaml
-adapter: openai_compatible
-model_id: provider/model
-temperature: 0.7
-max_tokens: 4096
-extra:
-  base_url: https://example.test/v1
-  api_key_env: EXAMPLE_API_KEY
-  max_retries: 5
-```
-
-For Ollama:
+The `reference_stub` adapter returns a fixed, known-correct oscillator solver for smoke
+tests; it ignores the prompt and is not a model. The `replay` adapter re-serves responses
+recorded in a repair run's `events.jsonl`, matched by prompt SHA-256. Duplicate prompts
+are served in `schedule_index`/`trial` order; a missing or exhausted prompt raises
+`ReplayMissError`. If all recorded responses name the same model, `model_id` defaults to
+`replay/<recorded model>`.
 
 ```yaml
-adapter: ollama
-model_id: qwen2.5-coder:7b-instruct
-temperature: 0.7
-max_tokens: 4096
+adapter: replay
 extra:
-  base_url: http://localhost:11434
+  events_path: runs/<name>/events.jsonl
 ```
 
 ## Add an experiment
@@ -131,7 +127,6 @@ Bind the task, mutation and model in `configs/experiments/`:
 
 ```yaml
 name: oscillator-update-order
-task_suite: configs/task-suites/v1-smoke.yaml
 model: configs/models/ollama-qwen2.5-coder-7b.yaml
 runner: repair
 task: tasks/oscillator
@@ -194,6 +189,12 @@ Per condition (`by_condition.<condition>`):
 
 ## Legacy compatibility
 
-`first_model.py` remains available for the original one-shot smoke experiment.
 `feedback_replication.py` remains import-compatible but delegates execution and auditing to
-the generic repair runner.
+the generic repair runner. The `first_model` runner has been removed; the original Study 1
+defect and its mapping to the repair runner are documented in
+[First Model Experiment](first-model-experiment.md).
+
+`task_suite` is optional and currently ignored by all runners. A dry run warns when it is
+present; multi-task suite evaluation is reserved for #120. Dry runs validate task and
+mutation paths and their referenced files, construct the configured model adapter without
+making a request, and reject placeholder container images.

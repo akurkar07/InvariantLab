@@ -4,40 +4,63 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import importlib.metadata
 import json
 import math
 import os
+import platform
 import random
 import re
 import shutil
 import statistics
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
-from invariantlab.config import ExperimentConfig, load_experiment_config, load_model_config
+from invariantlab.config import (
+    ExperimentConfig,
+    ModelConfig,
+    load_experiment_config,
+    load_model_config,
+    validate_container_image,
+)
 from invariantlab.metrics import pass_rate, verification_gap, wilson_interval
 from invariantlab.models import (
     ModelConnectionError,
     ModelRateLimitError,
     ModelRequestError,
     build_adapter,
+    resolve_model_id,
 )
 from invariantlab.schema import (
     MutationDefinition,
+    RunManifest,
     TaskDefinition,
     load_mutation_definition,
     load_task_definition,
 )
 
+# Feedback conditions; see README "Evaluation protocol" > "Conditions".
+# "Hardened" in study docs means the verifier-feedback conditions metrics/interpreted.
 CONDITIONS = ("weak", "placebo", "metrics", "interpreted")
 CellKey = tuple[str, int]
 CANDIDATE_TIMEOUT_SECONDS = 60
 DOCKER_KILL_TIMEOUT_SECONDS = 30
 DOCKER_RUN_FAILURE_EXIT_CODE = 125
+DOCKER_PULL_TIMEOUT_SECONDS = 600
+MANIFEST_FILE = "manifest.json"
+CHECKSUMS_FILE = "checksums.sha256"
+# Manifest fields that may legitimately differ between resumed batches.
+_UNCOMPARED_MANIFEST_FIELDS = frozenset(
+    {"run_id", "created_at", "config_path", "python_version", "platform"}
+)
+_CODE_MANIFEST_FIELDS = frozenset({"git_commit", "git_dirty", "package_version"})
+_SECRET_KEY_PATTERN = re.compile(r"api_?key|token|secret|password", re.IGNORECASE)
 
 
 class ArtifactIntegrityError(RuntimeError):
@@ -329,7 +352,7 @@ def _mutation_record_id(experiment: ExperimentConfig) -> str | None:
     return Path(experiment.mutation).name
 
 
-def _audit_records(
+def audit_records(
     records: list[dict[str, Any]],
     schedule: list[CellKey],
     experiment: ExperimentConfig,
@@ -444,6 +467,9 @@ def _audit_records(
     return canonical, audit
 
 
+_audit_records = audit_records
+
+
 def _write_integrity_report(output: Path, audit: dict[str, Any]) -> None:
     (output / "artifact-integrity.json").write_text(
         json.dumps(audit, indent=2, sort_keys=True) + "\n",
@@ -471,6 +497,8 @@ def audit_repair_experiment(
 ) -> dict[str, Any]:
     """Audit an existing repair run without modifying raw evidence."""
 
+    if not run_dir.is_dir():
+        raise FileNotFoundError(f"Run directory does not exist: {run_dir}")
     experiment = load_experiment_config(config_path)
     _validate_experiment(experiment)
     model_config = load_model_config(Path(experiment.model))
@@ -481,11 +509,11 @@ def audit_repair_experiment(
         experiment.randomize_order,
     )
     records = _read_existing_events(run_dir / "events.jsonl")
-    canonical, audit = _audit_records(
+    canonical, audit = audit_records(
         records,
         schedule,
         experiment,
-        model_config.model_id,
+        resolve_model_id(model_config),
     )
     _write_integrity_report(run_dir, audit)
 
@@ -542,7 +570,7 @@ def _baseline_verification_gap(baseline: dict[str, Any]) -> int | None:
     )
 
 
-def _summary(
+def summarize_records(
     experiment: ExperimentConfig,
     model_id: str,
     baseline: dict[str, Any],
@@ -562,7 +590,7 @@ def _summary(
         experiment.seed,
         experiment.randomize_order,
     )
-    canonical, audit = _audit_records(records, schedule, experiment, model_id)
+    canonical, audit = audit_records(records, schedule, experiment, model_id)
     if not audit["integrity_ok"]:
         raise ArtifactIntegrityError(_integrity_error_message(audit))
     records = canonical
@@ -641,6 +669,9 @@ def _summary(
     }
 
 
+_summary = summarize_records
+
+
 def _write_summary(
     path: Path,
     experiment: ExperimentConfig,
@@ -650,7 +681,7 @@ def _write_summary(
 ) -> None:
     path.write_text(
         json.dumps(
-            _summary(experiment, model_id, baseline, records),
+            summarize_records(experiment, model_id, baseline, records),
             indent=2,
             sort_keys=True,
         )
@@ -673,6 +704,11 @@ def _validate_experiment(experiment: ExperimentConfig) -> None:
         raise ValueError(f"Unknown feedback conditions: {sorted(unknown)}")
     if len(set(experiment.conditions)) != len(experiment.conditions):
         raise ValueError("Feedback conditions must not contain duplicates")
+    if "placeholder" in experiment.container_image:
+        raise ValueError(
+            f"container_image {experiment.container_image!r} is a placeholder; "
+            "set a real image tag or digest"
+        )
 
 
 def _resolve_assets(
@@ -714,10 +750,187 @@ def _resolve_assets(
     )
 
 
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _git_state() -> tuple[str | None, bool | None]:
+    """Return (commit SHA, dirty flag) of the working tree, or (None, None)."""
+
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if commit.returncode != 0:
+            return None, None
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None, None
+    dirty = bool(status.stdout.strip()) if status.returncode == 0 else None
+    return commit.stdout.strip(), dirty
+
+
+def _package_version() -> str | None:
+    try:
+        return importlib.metadata.version("invariantlab")
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def _inspect_image_digest(image: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["docker", "image", "inspect", "--format", "{{index .RepoDigests 0}}", image],
+        capture_output=True,
+        text=True,
+        timeout=DOCKER_KILL_TIMEOUT_SECONDS,
+        check=False,
+    )
+
+
+def _resolve_image_digest(image: str) -> str:
+    """Resolve ``image`` to its repository digest, pulling it first if absent."""
+
+    if shutil.which("docker") is None:
+        raise InfrastructureError(
+            "Docker is required to execute model-generated code safely"
+        )
+    try:
+        inspected = _inspect_image_digest(image)
+        if inspected.returncode != 0:
+            pulled = subprocess.run(
+                ["docker", "pull", image],
+                capture_output=True,
+                text=True,
+                timeout=DOCKER_PULL_TIMEOUT_SECONDS,
+                check=False,
+            )
+            if pulled.returncode != 0:
+                detail = pulled.stderr.strip() or pulled.stdout.strip()
+                raise InfrastructureError(f"docker pull {image} failed: {detail}")
+            inspected = _inspect_image_digest(image)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise InfrastructureError(f"Could not resolve image {image!r}: {exc}") from exc
+    digest = inspected.stdout.strip()
+    if inspected.returncode != 0 or "@sha256:" not in digest:
+        detail = inspected.stderr.strip() or digest
+        raise InfrastructureError(
+            f"Could not resolve a repository digest for image {image!r}: {detail}"
+        )
+    return digest
+
+
+def _model_manifest(config: ModelConfig) -> dict[str, Any]:
+    data = config.model_dump(mode="json")
+    data["extra"] = {
+        key: (
+            "<redacted>"
+            if _SECRET_KEY_PATTERN.search(key) and not key.endswith("_env")
+            else value
+        )
+        for key, value in data["extra"].items()
+    }
+    return data
+
+
+def _build_manifest(
+    config_path: Path,
+    experiment: ExperimentConfig,
+    task_dir: Path,
+    task: TaskDefinition,
+    mutation_dir: Path,
+    mutation: MutationDefinition,
+    model_config: ModelConfig,
+    image_override: str | None,
+    image: str,
+    image_digest: str,
+) -> RunManifest:
+    git_commit, git_dirty = _git_state()
+    artifacts = {
+        "task_yaml": task_dir / "task.yaml",
+        "contract_yaml": task_dir / task.contract,
+        "verifier": task_dir / task.verifier,
+        "candidate_runner": task_dir / task.candidate_runner,
+        "prompt_template": task_dir / task.prompt_template,
+        "mutation_yaml": mutation_dir / "mutation.yaml",
+        "mutation_source": mutation_dir / mutation.source,
+    }
+    model = _model_manifest(model_config)
+    return RunManifest(
+        run_id=uuid.uuid4().hex,
+        experiment=experiment.name,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        config_path=config_path.as_posix(),
+        config_sha256=_sha256_file(config_path),
+        git_commit=git_commit,
+        git_dirty=git_dirty,
+        package_version=_package_version(),
+        python_version=sys.version.split()[0],
+        platform=f"{platform.system()}-{platform.release()}-{platform.machine()}",
+        task_id=task.id,
+        mutation_id=mutation.id,
+        artifact_sha256={
+            name: _sha256_file(path) for name, path in artifacts.items() if path.exists()
+        },
+        model=model,
+        model_sha256=hashlib.sha256(
+            json.dumps(model, sort_keys=True).encode()
+        ).hexdigest(),
+        seed=experiment.seed,
+        conditions=list(experiment.conditions),
+        n_attempts=experiment.n_attempts,
+        randomize_order=experiment.randomize_order,
+        configured_image=experiment.container_image,
+        image_override=image_override,
+        container_image=image,
+        image_digest=image_digest,
+    )
+
+
+def _manifest_mismatches(
+    existing: dict[str, Any],
+    fresh: RunManifest,
+    allow_code_change: bool,
+) -> list[str]:
+    ignored = set(_UNCOMPARED_MANIFEST_FIELDS)
+    if allow_code_change:
+        ignored |= _CODE_MANIFEST_FIELDS
+    current = fresh.model_dump(mode="json")
+    return sorted(
+        key
+        for key in current.keys() | existing.keys()
+        if key not in ignored and existing.get(key) != current.get(key)
+    )
+
+
+def _write_checksums(output: Path) -> None:
+    """Write ``sha256sum``-compatible checksums for every file in the run."""
+
+    lines = [
+        f"{_sha256_file(path)}  {path.relative_to(output).as_posix()}"
+        for path in sorted(output.rglob("*"))
+        if path.is_file() and path.relative_to(output).as_posix() != CHECKSUMS_FILE
+    ]
+    (output / CHECKSUMS_FILE).write_text(
+        "\n".join(lines) + "\n", encoding="utf-8", newline="\n"
+    )
+
+
 def run_repair_experiment(
     config_path: Path,
     output_dir: Path | None = None,
     max_new_attempts: int | None = None,
+    image: str | None = None,
+    allow_code_change: bool = False,
 ) -> Path:
     """Run a config-driven repair study with resumable evidence logging."""
 
@@ -729,7 +942,7 @@ def run_repair_experiment(
     (
         task_dir,
         task,
-        _mutation_dir,
+        mutation_dir,
         mutation,
         mutation_source,
         prompt_template,
@@ -739,9 +952,8 @@ def run_repair_experiment(
     output = output_dir or Path("runs") / experiment.name
     output.mkdir(parents=True, exist_ok=True)
 
-    image = experiment.container_image
-    if "placeholder" in image:
-        image = "python:3.12-slim"
+    image_override = image
+    image = validate_container_image(image_override or experiment.container_image)
 
     events_path = output / "events.jsonl"
     summary_path = output / "study-summary.json"
@@ -754,7 +966,7 @@ def run_repair_experiment(
         experiment.seed,
         experiment.randomize_order,
     )
-    records, audit = _audit_records(
+    records, audit = audit_records(
         raw_records,
         schedule,
         experiment,
@@ -772,6 +984,56 @@ def run_repair_experiment(
             reason=reason,
         )
         raise ArtifactIntegrityError(reason)
+
+    try:
+        image_digest = _resolve_image_digest(image)
+    except InfrastructureError as exc:
+        _write_run_status(
+            output,
+            status="paused_infrastructure",
+            completed=len(records),
+            target=target_total,
+            reason=str(exc),
+        )
+        return output
+    manifest = _build_manifest(
+        config_path,
+        experiment,
+        task_dir,
+        task,
+        mutation_dir,
+        mutation,
+        model_config,
+        image_override,
+        image,
+        image_digest,
+    )
+    manifest_path = output / MANIFEST_FILE
+    if manifest_path.exists():
+        try:
+            existing_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            mismatches = _manifest_mismatches(
+                existing_manifest, manifest, allow_code_change
+            )
+        except (json.JSONDecodeError, AttributeError):
+            mismatches = ["<unreadable manifest.json>"]
+        if mismatches:
+            reason = (
+                "manifest.json provenance differs from the current run: "
+                + ", ".join(mismatches)
+            )
+            _write_run_status(
+                output,
+                status="invalid_artifact",
+                completed=len(records),
+                target=target_total,
+                reason=reason,
+            )
+            raise ArtifactIntegrityError(reason)
+    else:
+        manifest_path.write_text(
+            manifest.model_dump_json(indent=2) + "\n", encoding="utf-8"
+        )
 
     try:
         baseline = _evaluate_source(mutation_source, task_dir, task, image)
@@ -921,7 +1183,7 @@ def run_repair_experiment(
         records.append(record)
         completed.add((condition, trial))
         new_attempts += 1
-        _, audit = _audit_records(
+        _, audit = audit_records(
             records,
             schedule,
             experiment,
@@ -948,4 +1210,5 @@ def run_repair_experiment(
         completed=len(records),
         target=target_total,
     )
+    _write_checksums(output)
     return output
