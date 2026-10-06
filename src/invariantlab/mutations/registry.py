@@ -64,10 +64,8 @@ def discover_mutants(
         try:
             contract = load_task_contract(task_dir)
         except (OSError, ValueError, yaml.YAMLError) as error:
-            manifest_path = task_dir / "mutations" / "mutation.yaml"
             problems.append(
-                f"{manifest_path.as_posix()}: unable to load task contract "
-                f"{(task_dir / 'contract.yaml').as_posix()}: {error}"
+                f"{(task_dir / 'contract.yaml').as_posix()}: unable to load task contract: {error}"
             )
             continue
 
@@ -138,7 +136,7 @@ def discover_mutants(
                         contract=contract,
                         definition=definition,
                         mutation_dir=mutation_dir,
-                        source_path=source_path,
+                        source_path=mutation_dir / definition.source,
                     )
                 )
 

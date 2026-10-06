@@ -1,4 +1,4 @@
-"""Discover curated mutant directories under tasks/<task>/mutations/<id>/{mutation.yaml, solver.py>.
+"""Discover curated mutant directories under tasks/<task>/mutations/<id>/{mutation.yaml, solver.py}.
 
 The registry covers the 10 MutationFamily defect families and is trusted
 evaluator-only; tasks/*/src must never import it.
