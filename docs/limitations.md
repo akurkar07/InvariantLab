@@ -31,8 +31,8 @@ that tracks it. The [CHANGELOG](../CHANGELOG.md) links this page from its
   `update-order` / `sign-error` mutants are still `interface: legacy_study` and are graded
   by the legacy oscillator study harness (`tasks/oscillator/candidate_runner.py` +
   `verifier.py`). `task_suite` is still ignored.
-- **Mutant coverage.** Package mutants exist for `oscillator`, `kepler` and `wave1d`; `heat1d`
-  has none yet. Covered families: `sign_error`, `update_order_error`,
+- **Mutant coverage.** Package mutants exist for all four tasks; `heat1d` has no
+  `boundary_error` mutant (any wall defect fails its public example). Covered families: `sign_error`, `update_order_error`,
   `non_conservative_update`, `unit_error`, `hard_coded_shortcut`, `precision_defect`,
   `termination_defect`, `discretisation_error`, `boundary_error` and `stability_error`.
 - **Reporting.** The static `report.html` is the V1 dashboard: no plots, interactive

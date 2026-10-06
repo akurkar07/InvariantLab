@@ -58,16 +58,16 @@ AST/programmatic operators.
 | `sign_error` | Reverse a force or derivative sign | Trajectory evolves in the wrong direction | `wave1d/sign-error-startup` |
 | `update_order_error` | Overwrite the previous state before the next step | Recurrence uses a stale or incorrect state | `wave1d/update-order-overwrite` |
 | `boundary_error` | Apply a boundary condition at the wrong node | Boundary value or spatial profile is incorrect | `wave1d/dirichlet-wrong-node` |
-| `discretisation_error` | Omit the square on the Courant number | Wave amplitude or propagation speed is wrong | `wave1d/courant-not-squared` |
-| `stability_error` | Change the sign in a leapfrog recurrence | Numerical error grows exponentially with time | `wave1d/unstable-time-recurrence` |
+| `discretisation_error` | Omit the square on the Courant number | Wave amplitude or propagation speed is wrong | `wave1d/courant-not-squared`, `heat1d/discretisation-grid-spacing` |
+| `stability_error` | Change the sign in a leapfrog recurrence | Numerical error grows exponentially with time | `wave1d/unstable-time-recurrence`, `heat1d/sixth-order-stencil-ftcs-limit` |
 | `unit_error` | Round the astronomical-unit conversion | Orbital trajectory has a systematic scale error | `kepler/unit-error-au-rounding` |
 | `non_conservative_update` | Dampen a velocity update | Energy drifts over an otherwise conservative trajectory | `kepler/non-conservative-velocity-damping`, `oscillator/non-conservative-damping` |
 | `hard_coded_shortcut` | Special-case public fixture sizes | Correct-looking public fixtures, incorrect general inputs | `oscillator/hard-coded-fixture-shortcut` |
 | `precision_defect` | Round position updates through `float32` | Small per-step errors accumulate | `oscillator/float32-position` |
 | `termination_defect` | Stop integration before the requested final step | Output ends early or repeats a stale state | `oscillator/early-termination` |
 
-Heat1d has no package mutants yet; adding them is tracked by
-[issue #90](https://github.com/akurkar07/InvariantLab/issues/90).
+Heat1d has no `boundary_error` mutant: any wall defect fails its public example, so that
+family is covered on wave1d ([issue #90](https://github.com/akurkar07/InvariantLab/issues/90)).
 
 `validate_reference` and `validate_mutant` enforce four checks:
 
