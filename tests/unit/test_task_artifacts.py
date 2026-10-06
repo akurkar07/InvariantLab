@@ -4,17 +4,15 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 import yaml
 
-from invariantlab.schema import TaskContract
+from invariantlab.schema import TaskContract, load_task_contract
 from invariantlab.tasks.validation import validate_task_artifacts
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
+REPO_ROOT = Path(__file__).resolve().parents[2]
 TASK_ID = "fixture_task"
 PATH_FIELDS = ("entrypoint", "public_tests", "scientific_tests")
 
@@ -311,6 +309,20 @@ def _run_validation_cli(tasks_root: Path) -> subprocess.CompletedProcess[str]:
         text=True,
         check=False,
     )
+
+
+@pytest.mark.parametrize("task_name", ("oscillator", "kepler", "heat1d", "wave1d"))
+def test_scientific_tests_reference_every_contract_tolerance(task_name: str) -> None:
+    task_root = REPO_ROOT / "tasks" / task_name
+    contract = load_task_contract(task_root)
+    scientific_tests = task_root / contract.scientific_tests
+    source = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(scientific_tests.rglob("*.py"))
+    )
+
+    missing = [name for name in contract.numerics.tolerances if f'"{name}"' not in source]
+
+    assert missing == []
 
 
 def test_root_validation_requires_every_fixed_v1_package(tmp_path: Path) -> None:

@@ -221,6 +221,19 @@ class MutationDefinition(ContractModel):
         return self
 
 
+# ── Verification Results ─────────────────────────────────────────────────────
+
+
+class GateResult(BaseModel):
+    """Result of a single verification gate."""
+
+    name: str
+    passed: bool
+    deviation: float | None = None
+    threshold: float | None = None
+    detail: str = ""
+
+
 # ── Run Manifest ─────────────────────────────────────────────────────────────
 
 

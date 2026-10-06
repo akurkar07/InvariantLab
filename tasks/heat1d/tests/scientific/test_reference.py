@@ -2,51 +2,37 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from typing import TYPE_CHECKING
 
 import numpy as np
 import yaml
-from conftest import ENTRYPOINT, TASK_ROOT, make_input, write_input
+from conftest import TASK_ROOT, make_input
 
 from invariantlab.verification.analytical import heat_trajectory
+from invariantlab.verification.execution import run_task
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 ALPHA, LENGTH, NX, NT, T_FINAL = 0.17, 1.3, 161, 1_800, 0.237
-STATE_RELATIVE_L2 = 1.0e-5
 CONTRACT = yaml.safe_load((TASK_ROOT / "contract.yaml").read_text(encoding="utf-8"))
+STATE_RELATIVE_L2 = CONTRACT["numerics"]["tolerances"]["state_relative_l2"]
+
+
 EXPECTED_ARCHIVE_NAMES = {array["name"] for array in CONTRACT["output"]["arrays"]}
 
 
-def _invoke(input_path: Path, output_path: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            sys.executable,
-            str(ENTRYPOINT.relative_to(TASK_ROOT)),
-            "--input",
-            str(input_path),
-            "--output",
-            str(output_path),
-        ],
-        cwd=TASK_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-
 def _candidate_solution(tmp_path: Path) -> tuple[np.ndarray, np.ndarray]:
-    input_path = write_input(tmp_path / "input.json", make_input(NX, NT, ALPHA, LENGTH, T_FINAL))
-    output_path = tmp_path / "result.npz"
-    completed = _invoke(input_path, output_path)
-    assert completed.returncode == 0, completed.stderr
-    assert output_path.is_file()
-    with np.load(output_path) as archive:
-        assert set(archive.files) == EXPECTED_ARCHIVE_NAMES
-        x, state = archive["x"].copy(), archive["state"].copy()
+    run = run_task(
+        TASK_ROOT,
+        TASK_ROOT,
+        make_input(NX, NT, ALPHA, LENGTH, T_FINAL)["parameters"],
+        tmp_path,
+    )
+    assert run.passed, (run.gates, run.stderr)
+    assert run.arrays is not None
+    assert set(run.arrays) == EXPECTED_ARCHIVE_NAMES
+    x, state = run.arrays["x"], run.arrays["state"]
     assert x.shape == (NX,)
     assert state.shape == (NX,)
     assert x.dtype == np.dtype(np.float64)
@@ -69,9 +55,14 @@ def test_non_special_ftcs_case_matches_manufactured_solution_and_decays(tmp_path
 
 
 def test_scientific_suite_rejects_unstable_ftcs_ratio_at_process_boundary(tmp_path: Path) -> None:
-    input_path = write_input(tmp_path / "input.json", make_input(11, 1, 1.0, 1.0, 1.0))
-    output_path = tmp_path / "result.npz"
-    completed = _invoke(input_path, output_path)
-    assert completed.returncode != 0
-    assert "FTCS stability" in completed.stderr
-    assert not output_path.exists()
+    run = run_task(
+        TASK_ROOT,
+        TASK_ROOT,
+        make_input(11, 1, 1.0, 1.0, 1.0)["parameters"],
+        tmp_path,
+    )
+    assert not run.passed
+    assert run.gates[0].name == "execution" and not run.gates[0].passed
+    assert run.returncode not in (0, None)
+    assert "FTCS stability" in run.stderr
+    assert not (tmp_path / "result.npz").exists()
