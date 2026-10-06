@@ -1,0 +1,4 @@
+adapter: replay
+model_id: fixture/replay-mini
+extra:
+  events_path: tests/fixtures/runs/repair-mini/events.jsonl

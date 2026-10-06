@@ -151,7 +151,7 @@ def solve_heat_ftcs(
         )
 
     x = np.linspace(0, length, nx)
-    u = np.sin(np.pi * x)  # initial condition matching manufactured solution
+    u = np.sin(np.pi * x / length)  # initial condition matching manufactured solution
 
     for _ in range(nt):
         u_new = u.copy()
@@ -190,7 +190,7 @@ def solve_heat_crank_nicolson(
     r = alpha * dt / (dx * dx)
 
     x = np.linspace(0, length, nx)
-    u = np.sin(np.pi * x)
+    u = np.sin(np.pi * x / length)
 
     # Tridiagonal coefficients
     n_inner = nx - 2  # interior points

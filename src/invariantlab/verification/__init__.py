@@ -1,5 +1,5 @@
-"""Trusted scientific reference code for the implemented V1 benchmark.
+"""Trusted reference code and Layer 0 execution gate for the V1 benchmark.
 
-The current package exposes analytical solutions, high-accuracy Kepler
-integration and numerical reference solvers used by the benchmark tests.
+The package exposes analytical solutions, high-accuracy Kepler integration,
+numerical reference solvers, and candidate execution with archive validation.
 """

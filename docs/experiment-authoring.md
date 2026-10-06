@@ -34,8 +34,43 @@ interpreted_feedback: >-
   Explain what the exposed metrics mean without revealing held-out cases.
 ```
 
-The verifier must read `/work/solver.py`, run public and scientific checks, and print one
-JSON result containing `public_passed`, `scientific_passed` and `metrics`.
+Evaluation runs in two sandboxed stages. Stage 1 runs `candidate_runner.py` next to the
+candidate and writes `/output/trajectories.json`. Stage 2 runs the verifier alone as
+`verifier.py /data/trajectories.json /verifier/thresholds.json`. The runner writes
+`thresholds.json` from the `feedback_metrics.*.threshold` values in `task.yaml`, so
+`task.yaml` is the only place a study-gate threshold is set. The verifier prints one JSON
+result containing `public_passed`, `scientific_passed` and `metrics`.
+
+### Oscillator study gate versus contract tolerances
+
+The oscillator study gate (`tasks/oscillator/verifier.py`, both thresholds `1.0e-3` in
+`task.yaml`) is separate from the contract tolerances in `contract.yaml`
+(`state_relative_l2: 1.0e-5`, `energy_relative_drift: 1.0e-6`). They measure different
+things:
+
+- The contract tolerances are calibrated for the contract's own scientific case
+  (x0=0.7, v0=-0.35, omega=1.7, dt=1e-3, 15000 steps). They are checked by the M3 NPZ gates.
+- The study gate checks three coarser held-out cases. It uses the final-state error scaled
+  by `max(1, |x_ref|, |v_ref|)` and the maximum relative energy drift over the trajectory,
+  each maximised over the cases.
+
+Measured values for a correct velocity-Verlet solver and the `update-order` mutant:
+
+| Case (x0, v0, omega, dt, steps) | Correct state error | Correct energy drift | Mutant state error | Mutant energy drift |
+| --- | --- | --- | --- | --- |
+| 1.0, 0.0, 1.0, 0.01, 800 | 3.72e-5 | 2.50e-5 | 2.07e-2 | 4.16e-2 |
+| 0.3, -0.4, 1.7, 0.005, 1200 | 1.31e-5 | 1.12e-5 | 1.47e-2 | 4.59e-2 |
+| -0.8, 0.25, 0.7, 0.01, 900 | 8.56e-6 | 1.02e-5 | 9.24e-3 | 2.23e-2 |
+| Contract case: 0.7, -0.35, 1.7, 0.001, 15000 | 3.19e-6 | 6.65e-7 | n/a | n/a |
+
+A correct solver's energy drift on the study cases (up to 2.5e-5) is above the contract's
+1e-6 tolerance. Copying the contract tolerances into the study gate would therefore fail
+correct solvers. The 1e-3 gate leaves a margin of more than 25x over correct solvers and
+sits more than 9x below the mutant on every metric. The value 1e-3 was kept, not
+recalibrated, so that verdicts stay comparable with Study 1 and Study 2.
+`tests/unit/test_oscillator_verifier.py` asserts a margin of at least 10x for a correct
+solver and that the mutant exceeds both thresholds. `tests/unit/test_repair_experiment.py`
+pins both thresholds at 1e-3.
 
 ## Add a mutation
 
@@ -53,6 +88,7 @@ Example:
 id: update-order
 task_id: oscillator_verlet
 family: update_order_error
+interface: legacy_study
 source: solver.py
 expected_effect: stale acceleration in the second velocity half-step
 ```
@@ -61,33 +97,28 @@ The mutation identifier is written to run records. The directory path is only co
 so moving from the legacy `mutation: update-order` field to a path does not change the
 Study 2 record identifier.
 
+Package mutants use `interface: package`, declare `expected_failures` entries with a
+scientific pytest node id in `test` and an output regex in `message`, and may set
+`max_changed_lines` (default 10). `invariantlab.mutations.discover_mutants` validates
+the manifests and returns registered mutants; it raises `MutationRegistryError` with
+all discovered problems when any declaration is invalid.
+
 ## Add a model
 
-Create a YAML file under `configs/models/`. Model backends are selected by the `adapter`
-field and built through `invariantlab.models.build_adapter`.
+Create a YAML file under `configs/models/`; its `adapter` field selects the backend.
+See [Model adapters](model-adapters.md) for adapter ids, `extra` keys and examples.
 
-For an OpenAI-compatible endpoint:
-
-```yaml
-adapter: openai_compatible
-model_id: provider/model
-temperature: 0.7
-max_tokens: 4096
-extra:
-  base_url: https://example.test/v1
-  api_key_env: EXAMPLE_API_KEY
-  max_retries: 5
-```
-
-For Ollama:
+The `reference_stub` adapter returns a fixed, known-correct oscillator solver for smoke
+tests; it ignores the prompt and is not a model. The `replay` adapter re-serves responses
+recorded in a repair run's `events.jsonl`, matched by prompt SHA-256. Duplicate prompts
+are served in `schedule_index`/`trial` order; a missing or exhausted prompt raises
+`ReplayMissError`. If all recorded responses name the same model, `model_id` defaults to
+`replay/<recorded model>`.
 
 ```yaml
-adapter: ollama
-model_id: qwen2.5-coder:7b-instruct
-temperature: 0.7
-max_tokens: 4096
+adapter: replay
 extra:
-  base_url: http://localhost:11434
+  events_path: runs/<name>/events.jsonl
 ```
 
 ## Add an experiment
@@ -96,7 +127,6 @@ Bind the task, mutation and model in `configs/experiments/`:
 
 ```yaml
 name: oscillator-update-order
-task_suite: configs/task-suites/v1-smoke.yaml
 model: configs/models/ollama-qwen2.5-coder-7b.yaml
 runner: repair
 task: tasks/oscillator
@@ -159,6 +189,12 @@ Per condition (`by_condition.<condition>`):
 
 ## Legacy compatibility
 
-`first_model.py` remains available for the original one-shot smoke experiment.
 `feedback_replication.py` remains import-compatible but delegates execution and auditing to
-the generic repair runner.
+the generic repair runner. The `first_model` runner has been removed; the original Study 1
+defect and its mapping to the repair runner are documented in
+[First Model Experiment](first-model-experiment.md).
+
+`task_suite` is optional and currently ignored by all runners. A dry run warns when it is
+present; multi-task suite evaluation is reserved for #120. Dry runs validate task and
+mutation paths and their referenced files, construct the configured model adapter without
+making a request, and reject placeholder container images.

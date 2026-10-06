@@ -12,6 +12,19 @@ import pytest
 
 TASK = Path(__file__).resolve().parents[2] / "tasks" / "oscillator"
 
+
+def _thresholds() -> dict[str, float]:
+    from invariantlab.schema import load_task_definition
+
+    task = load_task_definition(TASK)
+    return {name: spec.threshold for name, spec in task.feedback_metrics.items()}
+
+
+def _thresholds_file(tmp_path: Path) -> str:
+    path = tmp_path / "thresholds.json"
+    path.write_text(json.dumps(_thresholds()), encoding="utf-8")
+    return str(path)
+
 CORRECT_SOLVER = """def solve_oscillator_verlet(x0, v0, omega, dt, n_steps):
     trajectory = [(0.0, float(x0), float(v0))]
     x = float(x0)
@@ -55,7 +68,7 @@ def _evaluate(source: str, tmp_path: Path) -> dict:
         check=False,
     )
     completed = subprocess.run(
-        [sys.executable, str(TASK / "verifier.py"), str(out)],
+        [sys.executable, str(TASK / "verifier.py"), str(out), _thresholds_file(tmp_path)],
         capture_output=True,
         text=True,
         timeout=60,
@@ -69,7 +82,7 @@ def _verify_payload(payload: str, tmp_path: Path) -> dict:
     out = tmp_path / "payload.json"
     out.write_text(payload, encoding="utf-8")
     completed = subprocess.run(
-        [sys.executable, str(TASK / "verifier.py"), str(out)],
+        [sys.executable, str(TASK / "verifier.py"), str(out), _thresholds_file(tmp_path)],
         capture_output=True,
         text=True,
         timeout=60,
@@ -100,6 +113,37 @@ def test_correct_solver_passes(tmp_path):
     assert result["scientific_passed"] is True
 
 
+def test_correct_solver_has_10x_margin_below_study_gate(tmp_path):
+    thresholds = _thresholds()
+    result = _evaluate(CORRECT_SOLVER, tmp_path)
+    assert result["scientific_passed"] is True
+    # The metrics are maxima over the verifier cases, so this bounds every case.
+    for name, threshold in thresholds.items():
+        assert result["metrics"][name] < threshold / 10
+
+
+def test_update_order_mutant_exceeds_every_threshold(tmp_path):
+    source = (TASK / "mutations" / "update-order" / "solver.py").read_text(
+        encoding="utf-8"
+    )
+    result = _evaluate(source, tmp_path)
+    for name, threshold in _thresholds().items():
+        assert result["metrics"][name] > threshold
+
+
+def test_verifier_requires_thresholds_argument(tmp_path):
+    out = tmp_path / "trajectories.json"
+    out.write_text("{}", encoding="utf-8")
+    completed = subprocess.run(
+        [sys.executable, str(TASK / "verifier.py"), str(out)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert completed.returncode != 0
+
+
 def test_forged_verdict_in_module_body_fails(tmp_path):
     result = _evaluate(FAKE_VERDICT_SOLVER, tmp_path)
     assert result["public_passed"] is False
@@ -115,7 +159,12 @@ def test_forged_verdict_and_garbage_return_fails(tmp_path):
 
 def test_verifier_missing_file(tmp_path):
     completed = subprocess.run(
-        [sys.executable, str(TASK / "verifier.py"), str(tmp_path / "nope.json")],
+        [
+            sys.executable,
+            str(TASK / "verifier.py"),
+            str(tmp_path / "nope.json"),
+            _thresholds_file(tmp_path),
+        ],
         capture_output=True,
         text=True,
         timeout=60,
@@ -199,9 +248,16 @@ def test_evaluate_source_two_stage_docker(monkeypatch):
         }
     )
     calls = []
+    passed_thresholds = []
 
     def fake_run(argv, **kwargs):
         calls.append(argv)
+        for i, arg in enumerate(argv):
+            if arg == "-v" and argv[i + 1].endswith(":/verifier:ro"):
+                host = argv[i + 1][: -len(":/verifier:ro")]
+                passed_thresholds.append(
+                    json.loads((Path(host) / "thresholds.json").read_text("utf-8"))
+                )
         stdout = forged if len(calls) == 1 else failing
         return subprocess.CompletedProcess(argv, 0, stdout=stdout + "\n", stderr="")
 
@@ -235,5 +291,12 @@ def test_evaluate_source_two_stage_docker(monkeypatch):
     assert any(m.endswith(":/verifier:ro") for m in stage2_mounts)
     assert any(m.endswith(":/data:ro") for m in stage2_mounts)
     assert not any("/work" in m or "candidate" in m for m in stage2_mounts)
+
+    assert calls[1][-3:] == [
+        "/verifier/verifier.py",
+        "/data/trajectories.json",
+        "/verifier/thresholds.json",
+    ]
+    assert passed_thresholds == [_thresholds()]
 
     assert result == json.loads(failing)
