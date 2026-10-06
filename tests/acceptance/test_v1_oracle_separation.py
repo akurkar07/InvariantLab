@@ -18,6 +18,7 @@ EXPECTED_TASK_NAMES = ("oscillator", "kepler", "heat1d", "wave1d")
 ORACLE_MODULES: tuple[str, ...] = (
     "src/invariantlab/verification/analytical.py",
     "src/invariantlab/verification/kepler_oracle.py",
+    "src/invariantlab/verification/oracles.py",
 )
 pytestmark = pytest.mark.v1_acceptance("V1-AC3")
 
