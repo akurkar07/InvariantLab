@@ -48,12 +48,65 @@ blocked by condition.
 
 ## Model
 
-The replication uses the same model family as the first study:
+Study 2 was run on two local models served by Ollama through its OpenAI-compatible endpoint
+(`http://localhost:11434/v1`), as two separate 120-cell runs of the design above:
 
-`cohere/north-mini-code:free` through OpenRouter, temperature 0.0.
+| Model | Backend | Model tag | Temperature | Model config | Experiment config |
+|---|---|---|---|---|---|
+| Qwen2.5-Coder-7B-Instruct | Ollama (local) | `qwen2.5-coder:7b-instruct` | 0.2 | `configs/models/ollama-qwen2.5-coder-7b.yaml` | `configs/experiments/update-order-feedback-replication-ollama.yaml` |
+| DeepSeek-Coder-6.7B-Instruct | Ollama (local) | `deepseek-coder:6.7b-instruct` | 0.2 | `configs/models/ollama-deepseek-coder-6.7b.yaml` | `configs/experiments/update-order-feedback-replication-ollama-deepseek.yaml` |
 
-Provider-side nondeterminism can still exist at temperature 0.0, so each model response is
+The runs wrote to `runs/update-order-feedback-replication-ollama-qwen25-7b/` and
+`runs/update-order-feedback-replication-ollama-deepseek/`, matching each experiment
+config's `name`. The DeepSeek configs were committed after the run. Its model tag and
+temperature follow the Qwen preset and have not yet been checked against the run's
+`events.jsonl` metadata (marked `# unverified` in the model config).
+
+The local presets use temperature 0.2 so that repeated identical prompts are not forced to
+the same completion (see [`local-models.md`](./local-models.md)). Each model response is
 treated as an independent observed attempt rather than a seeded deterministic sample.
+Results are reported per model and are not pooled across models.
+
+The originally preregistered model, `cohere/north-mini-code:free` through OpenRouter at
+temperature 0.0 (`configs/models/cohere-north-mini-code-free.yaml`, used by
+`configs/experiments/update-order-feedback-replication.yaml`), was not used for the
+reported Study 2 results. See the deviations below.
+
+## Deviations from the original protocol
+
+This protocol was first committed in 4583762 (#45, 2026-09-15). The reported results
+([`study-two-model-comparison.md`](./study-two-model-comparison.md), dated 2026-09-16)
+differ from it as follows:
+
+1. **Model and backend.** Preregistered: `cohere/north-mini-code:free` through OpenRouter.
+   Run: local Ollama with Qwen2.5-Coder-7B-Instruct and DeepSeek-Coder-6.7B-Instruct, one
+   run per model. Local endpoint support, the Ollama Qwen model config and the Ollama Study 2
+   experiment config were added in 4db7373 (#46, 2026-09-15). The results and run directories
+   were recorded in 5e3e8f4 (#52, 2026-09-16). The DeepSeek model and experiment configs were
+   not committed until they were reconstructed for #99. This "Model" section still named the
+   Cohere model until #99.
+2. **Temperature.** Preregistered: 0.0. Run: 0.2 for both local models (4db7373, "Use
+   stochastic sampling for local Ollama trials"). With a deterministic local server,
+   temperature 0.0 would repeat the same completion on every trial. The local results are
+   therefore a separate model/decoding condition from the Cohere temperature-0.0 setting.
+3. **Artifact integrity procedure.** Added after preregistration and before the runs
+   (4db7373): strict validation of the 120-cell schedule, `invalid_artifact` stop
+   behaviour, and `invariantlab audit-run --write-canonical` producing
+   `events.canonical.jsonl` and `artifact-integrity.json`. The reported tables were
+   generated from the audited artifacts.
+4. **Execution procedure.** Added after preregistration and before the runs (4db7373):
+   bounded provider retries, `run-status.json` and batched resumable execution
+   (`--max-new-attempts`). The original "Run" section ran a single invocation from the
+   `exp/update-order-feedback-replication` branch.
+5. **Experiment config schema (after the runs).** 9b0787d (#53, 2026-09-18) changed the
+   Study 2 experiment configs from `runner: feedback_replication` / `mutation: update-order`
+   to `runner: repair` / `task: tasks/oscillator` /
+   `mutation: tasks/oscillator/mutations/update-order`. The runs used the earlier form. The
+   committed configs, including the reconstructed DeepSeek config, use the current form.
+
+Unchanged from the preregistration: the hypotheses, the update-order mutation, the four
+prompt conditions, 30 attempts per condition, seed 1729 with randomised order, the
+endpoints and the Wilson 95% confidence intervals.
 
 ## Endpoints
 
