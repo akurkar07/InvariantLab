@@ -26,5 +26,6 @@ The repository [README](../README.md) gives the implementation status and a quic
 - [First Multi-Condition Study Results](first-multi-condition-study-results.md) — Study 1 results
 - [Update-Order Feedback Replication](update-order-feedback-replication.md) — Study 2 protocol
 - [Study 2: Two-Model Comparison](study-two-model-comparison.md) — Study 2 results
+- [Research Track](research-track.md) — How Studies 1-3 relate to the V1 verification-gap question; Study 3 preregistration rules
 
 Development scripts are described in [scripts/README.md](../scripts/README.md).
