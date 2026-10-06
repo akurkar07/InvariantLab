@@ -100,6 +100,7 @@ maintains `run-status.json` with one of these states:
 - `paused_rate_limit`
 - `paused_connection`
 - `paused_provider_error`
+- `paused_infrastructure`
 - `complete`
 
 HTTP 429, transient 5xx responses, timeouts and connection failures are retried with bounded
@@ -109,6 +110,17 @@ can be resumed with the same command.
 Malformed model output or candidate code does not abort the study. It is recorded as a
 failed repair with `candidate_error`, allowing weaker local models to be evaluated without
 losing the remaining run.
+
+Each candidate runs in a uniquely named container with a fixed timeout
+(`CANDIDATE_TIMEOUT_SECONDS` in `invariantlab.experiments.repair`, 60 s). A candidate that
+exceeds it is killed with `docker kill` and recorded as a failed repair with `timeout: true`;
+the run continues with the next cell.
+
+Sandbox failures are not blamed on the model. If the `docker` binary is missing or
+`docker run` itself fails (exit code 125: daemon unreachable, image pull or registry error,
+Docker Hub rate limit), no record is written and the run stops with
+`paused_infrastructure` and the Docker error as the reason. Fix the environment and rerun
+the same command to resume.
 
 ## Configuring another OpenAI-compatible server
 

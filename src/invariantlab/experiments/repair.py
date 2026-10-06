@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
@@ -13,10 +14,12 @@ import statistics
 import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Any, cast
 
 from invariantlab.config import ExperimentConfig, load_experiment_config, load_model_config
+from invariantlab.metrics import pass_rate, verification_gap, wilson_interval
 from invariantlab.models import (
     ModelConnectionError,
     ModelRateLimitError,
@@ -33,23 +36,37 @@ from invariantlab.schema import (
 
 CONDITIONS = ("weak", "placebo", "metrics", "interpreted")
 CellKey = tuple[str, int]
+CANDIDATE_TIMEOUT_SECONDS = 60
+DOCKER_KILL_TIMEOUT_SECONDS = 30
+DOCKER_RUN_FAILURE_EXIT_CODE = 125
 
 
 class ArtifactIntegrityError(RuntimeError):
     """Raised when a run directory contains inconsistent experiment records."""
 
 
-def _extract_python(text: str) -> str:
-    match = re.search(r"```python\s*(.*?)```", text, flags=re.DOTALL | re.IGNORECASE)
-    if match:
-        return match.group(1).strip() + "\n"
-    if "def " in text:
-        return text.strip() + "\n"
-    raise ValueError("Model response did not contain a Python source file")
+class InfrastructureError(RuntimeError):
+    """Raised when the sandbox itself (Docker, image, daemon) fails."""
+
+
+class CandidateTimeoutError(RuntimeError):
+    """Raised when evaluated code exceeds the candidate timeout."""
+
+
+def _kill_container(name: str) -> None:
+    with contextlib.suppress(OSError, subprocess.SubprocessError):
+        subprocess.run(
+            ["docker", "kill", name],
+            capture_output=True,
+            text=True,
+            timeout=DOCKER_KILL_TIMEOUT_SECONDS,
+            check=False,
+        )
 
 
 def _docker_command(
     image: str,
+    name: str,
     mounts: list[str],
     args: list[str],
 ) -> list[str]:
@@ -57,6 +74,8 @@ def _docker_command(
         "docker",
         "run",
         "--rm",
+        "--name",
+        name,
         "--network",
         "none",
         "--memory",
@@ -75,16 +94,73 @@ def _docker_command(
     return command
 
 
+def _run_container(
+    image: str,
+    mounts: list[str],
+    args: list[str],
+) -> subprocess.CompletedProcess[str]:
+    """Run one locked-down container, mapping sandbox failures to typed errors."""
+
+    if shutil.which("docker") is None:
+        raise InfrastructureError(
+            "Docker is required to execute model-generated code safely"
+        )
+
+    name = f"invariantlab-eval-{uuid.uuid4().hex[:12]}"
+    try:
+        completed = subprocess.run(
+            _docker_command(image, name, mounts, args),
+            capture_output=True,
+            text=True,
+            timeout=CANDIDATE_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise InfrastructureError(f"Docker could not be started: {exc}") from exc
+    except subprocess.TimeoutExpired as exc:
+        _kill_container(name)
+        raise CandidateTimeoutError(
+            f"Candidate evaluation timed out after {CANDIDATE_TIMEOUT_SECONDS} s"
+        ) from exc
+
+    if completed.returncode == DOCKER_RUN_FAILURE_EXIT_CODE:
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        raise InfrastructureError(f"docker run failed (exit 125): {detail}")
+    return completed
+
+
+def _parse_verdict(completed: subprocess.CompletedProcess[str]) -> dict[str, Any]:
+    detail = completed.stderr.strip() or completed.stdout.strip()
+    if completed.returncode != 0:
+        raise RuntimeError(f"Candidate evaluation failed: {detail}")
+    lines = completed.stdout.strip().splitlines()
+    try:
+        return cast("dict[str, Any]", json.loads(lines[-1]))
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Verifier output was not JSON: {detail}") from exc
+
+
+def _extract_python(text: str) -> str:
+    match = re.search(r"```python\s*(.*?)```", text, flags=re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip() + "\n"
+    if "def " in text:
+        return text.strip() + "\n"
+    raise ValueError("Model response did not contain a Python source file")
+
+
 def _evaluate_source(
     source: str,
     task_dir: Path,
     task: TaskDefinition,
     image: str,
 ) -> dict[str, Any]:
-    """Evaluate candidate source with the verifier declared by the task."""
+    """Evaluate candidate source in two sandboxed stages.
 
-    if shutil.which("docker") is None:
-        raise RuntimeError("Docker is required to execute model-generated code safely")
+    Stage 1 runs the trusted candidate runner next to the candidate and writes raw
+    trajectories; its exit status and stdout are ignored. Stage 2 runs only the
+    verifier on that output, and the verdict is parsed from stage-2 stdout.
+    """
 
     verifier_path = task_dir / task.verifier
     if not verifier_path.exists():
@@ -111,46 +187,27 @@ def _evaluate_source(
             encoding="utf-8",
         )
 
-        subprocess.run(
-            _docker_command(
-                image,
-                [
-                    f"{candidate.resolve()}:/work:ro",
-                    f"{output.resolve()}:/output:rw",
-                ],
-                [
-                    "/work/candidate_runner.py",
-                    "/work/solver.py",
-                    "/output/trajectories.json",
-                ],
-            ),
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
+        _run_container(
+            image,
+            [
+                f"{candidate.resolve()}:/work:ro",
+                f"{output.resolve()}:/output:rw",
+            ],
+            [
+                "/work/candidate_runner.py",
+                "/work/solver.py",
+                "/output/trajectories.json",
+            ],
         )
-
-        completed = subprocess.run(
-            _docker_command(
-                image,
-                [
-                    f"{verifier_dir.resolve()}:/verifier:ro",
-                    f"{output.resolve()}:/data:ro",
-                ],
-                ["/verifier/verifier.py", "/data/trajectories.json"],
-            ),
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
+        completed = _run_container(
+            image,
+            [
+                f"{verifier_dir.resolve()}:/verifier:ro",
+                f"{output.resolve()}:/data:ro",
+            ],
+            ["/verifier/verifier.py", "/data/trajectories.json"],
         )
-        if completed.returncode != 0:
-            detail = completed.stderr.strip() or completed.stdout.strip()
-            raise RuntimeError(f"Candidate evaluation failed: {detail}")
-        return cast(
-            "dict[str, Any]",
-            json.loads(completed.stdout.strip().splitlines()[-1]),
-        )
+        return _parse_verdict(completed)
 
 
 def _legacy_feedback_metrics() -> dict[str, FeedbackMetricSpec]:
@@ -263,29 +320,6 @@ def _severity_ratios(
         "energy_drift_ratio": energy_ratio,
         "worst_scientific_ratio": max(finite) if finite else None,
     }
-
-
-def _wilson_interval(
-    successes: int,
-    total: int,
-    z: float = 1.96,
-) -> tuple[float, float]:
-    """Return a Wilson score interval for a binomial proportion."""
-
-    if total == 0:
-        return (0.0, 0.0)
-    proportion = successes / total
-    denominator = 1.0 + (z * z / total)
-    centre = (proportion + z * z / (2.0 * total)) / denominator
-    margin = (
-        z
-        * math.sqrt(
-            (proportion * (1.0 - proportion) / total)
-            + (z * z / (4.0 * total * total))
-        )
-        / denominator
-    )
-    return (max(0.0, centre - margin), min(1.0, centre + margin))
 
 
 def _read_existing_events(path: Path) -> list[dict[str, Any]]:
@@ -509,12 +543,28 @@ def _failed_repair_result(error: Exception) -> dict[str, Any]:
     }
 
 
+def _baseline_verification_gap(baseline: dict[str, Any]) -> int | None:
+    if "public_passed" not in baseline or "scientific_passed" not in baseline:
+        return None
+    return int(bool(baseline["public_passed"])) - int(
+        bool(baseline["scientific_passed"])
+    )
+
+
 def _summary(
     experiment: ExperimentConfig,
     model_id: str,
     baseline: dict[str, Any],
     records: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """Aggregate canonical records into per-condition metrics.
+
+    Every rate uses the number of completed canonical cells in the condition as its
+    denominator; failed, erroring and timed-out candidates count as non-passing.
+    ``verification_gap`` is ``public_pass_rate - scientific_pass_rate``. Rates, gaps
+    and Wilson 95% intervals are None for a condition with no completed cells.
+    """
+
     schedule = _build_schedule(
         list(experiment.conditions),
         experiment.n_attempts,
@@ -532,6 +582,10 @@ def _summary(
     for condition in experiment.conditions:
         subset = [record for record in records if record["condition"] == condition]
         passed = sum(bool(record["successful_repair"]) for record in subset)
+        public_passed = sum(
+            bool(record.get("repaired", {}).get("public_passed", False))
+            for record in subset
+        )
         total = len(subset)
         regressions = sum(
             bool(record["scientific_regression"]) for record in subset
@@ -541,14 +595,24 @@ def _summary(
             for record in subset
             if record["severity"]["worst_scientific_ratio"] is not None
         ]
-        low, high = _wilson_interval(passed, total)
-        rate = passed / total if total else None
+        rate = pass_rate(passed, total)
+        public_rate = pass_rate(public_passed, total)
+        scientific_interval = wilson_interval(passed, total)
+        public_interval = wilson_interval(public_passed, total)
         by_condition[condition] = {
             "completed": total,
             "target": experiment.n_attempts,
             "scientific_passes": passed,
             "scientific_pass_rate": rate,
-            "scientific_pass_rate_wilson95": [low, high],
+            "scientific_pass_rate_wilson95": (
+                list(scientific_interval) if scientific_interval else None
+            ),
+            "public_passes": public_passed,
+            "public_pass_rate": public_rate,
+            "public_pass_rate_wilson95": (
+                list(public_interval) if public_interval else None
+            ),
+            "verification_gap": verification_gap(public_rate, rate),
             "scientific_regressions": regressions,
             "median_worst_scientific_ratio": (
                 statistics.median(ratios) if ratios else None
@@ -578,6 +642,7 @@ def _summary(
             "worst_scientific_ratio",
         ],
         "baseline": baseline,
+        "baseline_verification_gap": _baseline_verification_gap(baseline),
         "target_cells": target_total,
         "completed_cells": len(records),
         "complete": len(records) == target_total,
@@ -687,12 +752,6 @@ def run_repair_experiment(
     if "placeholder" in image:
         image = "python:3.12-slim"
 
-    baseline = _evaluate_source(mutation_source, task_dir, task, image)
-    if not baseline["public_passed"] or baseline["scientific_passed"]:
-        raise RuntimeError(
-            "Configured mutation does not have the intended public/scientific gap"
-        )
-
     events_path = output / "events.jsonl"
     summary_path = output / "study-summary.json"
     (output / "baseline_solver.py").write_text(mutation_source, encoding="utf-8")
@@ -722,6 +781,22 @@ def run_repair_experiment(
             reason=reason,
         )
         raise ArtifactIntegrityError(reason)
+
+    try:
+        baseline = _evaluate_source(mutation_source, task_dir, task, image)
+    except InfrastructureError as exc:
+        _write_run_status(
+            output,
+            status="paused_infrastructure",
+            completed=len(records),
+            target=target_total,
+            reason=str(exc),
+        )
+        return output
+    if not baseline["public_passed"] or baseline["scientific_passed"]:
+        raise RuntimeError(
+            "Configured mutation does not have the intended public/scientific gap"
+        )
 
     completed = {
         (str(record["condition"]), int(record["trial"])) for record in records
@@ -756,7 +831,7 @@ def run_repair_experiment(
         )
         started = time.perf_counter()
         try:
-            response = adapter.generate(prompt)
+            model_response = adapter.complete(prompt)
         except ModelRateLimitError as exc:
             _write_run_status(
                 output,
@@ -786,10 +861,25 @@ def run_repair_experiment(
             return output
 
         latency = time.perf_counter() - started
+        response = model_response.text
         candidate_error = ""
+        timed_out = False
         try:
             repaired_source = _extract_python(response)
             repaired = _evaluate_source(repaired_source, task_dir, task, image)
+        except InfrastructureError as exc:
+            _write_run_status(
+                output,
+                status="paused_infrastructure",
+                completed=len(records),
+                target=target_total,
+                reason=str(exc),
+            )
+            return output
+        except CandidateTimeoutError as exc:
+            repaired = _failed_repair_result(exc)
+            candidate_error = str(exc)
+            timed_out = True
         except (RuntimeError, ValueError) as exc:
             repaired_source = ""
             repaired = _failed_repair_result(exc)
@@ -823,9 +913,15 @@ def run_repair_experiment(
                 repaired["scientific_passed"]
             ),
             "latency_seconds": latency,
+            "usage": {
+                "input_tokens": model_response.input_tokens,
+                "output_tokens": model_response.output_tokens,
+            },
+            "finish_reason": model_response.finish_reason,
             "response": response,
             "candidate_source": repaired_source,
             "candidate_error": candidate_error,
+            "timeout": timed_out,
         }
         with events_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
