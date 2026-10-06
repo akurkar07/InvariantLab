@@ -9,7 +9,6 @@ so an update-order regression is visible in the failing assertion.
 from __future__ import annotations
 
 import math
-from itertools import pairwise
 
 import numpy as np
 import pytest
@@ -19,6 +18,7 @@ from invariantlab.verification.analytical import (
     kepler_elliptic_orbit,
     oscillator_trajectory,
 )
+from invariantlab.verification.convergence import observed_orders
 from invariantlab.verification.kepler_oracle import solve_kepler_high_accuracy
 from invariantlab.verification.solvers import solve_kepler_verlet, solve_oscillator_verlet
 
@@ -30,16 +30,8 @@ def _relative_l2(candidate: np.ndarray, reference: np.ndarray) -> float:
     return float(np.linalg.norm(candidate - reference) / np.linalg.norm(reference))
 
 
-def _observed_orders(refinements: list[tuple[float, float]]) -> list[float]:
-    """Return p = log(E_h / E_h_over_2) / log(2) for adjacent refinements."""
-    return [
-        math.log(coarse_error / fine_error) / math.log(2.0)
-        for (_, coarse_error), (_, fine_error) in pairwise(refinements)
-    ]
-
-
 def _assert_second_order(refinements: list[tuple[float, float]]) -> None:
-    orders = _observed_orders(refinements)
+    orders = observed_orders([error for _, error in refinements])
     details = ", ".join(
         f"dt={dt:.6g}, error={error:.6e}, order={order:.6f}"
         for (dt, error), order in zip(refinements[1:], orders, strict=True)
