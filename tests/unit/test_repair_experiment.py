@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from invariantlab.config import ExperimentConfig
 from invariantlab.experiments import repair
 from invariantlab.experiments.repair import (
@@ -17,6 +19,14 @@ from invariantlab.schema import (
     load_mutation_definition,
     load_task_definition,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_docker_provenance(monkeypatch):
+    monkeypatch.setattr(
+        repair, "_resolve_image_digest", lambda image: f"python@sha256:{'a' * 64}"
+    )
+    monkeypatch.setattr(repair, "_git_state", lambda: ("0" * 40, False))
 
 
 def test_loads_config_driven_task_and_mutation():

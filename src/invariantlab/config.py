@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ExperimentConfig(BaseModel):
@@ -27,6 +27,24 @@ class ExperimentConfig(BaseModel):
     container_image: str = Field(
         default="python:3.12-slim", description="Container image digest or tag."
     )
+
+    @field_validator("container_image")
+    @classmethod
+    def _reject_placeholder_image(cls, value: str) -> str:
+        return validate_container_image(value)
+
+
+def validate_container_image(image: str) -> str:
+    """Reject empty or placeholder image references instead of substituting them."""
+
+    if not image.strip():
+        raise ValueError("container_image must not be empty")
+    if "placeholder" in image:
+        raise ValueError(
+            f"container_image {image!r} is a placeholder; set a real image tag or "
+            "digest (e.g. python:3.12-slim@sha256:<digest>)"
+        )
+    return image
 
 
 class TaskSuiteConfig(BaseModel):

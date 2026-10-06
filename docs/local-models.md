@@ -122,6 +122,50 @@ Docker Hub rate limit), no record is written and the run stops with
 `paused_infrastructure` and the Docker error as the reason. Fix the environment and rerun
 the same command to resume.
 
+## Run provenance: manifest, image digest and checksums
+
+Before the first model call, the repair runner writes `manifest.json` into the run
+directory. It records the run id, experiment name, config path and SHA-256, git commit and
+dirty flag (`null` outside a git checkout), InvariantLab package version, Python version and
+platform, SHA-256 of `task.yaml`, `contract.yaml`, the verifier, candidate runner, prompt
+template and mutation, the resolved model config (adapter, `model_id`, `temperature`,
+`max_tokens`, `extra`) and its hash, seed, conditions, `n_attempts`, the configured image,
+any `--image` override and the image's repository digest. Environment-variable *names* such
+as `extra.api_key_env` are recorded; secret values never are (secret-looking `extra` keys are
+written as `<redacted>`).
+
+The digest comes from `docker image inspect --format '{{index .RepoDigests 0}}' <image>`;
+the image is pulled first if it is not present locally. If Docker is unavailable or the pull
+fails, the run stops with `paused_infrastructure` before any model call.
+
+On resume the runner recomputes the manifest and compares it with the stored one. Any
+difference in hashes, model config, seed, conditions, image or digest — or in the git commit,
+dirty flag or package version — stops the run with `invalid_artifact`. Pass
+`--allow-code-change` to resume across a code revision on purpose. A matching manifest is left
+untouched.
+
+When the run reaches `complete`, `checksums.sha256` lists the SHA-256 of every other file in
+the run directory in `sha256sum` format, so `sha256sum -c checksums.sha256` verifies it.
+
+Placeholder image references (anything containing `placeholder`) are rejected by both
+`invariantlab run` and `invariantlab run --dry-run`. To pin an image, pre-pull it and copy its
+digest into the experiment config:
+
+```bash
+docker pull python:3.12-slim
+docker image inspect --format '{{index .RepoDigests 0}}' python:3.12-slim
+# container_image: python:3.12-slim@sha256:<digest>
+```
+
+To use a different registry without editing the YAML (for example when Docker Hub rate-limits
+pulls), override the image; the override is recorded in `manifest.json`:
+
+```bash
+uv run invariantlab run \
+  --experiment configs/experiments/update-order-feedback-replication-ollama.yaml \
+  --image mirror.gcr.io/library/python:3.12-slim
+```
+
 ## Configuring another OpenAI-compatible server
 
 Model configs support the following `extra` fields:
