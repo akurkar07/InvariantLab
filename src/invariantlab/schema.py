@@ -6,6 +6,7 @@ All schemas are Pydantic v2 models for validation and serialization.
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -160,27 +161,64 @@ class TaskDefinition(BaseModel):
     interpreted_feedback: str = ""
 
 
-class MutationDefinition(BaseModel):
-    """A config-driven controlled defect used by a repair experiment."""
+class ExpectedFailure(ContractModel):
+    """A scientific test failure expected from a package mutant."""
+
+    test: str
+    message: str
+
+    @field_validator("test")
+    @classmethod
+    def test_is_scientific_node_id(cls, value: str) -> str:
+        """Require a safe scientific test path."""
+        from invariantlab.tasks.validation import _has_safe_relative_syntax
+
+        test_file = value.split("::", 1)[0]
+        if not value.startswith("tests/scientific/"):
+            raise ValueError("expected failure test must start with 'tests/scientific/'")
+        if not _has_safe_relative_syntax(test_file):
+            raise ValueError("expected failure test must use a safe relative path")
+        if not test_file.endswith(".py"):
+            raise ValueError("expected failure test file must end with '.py'")
+        return value
+
+    @field_validator("message")
+    @classmethod
+    def message_is_valid_regex(cls, value: str) -> str:
+        """Require the expected failure message to be a valid regex."""
+        try:
+            re.compile(value)
+        except re.error as error:
+            raise ValueError(f"{value!r} is not a valid regex: {error}") from error
+        return value
+
+
+class MutationDefinition(ContractModel):
+    """A mutant manifest; legacy_study supports the old oscillator repair API until #120."""
 
     id: str
     task_id: str
     family: MutationFamily
-    source: str
-    expected_effect: str = ""
+    interface: Literal["package", "legacy_study"] = "package"
+    source: str = "solver.py"
+    expected_effect: str
+    expected_failures: list[ExpectedFailure] = Field(default_factory=list)
+    max_changed_lines: int = Field(default=10, ge=1)
 
+    @field_validator("expected_effect")
+    @classmethod
+    def expected_effect_is_nonempty(cls, value: str) -> str:
+        """Require a meaningful expected effect."""
+        if not value.strip():
+            raise ValueError("expected_effect must not be empty")
+        return value
 
-class ExperimentDefinition(BaseModel):
-    """Generic task, mutation, model and condition binding."""
-
-    task: str
-    mutation: str
-    model: str
-    conditions: list[str] = Field(default_factory=list)
-    n_attempts: int = Field(default=1, ge=1)
-    seed: int = Field(default=42, ge=0)
-    randomize_order: bool = False
-    container_image: str = "python:3.12-slim"
+    @model_validator(mode="after")
+    def package_mutants_declare_expected_failures(self) -> MutationDefinition:
+        """Require package mutants to declare a scientific failure."""
+        if self.interface == "package" and not self.expected_failures:
+            raise ValueError("package mutants must declare at least one expected_failures entry")
+        return self
 
 
 # ── Verification Results ─────────────────────────────────────────────────────
@@ -196,29 +234,35 @@ class GateResult(BaseModel):
     detail: str = ""
 
 
-class VerificationResult(BaseModel):
-    """Complete verification result for one attempt."""
-
-    task_id: str
-    attempt_id: str
-    passed_all: bool
-    public_passed: bool
-    scientific_passed: bool
-    layers: dict[str, list[GateResult]] = Field(default_factory=dict)
-
-
 # ── Run Manifest ─────────────────────────────────────────────────────────────
 
 
 class RunManifest(BaseModel):
-    """Immutable record of one evaluation run."""
+    """Provenance record written at the start of a repair run."""
 
     run_id: str
     experiment: str
-    model: str
+    created_at: str
+    config_path: str
+    config_sha256: str
+    git_commit: str | None
+    git_dirty: bool | None
+    package_version: str | None
+    python_version: str
+    platform: str
+    task_id: str
+    mutation_id: str
+    artifact_sha256: dict[str, str]
+    model: dict[str, Any]
+    model_sha256: str
     seed: int
+    conditions: list[str]
+    n_attempts: int
+    randomize_order: bool
+    configured_image: str
+    image_override: str | None
     container_image: str
-    task_results: list[VerificationResult] = Field(default_factory=list)
+    image_digest: str
 
 
 # ── Loading ──────────────────────────────────────────────────────────────────

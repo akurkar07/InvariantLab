@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install ruff
-      - run: ruff check src/ tests/
+      - run: ruff check src/ tests/ tasks/ scripts/validate_task.py
       - run: pipx run cffconvert --validate -i CITATION.cff
 
   test:
@@ -35,6 +35,21 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest tests/ -v --ignore=tests/acceptance
 
+  task-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [oscillator, kepler, heat1d, wave1d]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: pytest tests -q
+        working-directory: tasks/${{ matrix.task }}
+
   typecheck:
     runs-on: ubuntu-latest
     steps:
@@ -47,7 +62,7 @@ jobs:
 
   acceptance:
     runs-on: ubuntu-latest
-    needs: [lint, test, typecheck]
+    needs: [lint, test, task-tests, typecheck]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

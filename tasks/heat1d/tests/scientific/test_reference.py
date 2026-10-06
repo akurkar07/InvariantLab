@@ -10,6 +10,8 @@ from conftest import TASK_ROOT, make_input
 
 from invariantlab.verification.execution import run_task
 
+from invariantlab.verification.analytical import heat_trajectory
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -18,11 +20,10 @@ CONTRACT = yaml.safe_load((TASK_ROOT / "contract.yaml").read_text(encoding="utf-
 STATE_RELATIVE_L2 = CONTRACT["numerics"]["tolerances"]["state_relative_l2"]
 
 
-def _manufactured_solution(x: np.ndarray, alpha: float, length: float, time: float) -> np.ndarray:
-    return np.sin(np.pi * x / length) * np.exp(-alpha * (np.pi / length) ** 2 * time)
+EXPECTED_ARCHIVE_NAMES = {array["name"] for array in CONTRACT["output"]["arrays"]}
 
 
-def test_non_special_ftcs_case_matches_manufactured_solution_and_decays(tmp_path: Path) -> None:
+def _candidate_solution(tmp_path: Path) -> tuple[np.ndarray, np.ndarray]:
     run = run_task(
         TASK_ROOT,
         TASK_ROOT,
@@ -31,12 +32,22 @@ def test_non_special_ftcs_case_matches_manufactured_solution_and_decays(tmp_path
     )
     assert run.passed, (run.gates, run.stderr)
     assert run.arrays is not None
+    assert set(run.arrays) == EXPECTED_ARCHIVE_NAMES
     x, state = run.arrays["x"], run.arrays["state"]
     assert x.shape == (NX,)
     assert state.shape == (NX,)
-    expected = _manufactured_solution(x, ALPHA, LENGTH, T_FINAL)
+    assert x.dtype == np.dtype(np.float64)
+    assert state.dtype == np.dtype(np.float64)
+    assert np.isfinite(x).all()
+    assert np.isfinite(state).all()
+    return x, state
+
+
+def test_non_special_ftcs_case_matches_manufactured_solution_and_decays(tmp_path: Path) -> None:
+    x, state = _candidate_solution(tmp_path)
+    expected = heat_trajectory(x, T_FINAL, ALPHA, length=LENGTH)
     expected[[0, -1]] = 0.0
-    initial = _manufactured_solution(x, ALPHA, LENGTH, 0.0)
+    initial = heat_trajectory(x, 0.0, ALPHA, length=LENGTH)
     initial[[0, -1]] = 0.0
     state_relative_l2 = np.linalg.norm(state - expected) / np.linalg.norm(expected)
     assert state_relative_l2 < STATE_RELATIVE_L2, f"state_relative_l2={state_relative_l2:.3e}"

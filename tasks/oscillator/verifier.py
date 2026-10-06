@@ -47,6 +47,11 @@ def _validate_cases(cases):
             )
 
 
+with open(sys.argv[2], encoding="utf-8") as handle:
+    THRESHOLDS = json.load(handle)
+STATE_THRESHOLD = float(THRESHOLDS["max_state_relative_error"])
+ENERGY_THRESHOLD = float(THRESHOLDS["max_energy_relative_drift"])
+
 public = {}
 scientific = {}
 
@@ -96,8 +101,8 @@ try:
         )
         max_energy_drift = max(max_energy_drift, drift)
 
-    scientific["analytical_state"] = max_state_error < 1e-3
-    scientific["energy_invariant"] = max_energy_drift < 1e-3
+    scientific["analytical_state"] = max_state_error < STATE_THRESHOLD
+    scientific["energy_invariant"] = max_energy_drift < ENERGY_THRESHOLD
     metrics = {
         "max_state_relative_error": max_state_error,
         "max_energy_relative_drift": max_energy_drift,
