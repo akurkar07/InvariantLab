@@ -8,9 +8,8 @@ import numpy as np
 import yaml
 from conftest import TASK_ROOT, make_input
 
-from invariantlab.verification.execution import run_task
-
 from invariantlab.verification.analytical import heat_trajectory
+from invariantlab.verification.execution import run_task
 
 if TYPE_CHECKING:
     from pathlib import Path
