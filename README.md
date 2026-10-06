@@ -24,7 +24,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Task packages (4: oscillator, kepler, heat1d, wave1d) | Implemented | `tasks/` | [M2](https://github.com/akurkar07/InvariantLab/milestone/1) |
 | Reference solvers and oracles | Implemented | `src/invariantlab/verification/` | [M2](https://github.com/akurkar07/InvariantLab/milestone/1) |
 | Verification: Layers 0-6 (seven layers) and `invariantlab verify` | Implemented ([layer status](docs/verification.md#layer-status)) | `src/invariantlab/verification/` | [#110](https://github.com/akurkar07/InvariantLab/issues/110)-[#117](https://github.com/akurkar07/InvariantLab/issues/117) |
-| Defect injection / mutants | Partial (registry; three validated package mutants, two legacy oscillator study mutants) | `src/invariantlab/mutations/`, `tasks/*/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
+| Defect injection / mutants | Partial (registry and validation; 11 package mutants covering all 10 defect families on oscillator, kepler and wave1d; two legacy oscillator study mutants; no heat1d mutants yet; [catalogue](docs/methodology.md#controlled-defect-injection)) | `src/invariantlab/mutations/`, `tasks/*/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Reporting / dashboard / HF export | Partial (`report`, static `report.html`, local HF export via `export-hf`) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
@@ -100,7 +100,7 @@ It currently provides:
 
 It does **not** provide yet:
 
-- controlled mutants for kepler and heat1d (only the oscillator and wave1d have package mutants)
+- controlled mutants for heat1d ([issue #90](https://github.com/akurkar07/InvariantLab/issues/90))
 - plots, interactive filtering or a served dashboard (the static `report.html` is the V1 dashboard)
 
 ## Empirical results
