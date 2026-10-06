@@ -14,7 +14,7 @@ A pull request can merge into `main` only when these status checks pass on its h
 
 | Check | Workflow | What it runs |
 | --- | --- | --- |
-| `lint` | Tests | `ruff check` and `cffconvert --validate -i CITATION.cff` |
+| `lint` | Tests | `uv lock --check`, `ruff check`, `ruff format --check` and `cffconvert --validate -i CITATION.cff` |
 | `test (3.10)`, `test (3.11)`, `test (3.12)` | Tests | top-level `pytest tests/` (without `tests/acceptance`) |
 | `task-tests (oscillator)`, `task-tests (kepler)`, `task-tests (heat1d)`, `task-tests (wave1d)` | Tests | each task suite in its own directory |
 | `typecheck` | Tests | `mypy src/invariantlab/` |
@@ -32,7 +32,9 @@ uv sync --extra dev        # or: pip install -e ".[dev]"
 Run the same commands as CI before opening a pull request:
 
 ```bash
-uv run ruff check src/ tests/ tasks/ scripts/validate_task.py
+uv lock --check
+uv run ruff check src tests tasks scripts
+uv run ruff format --check src tests tasks scripts
 uv run mypy src/invariantlab/
 uv run pytest tests/ -q
 uv run python scripts/validate_task.py --task-dir tasks/

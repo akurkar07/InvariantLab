@@ -56,9 +56,7 @@ def _normalised_body(func: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
         def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.FunctionDef:
             return self._visit_function(node)
 
-        def visit_AsyncFunctionDef(
-            self, node: ast.AsyncFunctionDef
-        ) -> ast.AsyncFunctionDef:
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> ast.AsyncFunctionDef:
             return self._visit_function(node)
 
     normalized = Normalizer().visit(normalized)
@@ -292,7 +290,9 @@ def test_agent_workspace_exposes_no_hidden_files(task_name: str, tmp_path: Path)
     }
 
     assert visible_files, "agent workspace must not be empty"
-    assert (workspace / contract.entrypoint).is_file(), "workspace must include its solver entrypoint"
+    assert (workspace / contract.entrypoint).is_file(), (
+        "workspace must include its solver entrypoint"
+    )
     assert _hidden_exposures(visible_files, _trusted_hidden_files(REPOSITORY_ROOT)) == []
 
 
@@ -304,7 +304,9 @@ def test_candidate_stage_mount_exposes_no_hidden_files(
     source = (task_dir / "src" / "solver.py").read_text(encoding="utf-8")
     calls: list[dict[str, bytes]] = []
 
-    def fake_run_container(image: str, mounts: list[str], args: list[str]) -> subprocess.CompletedProcess[str]:
+    def fake_run_container(
+        image: str, mounts: list[str], args: list[str]
+    ) -> subprocess.CompletedProcess[str]:
         files: dict[str, bytes] = {}
         for mount in mounts:
             host, target, _mode = mount.rsplit(":", 2)
@@ -312,9 +314,13 @@ def test_candidate_stage_mount_exposes_no_hidden_files(
             for path in host_path.rglob("*"):
                 if path.is_file():
                     relative_target = (
-                        PurePosixPath(target)
-                        / PurePosixPath(path.relative_to(host_path).as_posix())
-                    ).as_posix().lstrip("/")
+                        (
+                            PurePosixPath(target)
+                            / PurePosixPath(path.relative_to(host_path).as_posix())
+                        )
+                        .as_posix()
+                        .lstrip("/")
+                    )
                     files[relative_target] = path.read_bytes()
         calls.append(files)
         return subprocess.CompletedProcess(args, 0, stdout='{"passed": true}\n', stderr="")

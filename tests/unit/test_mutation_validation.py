@@ -177,8 +177,7 @@ def test_sign_error_mutant_fails_public_example(tmp_path: Path) -> None:
 
     assert not result.public_passed
     assert any(
-        "test_small_example_stays_close_to_exact_solution" in reason
-        for reason in result.reasons
+        "test_small_example_stays_close_to_exact_solution" in reason for reason in result.reasons
     )
 
 
