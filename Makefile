@@ -44,6 +44,7 @@ coverage: ## Run top-level tests with coverage (fail_under from pyproject.toml)
 
 validate-tasks: ## Validate all four V1 task packages
 	uv run python scripts/validate_task.py --task-dir tasks/
+	uv run python scripts/validate_mutants.py --task-dir tasks/
 
 clean: ## Remove build artifacts
 	rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .mypy_cache/ .ruff_cache/ htmlcov/ .coverage
