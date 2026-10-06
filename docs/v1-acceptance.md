@@ -16,8 +16,8 @@ when all eight criteria are `passed`; skipped, xfailed, failed and missing
 criteria — as well as tests marked with unknown acceptance ids — all fail the
 gate. The `V1 Acceptance` workflow (`.github/workflows/v1-acceptance.yml`, job
 `v1-acceptance`) runs the checker on every pull request to and push to `main`
-(plus manual dispatch) and uploads `v1-acceptance.json` as an artifact. Until
-V1-AC1..AC8 all pass, the job is `continue-on-error` (remove before #72); the
+(plus manual dispatch) and uploads `v1-acceptance.json` as an artifact. The job
+fails when any criterion is not `passed` (no `continue-on-error`); the
 maintainer should make the `v1-acceptance` check required in branch protection —
 agents cannot change repository settings.
 

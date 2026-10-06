@@ -8,7 +8,9 @@ from git tags via hatch-vcs; see [docs/releasing.md](docs/releasing.md).
 
 ## [Unreleased]
 
-First release candidate (V1). Nothing has been tagged yet. Numbers are pull requests on
+## [1.0.0] - 2026-10-06
+
+First release (V1). Numbers are pull requests on
 <https://github.com/akurkar07/InvariantLab>.
 
 ### Added
@@ -67,7 +69,7 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
   status-first README (#151), docs index (#161), research-track roadmap (#162), Study 2
   corrections (#124, #128) and the documented evaluation protocol (#132).
 - Mutant catalogue and validation documentation, plus an acceptance test requiring package
-  mutant coverage for all ten mutation families or a documented infeasibility issue (issue #93).
+  mutant coverage for all ten mutation families or a documented infeasibility issue (#183).
 - This changelog and the [release procedure](docs/releasing.md).
 
 ### Changed
@@ -80,9 +82,10 @@ First release candidate (V1). Nothing has been tagged yet. Numbers are pull requ
 ### Known limitations
 
 See [docs/limitations.md](docs/limitations.md). In short: V1 runs from a source checkout, the
-Docker sandbox is single-machine, the repair-study harness evaluates the oscillator only until
-[#120](https://github.com/akurkar07/InvariantLab/issues/120), and the Study 1/2 results are not
+Docker sandbox is single-machine, the legacy oscillator `update-order` / `sign-error` study
+mutants are still graded by the oscillator study harness, and the Study 1/2 results are not
 yet reproducible from the repository
 ([#100](https://github.com/akurkar07/InvariantLab/issues/100)).
 
-[Unreleased]: https://github.com/akurkar07/InvariantLab/commits/main
+[Unreleased]: https://github.com/akurkar07/InvariantLab/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/akurkar07/InvariantLab/releases/tag/v1.0.0
