@@ -13,6 +13,7 @@ Each task is a self-contained package:
 tasks/<task>/
 ├── contract.yaml
 ├── specification.md
+├── examples/input.json
 ├── src/solver.py
 └── tests/
     ├── public/
@@ -24,6 +25,11 @@ The candidate implementation is executed through the same documented boundary fo
 ```bash
 python src/solver.py --input input.json --output result.npz
 ```
+
+Every task commits an `examples/input.json`, so the boundary can be exercised as-is, e.g.
+`cd tasks/oscillator && uv run python src/solver.py --input examples/input.json --output result.npz`.
+Task suites run per task directory: `cd tasks/<task> && uv run pytest tests`
+(or `make test-tasks` for all four).
 
 Public tests represent ordinary tests that an agent may see while implementing a task.
 
@@ -176,7 +182,7 @@ This separation is intentional. The benchmark should not certify an implementati
 
 Each `contract.yaml` declares the task identity, executable paths, numerical settings and exact NPZ output.
 
-Example:
+Example (`tasks/oscillator/contract.yaml`, verbatim):
 
 ```yaml
 id: oscillator_verlet
@@ -194,6 +200,18 @@ output:
     - name: state
       shape: [null, 2]
       dtype: float64
+budgets:
+  wall_seconds: 300
+  model_tokens: 16000
+numerics:
+  dtype: float64
+  seed: 42
+  tolerances:
+    state_relative_l2: 1.0e-5
+    energy_relative_drift: 1.0e-6
+description: |
+  Implement a numerical solver for the 1-D harmonic oscillator
+  d²x/dt² = -ω²x using the velocity Verlet method.
 ```
 
 The validator fails closed on malformed contracts, missing required V1 packages and unsafe declared paths.

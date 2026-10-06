@@ -1,0 +1,14 @@
+{
+  "task_id": "heat_ftcs",
+  "parameters": {
+    "nx": 47,
+    "nt": 120,
+    "alpha": 0.1,
+    "length": 1.2,
+    "t_final": 0.05
+  },
+  "numerics": {
+    "dtype": "float64",
+    "seed": 42
+  }
+}

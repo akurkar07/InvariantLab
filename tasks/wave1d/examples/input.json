@@ -1,0 +1,14 @@
+{
+  "task_id": "wave_leapfrog",
+  "parameters": {
+    "nx": 81,
+    "nt": 160,
+    "c": 0.7,
+    "length": 1.3,
+    "t_final": 0.25
+  },
+  "numerics": {
+    "dtype": "float64",
+    "seed": 42
+  }
+}
