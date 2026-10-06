@@ -157,7 +157,9 @@ def test_generic_task_mutation_experiment_types() -> None:
         id="update-order",
         task_id=task.id,
         family=MutationFamily.UPDATE_ORDER_ERROR,
+        interface="legacy_study",
         source="solver.py",
+        expected_effect="stale acceleration in the second velocity half-step",
     )
     experiment = ExperimentDefinition(
         task="tasks/oscillator",
@@ -171,3 +173,79 @@ def test_generic_task_mutation_experiment_types() -> None:
     assert task.id == "oscillator_verlet"
     assert mutation.task_id == task.id
     assert experiment.conditions == ["weak", "metrics"]
+
+
+def test_package_mutation_requires_expected_failures() -> None:
+    """Package mutants must declare a scientific failure."""
+    with pytest.raises(ValidationError, match="package mutants must declare"):
+        MutationDefinition(
+            id="bad-sign",
+            task_id="fixture_task",
+            family=MutationFamily.SIGN_ERROR,
+            expected_effect="wrong force direction",
+        )
+
+
+def test_mutation_rejects_invalid_expected_failure_regex() -> None:
+    """Expected failure messages must compile as regular expressions."""
+    with pytest.raises(ValidationError, match="is not a valid regex"):
+        MutationDefinition(
+            id="bad-sign",
+            task_id="fixture_task",
+            family=MutationFamily.SIGN_ERROR,
+            expected_effect="wrong force direction",
+            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "["}],
+        )
+
+
+def test_mutation_rejects_zero_max_changed_lines() -> None:
+    """Mutant change budgets must be positive."""
+    with pytest.raises(ValidationError):
+        MutationDefinition(
+            id="bad-sign",
+            task_id="fixture_task",
+            family=MutationFamily.SIGN_ERROR,
+            expected_effect="wrong force direction",
+            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+            max_changed_lines=0,
+        )
+
+
+def test_mutation_rejects_empty_expected_effect() -> None:
+    """Mutants must explain their expected scientific effect."""
+    with pytest.raises(ValidationError, match="expected_effect must not be empty"):
+        MutationDefinition(
+            id="bad-sign",
+            task_id="fixture_task",
+            family=MutationFamily.SIGN_ERROR,
+            expected_effect="  ",
+            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+        )
+
+
+def test_mutation_rejects_unknown_fields() -> None:
+    """Mutation manifests forbid undeclared fields."""
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        MutationDefinition(
+            id="bad-sign",
+            task_id="fixture_task",
+            family=MutationFamily.SIGN_ERROR,
+            expected_effect="wrong force direction",
+            expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+            unexpected="value",
+        )
+
+
+def test_mutation_manifest_defaults() -> None:
+    """Package manifests provide conventional source and line-budget defaults."""
+    mutation = MutationDefinition(
+        id="bad-sign",
+        task_id="fixture_task",
+        family=MutationFamily.SIGN_ERROR,
+        expected_effect="wrong force direction",
+        expected_failures=[{"test": "tests/scientific/test_reference.py::test_x", "message": "failed"}],
+    )
+
+    assert mutation.source == "solver.py"
+    assert mutation.max_changed_lines == 10
+    assert mutation.interface == "package"
