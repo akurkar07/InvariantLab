@@ -1,6 +1,6 @@
 # InvariantLab — Makefile (targets mirror .github/workflows/tests.yml and task-validation.yml)
 
-.PHONY: help install install-dev lint format typecheck test test-unit test-acceptance test-tasks coverage validate-tasks clean
+.PHONY: help install install-dev lint format typecheck test test-unit test-acceptance test-tasks coverage validate-tasks reproduce clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -26,6 +26,9 @@ typecheck: ## Run mypy
 
 test: ## Run top-level tests (excluding acceptance)
 	uv run pytest tests/ -v --ignore=tests/acceptance
+
+reproduce: ## Replay smoke run + report reconstruction
+	uv run python scripts/reproduce_report.py --smoke
 
 test-unit: ## Run unit tests
 	uv run pytest tests/unit/ -v

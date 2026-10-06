@@ -1,0 +1,29 @@
+name: Reproduce Smoke Run
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: reproduce-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reproduce-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --extra dev
+      - run: uv run python scripts/reproduce_report.py --smoke --output ${{ runner.temp }}/replay-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: replay-smoke
+          path: ${{ runner.temp }}/replay-smoke
+          if-no-files-found: warn

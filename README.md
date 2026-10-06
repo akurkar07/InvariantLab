@@ -67,6 +67,10 @@ and fails the scientific checks; the single repair, a fixed known-correct solver
 the `reference_stub` adapter, passes both. Results go to `runs/first-model-oscillator/`. If
 Docker Hub rate-limits `python:3.12-slim`, add `--image mirror.gcr.io/library/python:3.12-slim`.
 
+CI's "Reproduce Smoke Run" workflow runs `uv run python scripts/reproduce_report.py --smoke`
+(`make reproduce`), which runs `configs/experiments/replay-smoke.yaml` in Docker, rebuilds the
+report and fails on any drift from `tests/fixtures/expected/replay-smoke-summary.json`.
+
 To run against a local model with Ollama, see [Model execution](docs/local-models.md).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full local verification commands (including the
