@@ -264,3 +264,39 @@ task,mutation,model,condition,n,scientific_passes,scientific_pass_rate,wilson_lo
 oscillator,update-order,fixture/replay-mini,weak,2,1,0.500000,0.094529,0.905471,1,1.250025,0.000000
 oscillator,update-order,fixture/replay-mini,metrics,2,2,1.000000,0.342372,1.000000,0,0.000050,0.500000
 ```
+
+## Exporting a dataset
+
+Export a repair run as a local Hugging Face-loadable dataset with per-record
+provenance; no model or Docker required. The command revalidates the run like
+`invariantlab report` and writes JSONL records plus a dataset card.
+
+```bash
+uv run invariantlab export-hf \
+  --experiment tests/fixtures/runs/repair-mini/experiment.yaml \
+  --run-dir tests/fixtures/runs/repair-mini \
+  --output exports/repair-mini
+```
+
+The output directory looks like:
+
+```text
+exports/repair-mini/
+├── README.md            # dataset card with per-condition metrics and provenance
+├── baseline_solver.py   # baseline solver source used for candidate_diff
+└── data/
+    └── samples.jsonl    # one JSON object per canonical scheduled record
+```
+
+Each row carries the prompt, response, candidate source, unified diff against the
+baseline, severity metrics and a `provenance` object (git commit, package version,
+resolved model id and adapter, container image and digest, config and events
+hashes). Before writing anything, the exporter scans the payload for secrets
+(env-var values, `authorization`/`api_key` fields, common token shapes) and exits
+1 without creating the output directory on a hit.
+
+The export is a plain dataset directory — nothing is uploaded to the Hub; upload
+it yourself if you want it hosted. The `export` extra
+(`uv sync --extra export`) is optional and only needed to load the result with
+`datasets` (e.g. `datasets.load_dataset("json", data_files="data/samples.jsonl")`);
+the exporter itself imports nothing from it.

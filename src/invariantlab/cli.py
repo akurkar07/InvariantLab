@@ -142,6 +142,25 @@ def report(
         raise typer.Exit(code=1) from e
 
 
+@app.command("export-hf")
+def export_hf(
+    experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),
+    run_dir: str = typer.Option(..., "--run-dir", help="Existing run directory."),
+    output: str = typer.Option(..., "--output", help="Directory for the exported dataset."),
+) -> None:
+    """Export a repair run as a local Hugging Face-loadable dataset."""
+    from invariantlab.reporting import export_hf_dataset
+
+    try:
+        result = export_hf_dataset(Path(experiment), Path(run_dir), Path(output))
+        console.print(f"[green]OK[/green] Exported {result['rows']} rows to {output}")
+        for name, path in result["paths"].items():
+            console.print(f"{name}: [bold]{path}[/bold]", soft_wrap=True)
+    except Exception as e:
+        console.print(f"[red]FAIL[/red] Export failed: {e}")
+        raise typer.Exit(code=1) from e
+
+
 @app.command()
 def run(
     experiment: str = typer.Option(..., "--experiment", help="Path to experiment config."),

@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from invariantlab.config import load_experiment_config, load_model_config
+from invariantlab.config import ExperimentConfig, load_experiment_config, load_model_config
 from invariantlab.experiments import repair
 from invariantlab.experiments.repair import ArtifactIntegrityError
 from invariantlab.models import resolve_model_id
@@ -61,13 +61,11 @@ def _write_csv(path: Path, columns: list[str], rows: list[list[Any]]) -> None:
         writer.writerows(rows)
 
 
-def build_report(
+def load_canonical_run(
     experiment_config: Path,
     run_dir: Path,
-    output_dir: Path,
-    html: bool = False,
-) -> dict[str, Any]:
-    """Validate a repair run and rebuild its summary and CSV tables."""
+) -> tuple[ExperimentConfig, str, list[dict[str, Any]], dict[str, Any]]:
+    """Load a repair run and return (experiment, model_id, canonical, summary)."""
 
     experiment = load_experiment_config(experiment_config)
     repair._validate_experiment(experiment)
@@ -124,6 +122,21 @@ def build_report(
                 "study-summary.json by_condition disagrees with events.jsonl: "
                 + ", ".join(differences)
             )
+
+    return experiment, model_id, canonical, summary
+
+
+def build_report(
+    experiment_config: Path,
+    run_dir: Path,
+    output_dir: Path,
+    html: bool = False,
+) -> dict[str, Any]:
+    """Validate a repair run and rebuild its summary and CSV tables."""
+
+    experiment, model_id, canonical, summary = load_canonical_run(experiment_config, run_dir)
+    baseline = canonical[0]["baseline"] if canonical else {}
+    events_sha256 = summary["events_sha256"]
 
     task_id = (
         canonical[0]["task"] if canonical else Path(experiment.task or "tasks/oscillator").name

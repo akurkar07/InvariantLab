@@ -32,7 +32,7 @@ What is implemented on `main` today. The [V1 design target](docs/methodology.md)
 | Defect injection / mutants | Partial (registry; two oscillator mutants) | `src/invariantlab/mutations/`, `tasks/oscillator/mutations/` | [M4](https://github.com/akurkar07/InvariantLab/milestone/3) |
 | Model adapters | Implemented | `src/invariantlab/models/adapter.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
 | Repair runner + `audit-run` | Implemented | `src/invariantlab/experiments/repair.py` | [M5](https://github.com/akurkar07/InvariantLab/milestone/4) |
-| Reporting / dashboard / HF export | Partial (`report`, static `report.html`; no HF export) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
+| Reporting / dashboard / HF export | Partial (`report`, static `report.html`, local HF export via `export-hf`) | `src/invariantlab/reporting/` | [#106](https://github.com/akurkar07/InvariantLab/issues/106), [#107](https://github.com/akurkar07/InvariantLab/issues/107) |
 | Release | Planned | - | [M7](https://github.com/akurkar07/InvariantLab/milestone/6) |
 
 ## Quickstart
@@ -80,13 +80,13 @@ It currently provides:
 - raw run-evidence auditing (`invariantlab audit-run`)
 - rebuilding a repair run's summary and CSV tables from `events.jsonl` alone, with an optional
   static `report.html` (`invariantlab report --html`)
+- local Hugging Face dataset export with per-record provenance (`invariantlab export-hf`)
 
 It does **not** provide yet:
 
 - verification layers 3-6 (invariants, convergence, metamorphic, robustness) as reusable gates
 - controlled mutants for kepler, heat1d and wave1d (only the oscillator has mutants)
 - plots, interactive filtering or a served dashboard (the static `report.html` is the V1 dashboard)
-- Hugging Face dataset export
 
 ## Empirical results
 
@@ -115,6 +115,7 @@ The V1 design and reference material lives in [docs/methodology.md](docs/methodo
 - [Contracts](docs/methodology.md#contracts): what each `contract.yaml` declares; see also [Task Authoring](docs/task-authoring.md).
 - [Reproducible outputs](docs/methodology.md#reproducible-outputs): files in a repair run directory, run manifest and checksums.
 - [Reporting a run](docs/methodology.md#reporting-a-run): `invariantlab report` rebuilds summary and CSV tables (and, with `--html`, a static `report.html`) from `events.jsonl` without a model or Docker.
+- [Exporting a dataset](docs/methodology.md#exporting-a-dataset): `invariantlab export-hf` writes a local Hugging Face-loadable dataset with per-record provenance after a credential scan.
 
 ## Local-first model execution
 
@@ -196,7 +197,6 @@ or options:
   `validate-task` per task or `python scripts/validate_task.py --task-dir tasks/`.
 - `invariantlab run --suite <suite> --condition <condition>`: suite-by-condition runs. Today
   conditions are set in the experiment config's `conditions` list.
-- `invariantlab export hf`: Hugging Face dataset export.
 
 ## Repository layout
 
@@ -204,11 +204,11 @@ Generated from `git ls-files`; every path below exists on `main`.
 
 ```text
 src/invariantlab/
-├── cli.py                       # validate-task, model-check, run, audit-run, report
+├── cli.py                       # validate-task, model-check, run, audit-run, report, export-hf
 ├── config.py                    # model and experiment config loading
 ├── schema.py                    # task/output contract and experiment models
 ├── experiments/                 # repair and feedback-replication runners
-├── reporting/                   # rebuild run tables from events.jsonl
+├── reporting/                   # rebuild run tables from events.jsonl; export HF datasets
 ├── models/
 │   └── adapter.py               # reference_stub, replay, ollama and openai_compatible adapters
 ├── tasks/
