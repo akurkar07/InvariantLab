@@ -216,8 +216,11 @@ def build_report(
             baseline_source = baseline_path.read_text(encoding="utf-8")
             baseline_source_label = "run_dir/baseline_solver.py"
         else:
-            _, _, mutation_dir, mutation, baseline_source, _ = repair._resolve_assets(experiment)
-            baseline_source_label = f"mutation source {(mutation_dir / mutation.source).as_posix()}"
+            assets = repair._resolve_assets(experiment)
+            baseline_source = assets.mutation_source
+            baseline_source_label = (
+                f"mutation source {(assets.mutation_dir / assets.mutation.source).as_posix()}"
+            )
         by_condition_dicts = [
             dict(zip(BY_CONDITION_COLUMNS, row, strict=True)) for row in by_condition_rows
         ]

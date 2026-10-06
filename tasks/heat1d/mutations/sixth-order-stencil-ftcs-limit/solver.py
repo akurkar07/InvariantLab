@@ -36,15 +36,22 @@ def solve(
     dx = length / (nx - 1)
     dt = t_final / nt
     ratio = alpha * dt / dx**2
-    if ratio > 0.25:
-        raise ValueError(f"FTCS stability requires r <= 0.25; got {ratio}")
+    if ratio > 0.5:
+        raise ValueError(f"FTCS stability requires r <= 0.5; got {ratio}")
 
     x = np.linspace(0.0, length, nx, dtype=np.float64)
     state = np.sin(np.pi * x / length)
     state[[0, -1]] = 0.0
     for _ in range(nt):
         next_state = state.copy()
-        next_state[1:-1] = state[1:-1] + ratio * (state[2:] - 2.0 * state[1:-1] + state[:-2])
+        padded = np.concatenate((-state[3:0:-1], state, -state[-2:-5:-1]))
+        laplacian = (
+            2.0 * (padded[:-6] + padded[6:])
+            - 27.0 * (padded[1:-5] + padded[5:-1])
+            + 270.0 * (padded[2:-4] + padded[4:-2])
+            - 490.0 * padded[3:-3]
+        ) / 180.0
+        next_state[1:-1] = state[1:-1] + ratio * laplacian[1:-1]
         next_state[0] = 0.0
         next_state[-1] = 0.0
         state = next_state
@@ -96,8 +103,8 @@ def parse_input(payload: object) -> tuple[int, int, float, float, float]:
     length = _positive_finite("length", parameters["length"])
     t_final = _positive_finite("t_final", parameters["t_final"])
     ratio = alpha * (t_final / nt) / (length / (nx - 1)) ** 2
-    if ratio > 0.25:
-        raise ValueError(f"FTCS stability requires r <= 0.25; got {ratio}")
+    if ratio > 0.5:
+        raise ValueError(f"FTCS stability requires r <= 0.5; got {ratio}")
     return nx, nt, alpha, length, t_final
 
 

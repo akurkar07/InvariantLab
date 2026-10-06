@@ -196,8 +196,9 @@ def export_hf_dataset(
     """Write a Hugging Face-loadable dataset directory for a repair run."""
 
     experiment, model_id, canonical, summary = load_canonical_run(experiment_config, run_dir)
-    task_dir, task, _, _, mutation_source, _ = repair._resolve_assets(experiment)
-    contract_sha256 = hashlib.sha256((task_dir / task.contract).read_bytes()).hexdigest()
+    assets = repair._resolve_assets(experiment)
+    mutation_source = assets.mutation_source
+    contract_sha256 = hashlib.sha256((assets.task_dir / "contract.yaml").read_bytes()).hexdigest()
 
     baseline_path = run_dir / "baseline_solver.py"
     if baseline_path.exists():
@@ -252,7 +253,7 @@ def export_hf_dataset(
         }
         rows.append({field: values.get(field, record.get(field)) for field in EXPORT_FIELDS})
 
-    task_id = ordered_records[0]["task"] if ordered_records else task.id
+    task_id = ordered_records[0]["task"] if ordered_records else assets.contract.id
     card = _build_card(
         experiment.name,
         len(rows),

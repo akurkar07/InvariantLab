@@ -1,0 +1,12 @@
+name: repair-package-replay
+description: "Replay the oscillator package mutant repair; unit tests rerun it for every task with package mutants."
+model: configs/models/replay-repair-package.yaml
+runner: repair
+task: tasks/oscillator
+mutation: tasks/oscillator/mutations/non-conservative-damping
+conditions:
+  - weak
+n_attempts: 1
+seed: 1729
+randomize_order: false
+container_image: invariantlab/package-candidate:py3.12
