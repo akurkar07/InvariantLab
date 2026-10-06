@@ -17,20 +17,20 @@
 
 | Condition | Pass | Regressions | Wilson 95% CI |
 |---|---|---|---|
-| weak | 30/30 | 0 | [0.904, 1.000] |
-| placebo | 30/30 | 0 | [0.908, 1.000] |
-| metrics | 30/30 | 0 | [0.904, 1.000] |
-| interpreted | 30/30 | 0 | [0.893, 1.000] |
+| weak | 30/30 | 0 | [0.886, 1.000] |
+| placebo | 30/30 | 0 | [0.886, 1.000] |
+| metrics | 30/30 | 0 | [0.886, 1.000] |
+| interpreted | 30/30 | 0 | [0.886, 1.000] |
 | **Total** | **120/120** | **0** | |
 
 ### DeepSeek-Coder-6.7B-Instruct
 
 | Condition | Pass | Regressions | Wilson 95% CI |
 |---|---|---|---|
-| weak | 30/30 | 0 | [0.904, 1.000] |
-| placebo | 30/30 | 0 | [0.908, 1.000] |
-| metrics | 30/30 | 0 | [0.904, 1.000] |
-| interpreted | 30/30 | 0 | [0.893, 1.000] |
+| weak | 30/30 | 0 | [0.886, 1.000] |
+| placebo | 30/30 | 0 | [0.886, 1.000] |
+| metrics | 30/30 | 0 | [0.886, 1.000] |
+| interpreted | 30/30 | 0 | [0.886, 1.000] |
 | **Total** | **120/120** | **0** | |
 
 ## Artifact Integrity

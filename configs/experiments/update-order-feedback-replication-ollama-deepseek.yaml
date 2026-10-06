@@ -1,0 +1,16 @@
+name: update-order-feedback-replication-ollama-deepseek
+description: "Study 2 on local Ollama DeepSeek-Coder 6.7B."
+task_suite: configs/task-suites/v1-smoke.yaml
+model: configs/models/ollama-deepseek-coder-6.7b.yaml
+runner: repair
+task: tasks/oscillator
+mutation: tasks/oscillator/mutations/update-order
+conditions:
+  - weak
+  - placebo
+  - metrics
+  - interpreted
+n_attempts: 30
+seed: 1729
+randomize_order: true
+container_image: python:3.12-slim
