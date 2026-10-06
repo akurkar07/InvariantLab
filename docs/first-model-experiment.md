@@ -12,6 +12,11 @@ The replay config is deterministic; the live config uses the default Ollama mode
 uv run invariantlab run --experiment configs/experiments/first-model-oscillator.yaml
 ```
 
+The reference-stub adapter returns a fixed, known-correct solver, proving the pipeline works without an API key; it is not a model.
+
+## First live model run
+
+The live example is local-first and uses the default Ollama model configuration.
 For a local live model, pull the configured Ollama model and run:
 
 ```bash

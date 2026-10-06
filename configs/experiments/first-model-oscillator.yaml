@@ -1,6 +1,7 @@
 name: first-model-oscillator
 description: "First empirical InvariantLab run: repair a weak-test-passing oscillator defect."
-model: configs/models/replay-first-model.yaml
+task_suite: configs/task-suites/v1-smoke.yaml
+model: configs/models/reference-stub-oscillator.yaml
 runner: repair
 task: tasks/oscillator
 mutation: tasks/oscillator/mutations/sign-error

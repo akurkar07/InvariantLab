@@ -1,6 +1,6 @@
 # InvariantLab — Makefile
 
-.PHONY: help install install-dev lint format test test-unit test-acceptance typecheck coverage clean validate-tasks
+.PHONY: help install install-dev lint format test test-unit test-acceptance test-tasks typecheck coverage clean validate-tasks
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -30,6 +30,9 @@ test-unit: ## Run unit tests
 
 test-acceptance: ## Run acceptance tests
 	pytest tests/acceptance/ -v
+
+test-tasks: ## Run each task package suite in its own directory
+	for t in oscillator kepler heat1d wave1d; do (cd tasks/$$t && pytest tests -q) || exit 1; done
 
 coverage: ## Run top-level tests with coverage
 	pytest tests/ --cov=invariantlab --cov-report=term-missing --cov-report=html
