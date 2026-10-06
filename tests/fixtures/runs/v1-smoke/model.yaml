@@ -1,0 +1,5 @@
+adapter: replay
+temperature: 0.0
+max_tokens: 4096
+extra:
+  events_path: tests/fixtures/runs/v1-smoke/replay-source.jsonl
