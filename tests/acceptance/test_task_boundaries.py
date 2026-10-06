@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from invariantlab.schema import load_task_contract
+from invariantlab.tasks.workspace import build_agent_workspace
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 TASK_SOURCE_ROOT = REPOSITORY_ROOT / "tasks"
 EXPECTED_TASK_NAMES = ("oscillator", "kepler", "heat1d", "wave1d")
@@ -177,3 +180,16 @@ def test_scientific_tests_do_not_import_candidate_solver_modules() -> None:
                     f"{task_name}: {relative_path}:{line}: forbidden candidate import {module}"
                 )
     assert not violations, "\n".join(violations)
+
+
+def test_agent_workspace_contains_no_scientific_tests(tmp_path: Path) -> None:
+    for task_name in EXPECTED_TASK_NAMES:
+        task_root = TASK_SOURCE_ROOT / task_name
+        workspace = build_agent_workspace(task_root, tmp_path / task_name)
+        contract = load_task_contract(task_root)
+        scientific_path = contract.scientific_tests
+        assert not any(
+            relative_path == scientific_path or relative_path.startswith(f"{scientific_path}/")
+            for path in workspace.rglob("*")
+            if (relative_path := path.relative_to(workspace).as_posix())
+        )
