@@ -1,8 +1,11 @@
 # InvariantLab Documentation
 
-- [Methodology](methodology.md) — Scientific framework and design rationale
-- [Task Authoring](task-authoring.md) — How to create and validate tasks
+- [Task Authoring](task-authoring.md) — Task layout, subprocess protocol, NPZ output contract and trust boundary
 - [Experiment Authoring](experiment-authoring.md) — Config-driven tasks, mutations, models and repair studies
-- [Verification](verification.md) — The 6-layer verification stack
-- [Model Adapters](model-adapters.md) — Adding new model backends
-- [Limitations](limitations.md) — Scientific scope and known constraints
+- [Local Models](local-models.md) — Running experiments against local model servers
+- [First Model Experiment](first-model-experiment.md) — Deterministic smoke run and first live oscillator repair experiment
+- [First Multi-Condition Study Results](first-multi-condition-study-results.md) — Study 1 results
+- [Update-Order Feedback Replication](update-order-feedback-replication.md) — Study 2 protocol
+- [Study 2: Two-Model Comparison](study-two-model-comparison.md) — Study 2 results
+
+The repository README describes the currently implemented benchmark, evaluation harness and scientific evidence.
