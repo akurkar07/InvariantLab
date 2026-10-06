@@ -53,6 +53,7 @@ Example:
 id: update-order
 task_id: oscillator_verlet
 family: update_order_error
+interface: legacy_study
 source: solver.py
 expected_effect: stale acceleration in the second velocity half-step
 ```
@@ -60,6 +61,12 @@ expected_effect: stale acceleration in the second velocity half-step
 The mutation identifier is written to run records. The directory path is only configuration,
 so moving from the legacy `mutation: update-order` field to a path does not change the
 Study 2 record identifier.
+
+Package mutants use `interface: package`, declare `expected_failures` entries with a
+scientific pytest node id in `test` and an output regex in `message`, and may set
+`max_changed_lines` (default 10). `invariantlab.mutations.discover_mutants` validates
+the manifests and returns registered mutants; it raises `MutationRegistryError` with
+all discovered problems when any declaration is invalid.
 
 ## Add a model
 

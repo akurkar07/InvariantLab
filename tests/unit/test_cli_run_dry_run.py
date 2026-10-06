@@ -123,6 +123,8 @@ def test_missing_mutation_source_fails_dry_run(tmp_path):
         "id: missing-source\n"
         "task_id: oscillator_verlet\n"
         "family: sign_error\n"
+        "interface: legacy_study\n"
+        "expected_effect: missing solver source\n"
         "source: missing.py\n",
         encoding="utf-8",
     )
