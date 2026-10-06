@@ -84,7 +84,7 @@ def _node_id(copy_dir: Path, classname: str, name: str) -> str:
         if test_file.is_file():
             relative = test_file.relative_to(copy_dir).as_posix()
             suffix = parts[length:] + ([name] if name else [])
-            return f"{relative}::{ '::'.join(suffix) }" if suffix else relative
+            return f"{relative}::{'::'.join(suffix)}" if suffix else relative
     return "::".join(part for part in (classname, name) if part) or "<unknown test>"
 
 
@@ -175,11 +175,7 @@ def _run_suite(copy_dir: Path, suite: str, timeout: float) -> _SuiteResult:
                 message=message,
             )
         )
-    issue = (
-        f"pytest exited with return code {returncode}"
-        if returncode not in {0, 1}
-        else None
-    )
+    issue = f"pytest exited with return code {returncode}" if returncode not in {0, 1} else None
     return _SuiteResult(tuple(cases), returncode, issue=issue)
 
 
@@ -223,9 +219,7 @@ def validate_reference(task_dir: Path, *, timeout: float | None = None) -> Refer
         copy_dir = temp_dir / "task"
         _copy_task(task_dir, copy_dir)
         public_result = _run_suite(copy_dir, contract.public_tests, suite_timeout)
-        public_passed = _reference_suite_passed(
-            "public", public_result, suite_timeout, reasons
-        )
+        public_passed = _reference_suite_passed("public", public_result, suite_timeout, reasons)
         if public_result.timed_out:
             reasons.append("scientific: skipped because the public suite timed out")
             scientific_passed = False
@@ -258,9 +252,7 @@ def _controlled_defect(mutant: RegisteredMutant, reasons: list[str]) -> bool:
     if baseline_lines == mutant_lines:
         reasons.append("controlled defect: mutant source is identical to the reference")
         valid = False
-    diff_lines = list(
-        difflib.unified_diff(baseline_lines, mutant_lines, lineterm="")
-    )[2:]
+    diff_lines = list(difflib.unified_diff(baseline_lines, mutant_lines, lineterm=""))[2:]
     changed_lines = sum(line.startswith(("+", "-")) for line in diff_lines)
     if changed_lines > mutant.definition.max_changed_lines:
         reasons.append(
@@ -303,8 +295,7 @@ def _expected_failures_matched(
     for testcase in failing:
         if not any(_matches(testcase.node_id, expected.test) for expected in declarations):
             reasons.append(
-                f"scientific: unexpected failure {testcase.node_id}: "
-                f"{testcase.message.strip()}"
+                f"scientific: unexpected failure {testcase.node_id}: {testcase.message.strip()}"
             )
             valid = False
         if testcase.outcome == "error":
@@ -328,9 +319,7 @@ def _expected_failures_matched(
             try:
                 message_matches = re.search(expected.message, testcase.message) is not None
             except re.error as error:
-                reasons.append(
-                    f"scientific: invalid message regex for {expected.test}: {error}"
-                )
+                reasons.append(f"scientific: invalid message regex for {expected.test}: {error}")
                 valid = False
                 continue
             if not message_matches:
@@ -342,13 +331,9 @@ def _expected_failures_matched(
     return valid
 
 
-def validate_mutant(
-    mutant: RegisteredMutant, *, timeout: float | None = None
-) -> MutantValidation:
+def validate_mutant(mutant: RegisteredMutant, *, timeout: float | None = None) -> MutantValidation:
     """Require public compatibility, declared scientific failures, and a bounded defect."""
-    suite_timeout = float(
-        mutant.contract.budgets.wall_seconds if timeout is None else timeout
-    )
+    suite_timeout = float(mutant.contract.budgets.wall_seconds if timeout is None else timeout)
     reasons: list[str] = []
     controlled_defect = _controlled_defect(mutant, reasons)
     with tempfile.TemporaryDirectory(
@@ -360,18 +345,14 @@ def validate_mutant(
         mutant_entrypoint = copy_dir / mutant.contract.entrypoint
         mutant_entrypoint.write_bytes(mutant.source_path.read_bytes())
         public_result = _run_suite(copy_dir, mutant.contract.public_tests, suite_timeout)
-        public_suite_reasons = _suite_failure_reasons(
-            "public", public_result, suite_timeout
-        )
+        public_suite_reasons = _suite_failure_reasons("public", public_result, suite_timeout)
         reasons.extend(public_suite_reasons)
         public_passed = not public_suite_reasons
         if not public_suite_reasons:
             public_passed = True
             for testcase in public_result.cases:
                 if testcase.outcome in {"failure", "error"}:
-                    reasons.append(
-                        f"public: {testcase.node_id} failed: {testcase.message.strip()}"
-                    )
+                    reasons.append(f"public: {testcase.node_id} failed: {testcase.message.strip()}")
                     public_passed = False
             if not any(testcase.outcome == "passed" for testcase in public_result.cases):
                 reasons.append("public: suite had no passed test cases")

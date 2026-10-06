@@ -58,9 +58,7 @@ def _content_based_evaluator(source: str, *_args: object) -> dict[str, object]:
 @pytest.fixture(autouse=True)
 def _no_docker_provenance(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(REPO_ROOT)
-    monkeypatch.setattr(
-        repair, "_resolve_image_digest", lambda image: f"python@sha256:{'a' * 64}"
-    )
+    monkeypatch.setattr(repair, "_resolve_image_digest", lambda image: f"python@sha256:{'a' * 64}")
     monkeypatch.setattr(repair, "_git_state", lambda: ("0" * 40, False))
     monkeypatch.setattr(repair, "_evaluate_source", _content_based_evaluator)
 
@@ -93,8 +91,7 @@ def _write_repair_config(tmp_path: Path) -> Path:
                 f"model: {(REPO_ROOT / 'configs/models/reference-stub-oscillator.yaml').as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
-                "mutation: "
-                f"{(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
+                f"mutation: {(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
                 "conditions: [weak, metrics]",
                 "n_attempts: 2",
                 "seed: 1729",
@@ -153,15 +150,13 @@ def test_full_run_writes_complete_schedule_and_summary(
     summary = json.loads((output / "study-summary.json").read_text(encoding="utf-8"))
     assert summary["target_cells"] == summary["completed_cells"] == 4
     assert summary["complete"] is True
-    assert sum(
-        summary["by_condition"][condition]["completed"]
-        for condition in ("weak", "metrics")
-    ) == 4
+    assert (
+        sum(summary["by_condition"][condition]["completed"] for condition in ("weak", "metrics"))
+        == 4
+    )
     for condition in ("weak", "metrics"):
         assert summary["by_condition"][condition]["scientific_passes"] == sum(
-            bool(event["successful_repair"])
-            for event in events
-            if event["condition"] == condition
+            bool(event["successful_repair"]) for event in events if event["condition"] == condition
         )
     assert (output / "checksums.sha256").is_file()
     assert repair.audit_repair_experiment(config, output)["integrity_ok"] is True
@@ -238,9 +233,7 @@ def test_duplicate_event_is_rejected_and_audited_canonically(
 
     assert _status(output)["status"] == "invalid_artifact"
     audit = repair.audit_repair_experiment(config, output, write_canonical=True)
-    canonical = (output / "events.canonical.jsonl").read_text(
-        encoding="utf-8"
-    ).splitlines()
+    canonical = (output / "events.canonical.jsonl").read_text(encoding="utf-8").splitlines()
     assert audit["integrity_ok"] is False
     assert audit["duplicate_records"] == 1
     assert len(canonical) == 4

@@ -18,8 +18,7 @@ from invariantlab.experiments.repair import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = sorted(
-    path.parent
-    for path in (REPO_ROOT / "tests/fixtures/replay").glob("*/experiment.yaml")
+    path.parent for path in (REPO_ROOT / "tests/fixtures/replay").glob("*/experiment.yaml")
 )
 MANIFEST_FIELDS = (
     "config_sha256",
@@ -94,9 +93,7 @@ def evaluator_outcomes(run_dir: Path, config_path: Path) -> dict[str, dict[str, 
         f"{record['condition']}/{record['trial']}": {
             "baseline": _verdict(record["baseline"]),
             "repaired": _verdict(record["repaired"]),
-            "candidate_sha256": hashlib.sha256(
-                record["candidate_source"].encode()
-            ).hexdigest(),
+            "candidate_sha256": hashlib.sha256(record["candidate_source"].encode()).hexdigest(),
         }
         for record in canonical
     }
@@ -162,14 +159,10 @@ def test_perturbed_replay_response_changes_evaluator_outcomes(
         if line.strip()
     ]
     trial_one = next(
-        record
-        for record in records
-        if record["condition"] == "weak" and record["trial"] == 1
+        record for record in records if record["condition"] == "weak" and record["trial"] == 1
     )
     trial_two = next(
-        record
-        for record in records
-        if record["condition"] == "weak" and record["trial"] == 2
+        record for record in records if record["condition"] == "weak" and record["trial"] == 2
     )
     trial_two["response"] = trial_one["response"]
     events_path.write_text(

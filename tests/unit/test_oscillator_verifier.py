@@ -25,6 +25,7 @@ def _thresholds_file(tmp_path: Path) -> str:
     path.write_text(json.dumps(_thresholds()), encoding="utf-8")
     return str(path)
 
+
 CORRECT_SOLVER = """def solve_oscillator_verlet(x0, v0, omega, dt, n_steps):
     trajectory = [(0.0, float(x0), float(v0))]
     x = float(x0)
@@ -93,18 +94,12 @@ def _verify_payload(payload: str, tmp_path: Path) -> dict:
 
 
 def test_update_order_mutation_metrics(tmp_path):
-    source = (TASK / "mutations" / "update-order" / "solver.py").read_text(
-        encoding="utf-8"
-    )
+    source = (TASK / "mutations" / "update-order" / "solver.py").read_text(encoding="utf-8")
     result = _evaluate(source, tmp_path)
     assert result["public_passed"] is True
     assert result["scientific_passed"] is False
-    assert result["metrics"]["max_state_relative_error"] == pytest.approx(
-        2.07e-2, rel=5e-3
-    )
-    assert result["metrics"]["max_energy_relative_drift"] == pytest.approx(
-        4.59e-2, rel=5e-3
-    )
+    assert result["metrics"]["max_state_relative_error"] == pytest.approx(2.07e-2, rel=5e-3)
+    assert result["metrics"]["max_energy_relative_drift"] == pytest.approx(4.59e-2, rel=5e-3)
 
 
 def test_correct_solver_passes(tmp_path):
@@ -123,9 +118,7 @@ def test_correct_solver_has_10x_margin_below_study_gate(tmp_path):
 
 
 def test_update_order_mutant_exceeds_every_threshold(tmp_path):
-    source = (TASK / "mutations" / "update-order" / "solver.py").read_text(
-        encoding="utf-8"
-    )
+    source = (TASK / "mutations" / "update-order" / "solver.py").read_text(encoding="utf-8")
     result = _evaluate(source, tmp_path)
     for name, threshold in _thresholds().items():
         assert result["metrics"][name] > threshold

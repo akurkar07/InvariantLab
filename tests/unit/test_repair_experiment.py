@@ -24,17 +24,13 @@ from invariantlab.schema import (
 
 @pytest.fixture(autouse=True)
 def _no_docker_provenance(monkeypatch):
-    monkeypatch.setattr(
-        repair, "_resolve_image_digest", lambda image: f"python@sha256:{'a' * 64}"
-    )
+    monkeypatch.setattr(repair, "_resolve_image_digest", lambda image: f"python@sha256:{'a' * 64}")
     monkeypatch.setattr(repair, "_git_state", lambda: ("0" * 40, False))
 
 
 def test_loads_config_driven_task_and_mutation():
     task = load_task_definition("tasks/oscillator")
-    mutation = load_mutation_definition(
-        "tasks/oscillator/mutations/update-order"
-    )
+    mutation = load_mutation_definition("tasks/oscillator/mutations/update-order")
 
     assert task.id == "oscillator_verlet"
     assert task.verifier == "verifier.py"
@@ -45,9 +41,7 @@ def test_loads_config_driven_task_and_mutation():
 def test_oscillator_study_gate_thresholds_stay_at_study_values():
     task = load_task_definition("tasks/oscillator")
 
-    assert {
-        name: spec.threshold for name, spec in task.feedback_metrics.items()
-    } == {
+    assert {name: spec.threshold for name, spec in task.feedback_metrics.items()} == {
         "max_state_relative_error": 1e-3,
         "max_energy_relative_drift": 1e-3,
     }
@@ -85,9 +79,7 @@ def test_repair_assets_are_resolved_from_experiment_config():
         seed=1729,
     )
 
-    task_dir, task, mutation_dir, mutation, source, prompt = _resolve_assets(
-        experiment
-    )
+    task_dir, task, mutation_dir, mutation, source, prompt = _resolve_assets(experiment)
 
     assert task_dir == Path("tasks/oscillator")
     assert mutation_dir == Path("tasks/oscillator/mutations/update-order")
@@ -169,9 +161,7 @@ def _content_based_evaluator(source: str, *_args):
 def _write_replay_fixture_config(
     tmp_path: Path, n_attempts: int = 2, model: Path | None = None
 ) -> Path:
-    model = model or (
-        REPO_ROOT / "tests/fixtures/replay/oscillator-update-order/model.yaml"
-    )
+    model = model or (REPO_ROOT / "tests/fixtures/replay/oscillator-update-order/model.yaml")
     config = tmp_path / "replay-fixture-experiment.yaml"
     config.write_text(
         "\n".join(
@@ -181,8 +171,7 @@ def _write_replay_fixture_config(
                 f"model: {model.as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
-                "mutation: "
-                f"{(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
+                f"mutation: {(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
                 "conditions: [weak, metrics]",
                 f"n_attempts: {n_attempts}",
                 "seed: 1729",
@@ -207,8 +196,7 @@ def test_repair_runner_replays_fixture_events(tmp_path, monkeypatch):
     events = _events(output)
     assert len(events) == 4
     assert [
-        (event["condition"], event["trial"], event["successful_repair"])
-        for event in events
+        (event["condition"], event["trial"], event["successful_repair"]) for event in events
     ] == [
         ("weak", 1, False),
         ("weak", 2, True),
@@ -221,9 +209,7 @@ def test_repair_runner_replays_fixture_events(tmp_path, monkeypatch):
     assert repair.audit_repair_experiment(config_path, output)["integrity_ok"] is True
 
 
-def test_repair_runner_fails_when_fixture_responses_are_exhausted(
-    tmp_path, monkeypatch
-):
+def test_repair_runner_fails_when_fixture_responses_are_exhausted(tmp_path, monkeypatch):
     monkeypatch.chdir(REPO_ROOT)
     monkeypatch.setattr(repair, "_evaluate_source", _content_based_evaluator)
 
@@ -234,9 +220,7 @@ def test_repair_runner_fails_when_fixture_responses_are_exhausted(
         )
 
 
-def _write_repair_config(
-    tmp_path: Path, n_attempts: int = 2, model: Path | None = None
-) -> Path:
+def _write_repair_config(tmp_path: Path, n_attempts: int = 2, model: Path | None = None) -> Path:
     model = model or REPO_ROOT / "configs/models/reference-stub-oscillator.yaml"
     config = tmp_path / "experiment.yaml"
     config.write_text(
@@ -247,8 +231,7 @@ def _write_repair_config(
                 f"model: {model.as_posix()}",
                 "runner: repair",
                 f"task: {(REPO_ROOT / 'tasks/oscillator').as_posix()}",
-                "mutation: "
-                f"{(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
+                f"mutation: {(REPO_ROOT / 'tasks/oscillator/mutations/update-order').as_posix()}",
                 "conditions: [weak]",
                 f"n_attempts: {n_attempts}",
                 "seed: 1729",

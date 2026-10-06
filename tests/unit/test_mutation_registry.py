@@ -53,17 +53,13 @@ def _write_task(tasks_root: Path, name: str) -> Path:
     return task_dir
 
 
-def _write_mutant(
-    task_dir: Path, directory: str, manifest: dict[str, object] | str
-) -> Path:
+def _write_mutant(task_dir: Path, directory: str, manifest: dict[str, object] | str) -> Path:
     mutation_dir = task_dir / "mutations" / directory
     mutation_dir.mkdir(parents=True)
     if isinstance(manifest, str):
         (mutation_dir / "mutation.yaml").write_text(manifest, encoding="utf-8")
     else:
-        (mutation_dir / "mutation.yaml").write_text(
-            yaml.safe_dump(manifest), encoding="utf-8"
-        )
+        (mutation_dir / "mutation.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
     (mutation_dir / "solver.py").write_text("def solve():\n    return None\n", encoding="utf-8")
     return mutation_dir
 
@@ -73,9 +69,7 @@ def test_discover_mutants_returns_sorted_registered_manifests(tmp_path: Path) ->
     tasks_root = tmp_path / "tasks"
     heat_dir = _write_task(tasks_root, "heat")
     wave_dir = _write_task(tasks_root, "wave")
-    alpha_dir = _write_mutant(
-        heat_dir, "alpha", _manifest(id="alpha", task_id="heat")
-    )
+    alpha_dir = _write_mutant(heat_dir, "alpha", _manifest(id="alpha", task_id="heat"))
     _write_mutant(wave_dir, "zeta", _manifest(id="zeta", task_id="wave"))
     beta_dir = _write_mutant(wave_dir, "beta", _manifest(id="beta", task_id="wave"))
 
@@ -163,9 +157,7 @@ def test_rejects_invalid_manifest(
         discover_mutants(tasks_root)
 
     assert reason in str(exc_info.value)
-    assert (task_dir / "mutations" / "bad-sign" / "mutation.yaml").as_posix() in str(
-        exc_info.value
-    )
+    assert (task_dir / "mutations" / "bad-sign" / "mutation.yaml").as_posix() in str(exc_info.value)
 
 
 def test_rejects_duplicate_ids_within_task(tmp_path: Path) -> None:
@@ -208,8 +200,7 @@ def test_legacy_mutants_are_opt_in(tmp_path: Path) -> None:
 
     assert [mutant.definition.id for mutant in discover_mutants(tasks_root)] == ["package"]
     assert [
-        mutant.definition.id
-        for mutant in discover_mutants(tasks_root, include_legacy=True)
+        mutant.definition.id for mutant in discover_mutants(tasks_root, include_legacy=True)
     ] == ["legacy", "package"]
 
 
