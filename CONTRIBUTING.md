@@ -19,7 +19,7 @@ A pull request can merge into `main` only when these status checks pass on its h
 | `task-tests (oscillator)`, `task-tests (kepler)`, `task-tests (heat1d)`, `task-tests (wave1d)` | Tests | each task suite in its own directory |
 | `typecheck` | Tests | `mypy src/invariantlab/` |
 | `acceptance` | Tests | `pytest tests/acceptance/` |
-| `validate` | Task Validation | `python scripts/validate_task.py --task-dir tasks/` |
+| `validate` | Task Validation | `python scripts/validate_task.py --task-dir tasks/`; `python scripts/validate_mutants.py --task-dir tasks/` |
 
 ## Local verification
 
@@ -38,6 +38,7 @@ uv run ruff format --check src tests tasks scripts
 uv run mypy src/invariantlab/
 uv run pytest tests/ -q
 uv run python scripts/validate_task.py --task-dir tasks/
+uv run python scripts/validate_mutants.py --task-dir tasks/
 ```
 
 Run each task suite from its own directory (`pytest tasks` fails because the suites share
