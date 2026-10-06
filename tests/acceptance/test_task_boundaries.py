@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from invariantlab.schema import load_task_contract
+from invariantlab.tasks.boundary import forbidden_imports
 from invariantlab.tasks.workspace import build_agent_workspace
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -20,26 +21,8 @@ TRUSTED_PREFIXES = (
 )
 
 
-def _is_trusted_module(module: str) -> bool:
-    return any(module == prefix or module.startswith(f"{prefix}.") for prefix in TRUSTED_PREFIXES)
-
-
 def _forbidden_imports(source: str) -> list[tuple[int, str]]:
-    """Return trusted modules imported by agent-facing source."""
-    violations: list[tuple[int, str]] = []
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Import):
-            modules = [alias.name for alias in node.names]
-        elif isinstance(node, ast.ImportFrom) and node.module is not None:
-            modules = (
-                [node.module]
-                if _is_trusted_module(node.module)
-                else [f"{node.module}.{alias.name}" for alias in node.names]
-            )
-        else:
-            continue
-        violations.extend((node.lineno, module) for module in modules if _is_trusted_module(module))
-    return violations
+    return forbidden_imports(source, TRUSTED_PREFIXES)
 
 
 @pytest.mark.parametrize(
