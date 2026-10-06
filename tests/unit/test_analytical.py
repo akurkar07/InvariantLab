@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from invariantlab.verification.analytical import (
+    heat_decay_rate,
     heat_manufactured_solution,
     heat_trajectory,
     kepler_angular_momentum,
@@ -189,6 +190,39 @@ def test_crank_nicolson_matches_manufactured():
     u_exact = heat_trajectory(x, 0.1, 0.1)
     max_error = np.max(np.abs(u_num - u_exact))
     assert max_error < 1e-4, f"Max error {max_error} too large"
+
+
+@pytest.mark.parametrize("length", [1.3, 2.0])
+def test_ftcs_matches_manufactured_for_domain_length(length):
+    x, u_num = solve_heat_ftcs(101, 1000, alpha=0.1, length=length, t_final=0.1)
+    u_exact = heat_trajectory(x, 0.1, 0.1, length=length)
+    relative_l2_error = np.linalg.norm(u_num - u_exact) / np.linalg.norm(u_exact)
+    assert relative_l2_error < 1e-3
+
+
+@pytest.mark.parametrize("length", [1.3, 2.0])
+def test_crank_nicolson_matches_manufactured_for_domain_length(length):
+    x, u_num = solve_heat_crank_nicolson(
+        101, 500, alpha=0.1, length=length, t_final=0.1
+    )
+    u_exact = heat_trajectory(x, 0.1, 0.1, length=length)
+    relative_l2_error = np.linalg.norm(u_num - u_exact) / np.linalg.norm(u_exact)
+    assert relative_l2_error < 1e-3
+
+
+def test_heat_manufactured_references_support_domain_length():
+    length, t, alpha = 1.3, 0.2, 0.1
+    x = np.linspace(0.0, length, 21)
+    assert math.isclose(
+        heat_manufactured_solution(length, t, alpha, length=length),
+        0.0,
+        abs_tol=1e-15,
+    )
+    assert heat_decay_rate(alpha, length=length) == alpha * (math.pi / length) ** 2
+    np.testing.assert_allclose(
+        heat_trajectory(x, t, alpha, length=length),
+        [heat_manufactured_solution(float(xi), t, alpha, length=length) for xi in x],
+    )
 
 
 def test_ftcs_stability_check():

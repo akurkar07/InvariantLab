@@ -125,22 +125,24 @@ def test_ftcs_has_first_order_temporal_convergence() -> None:
     _assert_orders_in_band(refinements, FIRST_ORDER_MIN, FIRST_ORDER_MAX)
 
 
-def test_ftcs_has_second_order_cfl_coupled_spatial_convergence() -> None:
+@pytest.mark.parametrize("length", [1.0, 2.0])
+def test_ftcs_has_second_order_cfl_coupled_spatial_convergence(length: float) -> None:
     # Coupled dt = 0.4*dx**2/alpha keeps FTCS stable (r=0.4), making its
+    # L=2 case equivalent with alpha scaled by L**2.
     # O(dt) temporal error O(dx**2). Measured errors: 7.1110593e-5,
     # 1.7762056e-5, 4.4395407e-6; orders 2.001266, 2.000316.
-    alpha, horizon = 0.1, 0.1
+    alpha, horizon = 0.1 * length**2, 0.1
     configurations = ((41, 40), (81, 160), (161, 640))
     refinements: list[_Refinement] = []
 
     for nx, nt in configurations:
-        x, state = solve_heat_ftcs(nx, nt, alpha, t_final=horizon)
-        expected_x = _uniform_grid(nx)
+        x, state = solve_heat_ftcs(nx, nt, alpha, length=length, t_final=horizon)
+        expected_x = _uniform_grid(nx, length)
         np.testing.assert_array_equal(x, expected_x)
         dx = float(expected_x[1] - expected_x[0])
         dt = horizon / nt
         assert math.isclose(alpha * dt / dx**2, 0.4)
-        expected = heat_trajectory(expected_x, horizon, alpha)
+        expected = heat_trajectory(expected_x, horizon, alpha, length=length)
         refinements.append(_Refinement(dx, dt, _relative_l2(state, expected)))
 
     assert configurations[1][0] - 1 == 2 * (configurations[0][0] - 1)
@@ -174,22 +176,25 @@ def test_crank_nicolson_has_second_order_temporal_convergence() -> None:
     _assert_orders_in_band(refinements, SECOND_ORDER_MIN, SECOND_ORDER_MAX)
 
 
-def test_crank_nicolson_has_second_order_spatial_convergence() -> None:
+@pytest.mark.parametrize("length", [1.0, 2.0])
+def test_crank_nicolson_has_second_order_spatial_convergence(length: float) -> None:
     # Coupled dt=0.1*dx**2 makes CN's O(dt**2) temporal error O(dx**4), below
     # its O(dx**2) spatial error. Measured errors: 5.0724726e-5, 1.2682902e-5,
-    # 3.1708350e-6; orders 1.999804, 1.999950.
-    alpha, horizon = 0.1, 0.1
+    # 3.1708350e-6; orders 1.999804, 1.999950. L=2 scales alpha by L**2.
+    alpha, horizon = 0.1 * length**2, 0.1
     configurations = ((41, 1_600), (81, 6_400), (161, 25_600))
     refinements: list[_Refinement] = []
 
     for nx, nt in configurations:
-        x, state = solve_heat_crank_nicolson(nx, nt, alpha, t_final=horizon)
-        expected_x = _uniform_grid(nx)
+        x, state = solve_heat_crank_nicolson(
+            nx, nt, alpha, length=length, t_final=horizon
+        )
+        expected_x = _uniform_grid(nx, length)
         np.testing.assert_array_equal(x, expected_x)
         dx = float(expected_x[1] - expected_x[0])
         dt = horizon / nt
-        assert math.isclose(dt, 0.1 * dx**2)
-        expected = heat_trajectory(expected_x, horizon, alpha)
+        assert math.isclose(alpha * dt / dx**2, 0.01)
+        expected = heat_trajectory(expected_x, horizon, alpha, length=length)
         refinements.append(_Refinement(dx, dt, _relative_l2(state, expected)))
 
     assert configurations[1][0] - 1 == 2 * (configurations[0][0] - 1)
