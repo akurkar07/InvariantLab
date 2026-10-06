@@ -463,7 +463,7 @@ cd tasks/oscillator
 python src/solver.py --input input.json --output result.npz
 ```
 
-Task-local public and scientific suites can be run with pytest from the repository root.
+Task-local public and scientific suites run from each task directory (`cd tasks/oscillator && pytest tests`); see [CONTRIBUTING.md](CONTRIBUTING.md) for the full local verification commands, branch policy and required CI checks.
 
 ## V1 acceptance criteria
 
