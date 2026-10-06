@@ -40,7 +40,9 @@ class TaskSuiteConfig(BaseModel):
 class ModelConfig(BaseModel):
     """Configuration for a model backend."""
 
-    adapter: str = Field(..., description="Adapter identifier (e.g., 'anthropic', 'hf', 'openai').")
+    adapter: str = Field(
+        ..., description="Adapter identifier: 'replay', 'ollama' or 'openai_compatible'."
+    )
     model_id: str = ""
     temperature: float = 0.0
     max_tokens: int = 32_000

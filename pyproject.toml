@@ -51,13 +51,6 @@ dev = [
     "pre-commit>=3.5",
     "types-PyYAML>=6.0",
 ]
-models = [
-    "anthropic>=0.34",
-    "openai>=1.40",
-    "transformers>=4.40",
-    "torch>=2.1",
-    "vllm>=0.5",
-]
 export = [
     "datasets>=2.14",
     "huggingface-hub>=0.24",
